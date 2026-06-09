@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '@joice/ui';
+import { Button, cn } from '@joice/ui';
 import { buildShareUrl } from '@/lib/env';
 
 const SHARE_MESSAGE = 'I just joined the Joice waitlist — AI-guided peptides done right. Join me:';
@@ -35,28 +35,27 @@ export function ShareActions({ referralCode }: { referralCode: string }) {
   const xUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(SHARE_MESSAGE)}&url=${encodeURIComponent(shareUrl)}`;
   const mailUrl = `mailto:?subject=${encodeURIComponent('Join me on the Joice waitlist')}&body=${encodeURIComponent(`${SHARE_MESSAGE} ${shareUrl}`)}`;
 
+  const glassLink = cn(
+    'inline-flex h-11 items-center justify-center rounded-full glass text-sm font-medium text-ink',
+    'shadow-[inset_0_1px_0_0_rgba(255,255,255,0.7),0_10px_28px_-14px_rgba(31,38,32,0.3)]',
+    'transition-all duration-200 hover:bg-white/75 active:bg-white/85',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas',
+  );
+
   return (
     <div className="flex w-full flex-col gap-3">
-      <Button onClick={copyLink} variant="secondary" size="lg" className="w-full">
+      <Button onClick={copyLink} variant="glassBrand" size="lg" className="w-full">
         {copied ? '✓ Link copied' : 'Copy referral link'}
       </Button>
 
       <div className="grid grid-cols-3 gap-3">
-        <Button onClick={nativeShare} variant="ghost" className="border border-line">
+        <Button onClick={nativeShare} variant="glass">
           Message
         </Button>
-        <a
-          href={xUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex h-11 items-center justify-center rounded-full border border-line text-sm font-medium text-ink transition-colors hover:bg-brand-50"
-        >
+        <a href={xUrl} target="_blank" rel="noopener noreferrer" className={glassLink}>
           X
         </a>
-        <a
-          href={mailUrl}
-          className="inline-flex h-11 items-center justify-center rounded-full border border-line text-sm font-medium text-ink transition-colors hover:bg-brand-50"
-        >
+        <a href={mailUrl} className={glassLink}>
           Email
         </a>
       </div>

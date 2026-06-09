@@ -16,11 +16,16 @@ export function ShareCard({ entry }: { entry: WaitlistEntryView }) {
   const referenceId = entry.referralCode.toUpperCase();
 
   return (
-    <div className="w-full overflow-hidden rounded-card border border-line bg-surface shadow-[0_24px_60px_-24px_rgba(40,30,10,0.35)]">
+    <div className="relative w-full overflow-hidden rounded-card bg-surface ring-1 ring-black/[0.05] shadow-[0_40px_80px_-32px_rgba(40,30,10,0.45),0_8px_24px_-12px_rgba(40,30,10,0.18)]">
+      {/* Lit top edge */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-px bg-white/70" />
+
       {/* Warm gradient header — echoes the reference card's collectible feel */}
-      <div className="relative h-44 bg-gradient-to-b from-card-from to-card-to">
+      <div className="relative h-44 overflow-hidden bg-gradient-to-b from-card-from to-card-to">
+        {/* Specular glass sheen sweeping across the header */}
+        <div className="pointer-events-none absolute -inset-x-10 -top-24 h-48 rotate-12 bg-gradient-to-b from-white/35 to-transparent blur-md" />
         <div className="absolute inset-0 flex items-start justify-between p-5">
-          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/80">
+          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/85">
             ◎ Founding member
           </span>
           <span className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.15em] text-white/90 text-right">
@@ -49,10 +54,12 @@ export function ShareCard({ entry }: { entry: WaitlistEntryView }) {
         </dl>
 
         <div className="flex flex-col items-center justify-start">
-          <div className="rounded-xl border border-line bg-white p-2">
-            <QRCodeSVG value={shareUrl} size={112} level="M" marginSize={0} fgColor="#27332d" />
+          <div className="rounded-2xl glass p-2.5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.7),0_8px_20px_-12px_rgba(0,0,0,0.2)]">
+            <div className="rounded-xl bg-white p-2">
+              <QRCodeSVG value={shareUrl} size={104} level="M" marginSize={0} fgColor="#27332d" />
+            </div>
           </div>
-          <span className="mt-2 font-mono text-[9px] uppercase tracking-[0.15em] text-muted">
+          <span className="mt-2.5 font-mono text-[9px] uppercase tracking-[0.15em] text-muted">
             Scan to join
           </span>
         </div>

@@ -1,6 +1,6 @@
 /**
  * Joice design tokens — Tailwind v4 CSS-first theme.
- * Light & clinical-clean: off-white canvas, sage/teal health accent, premium type.
+ * Light & clinical-clean with a soft ambient light field and frosted-glass surfaces.
  * Imported by apps after `@import "tailwindcss";`.
  */
 @theme {
@@ -23,14 +23,61 @@
   --color-muted: oklch(0.52 0.01 160);
   --color-line: oklch(0.92 0.005 160);
 
+  /* Ambient aura colors (the light field behind the glass) */
+  --color-aura-warm: oklch(0.9 0.09 70);
+  --color-aura-sage: oklch(0.85 0.11 165);
+  --color-aura-cool: oklch(0.88 0.07 215);
+
   /* Premium share-card accent (warm, echoes the reference card) */
-  --color-card-from: oklch(0.78 0.16 55);
-  --color-card-to: oklch(0.92 0.07 85);
+  --color-card-from: oklch(0.76 0.17 50);
+  --color-card-to: oklch(0.93 0.07 85);
 
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 
-  --radius-card: 1.5rem;
+  --radius-card: 1.75rem;
+
+  /* Motion */
+  --animate-fade-up: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-fade-in: fade-in 0.5s ease both;
+  --animate-drift: drift 18s ease-in-out infinite alternate;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes drift {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(0, -3%, 0) scale(1.08);
+  }
+}
+
+/* Reusable frosted-glass surface. */
+@utility glass {
+  background-color: color-mix(in oklch, white 55%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid color-mix(in oklch, white 65%, transparent);
 }
 
 @layer base {
@@ -41,5 +88,13 @@
   body {
     background-color: var(--color-canvas);
     color: var(--color-ink);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+    }
   }
 }

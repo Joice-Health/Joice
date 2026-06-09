@@ -25,7 +25,7 @@ export function WaitlistExperience({ referredBy }: { referredBy: string | null }
     <>
       <header className="mb-12 flex w-full items-center justify-between">
         <BrandMark />
-        <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+        <span className="glass rounded-full px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-muted shadow-[inset_0_1px_0_0_rgba(255,255,255,0.6)]">
           Private beta
         </span>
       </header>
@@ -37,26 +37,26 @@ export function WaitlistExperience({ referredBy }: { referredBy: string | null }
 
 function JoinView({ referredBy }: { referredBy: string | null }) {
   return (
-    <section className="flex w-full flex-1 flex-col justify-center">
+    <section className="flex w-full flex-1 flex-col justify-center animate-fade-up">
       {referredBy ? (
-        <span className="mb-6 inline-flex w-fit items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-xs font-medium text-brand-700">
+        <span className="mb-6 inline-flex w-fit items-center gap-2 rounded-full bg-brand-400/15 px-3.5 py-1.5 text-xs font-medium text-brand-800 backdrop-blur-xl ring-1 ring-inset ring-brand-300/40 ring-offset-0 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]">
           ✦ A friend invited you
         </span>
       ) : null}
 
-      <h1 className="text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-ink sm:text-5xl">
+      <h1 className="text-balance text-[2.75rem] font-semibold leading-[1.02] tracking-[-0.03em] text-ink sm:text-6xl">
         The future of peptide medicine.
       </h1>
-      <p className="mt-5 max-w-md text-pretty text-base leading-relaxed text-muted">
+      <p className="mt-6 max-w-md text-pretty text-lg leading-relaxed text-muted">
         AI-guided peptides and supplements, backed by real clinical governance and pharmacy
         fulfillment. Join the waitlist for first access.
       </p>
 
-      <div className="mt-8">
+      <div className="mt-9">
         <WaitlistForm referredBy={referredBy} />
       </div>
 
-      <div className="mt-5">
+      <div className="mt-6">
         <WaitlistCounter />
       </div>
     </section>
@@ -75,9 +75,9 @@ function SuccessView({ entry }: { entry: WaitlistEntryView }) {
   }, [data, setEntry]);
 
   return (
-    <section className="flex w-full flex-1 flex-col">
+    <section className="flex w-full flex-1 flex-col animate-fade-up">
       <div className="mb-8">
-        <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+        <h1 className="text-[2rem] font-semibold tracking-[-0.03em] text-ink sm:text-[2.5rem]">
           You&apos;re on the list.
         </h1>
         <p className="mt-3 text-base leading-relaxed text-muted">
