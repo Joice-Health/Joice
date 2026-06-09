@@ -25,7 +25,7 @@ const variants: Record<Variant, string> = {
   ),
   // Brand-tinted frosted glass.
   glassBrand: cn(
-    'text-brand-800 bg-brand-400/15 backdrop-blur-xl border border-brand-300/40',
+    'text-brand-800 bg-brand-400/15 backdrop-blur-xl',
     'shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5),0_10px_28px_-14px_rgba(20,120,90,0.4)]',
     'hover:bg-brand-400/25 active:bg-brand-400/30 disabled:opacity-50',
   ),

@@ -25,11 +25,11 @@ export function ShareCard({ entry }: { entry: WaitlistEntryView }) {
         {/* Specular glass sheen sweeping across the header */}
         <div className="pointer-events-none absolute -inset-x-10 -top-24 h-48 rotate-12 bg-gradient-to-b from-white/35 to-transparent blur-md" />
         <div className="absolute inset-0 flex items-start justify-between p-5">
-          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/85">
+          <span className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-white/85">
             ◎ Founding member
           </span>
           <span className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.15em] text-white/90 text-right">
-            You were made for greatness.
+            You deserve this.
             <br />
             Brought to you by Joice
           </span>

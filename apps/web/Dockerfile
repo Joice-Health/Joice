@@ -11,9 +11,22 @@ COPY packages/ui/package.json ./packages/ui/
 COPY packages/config/package.json ./packages/config/
 RUN bun install --frozen-lockfile
 
+# Dev target — source is bind-mounted at runtime; this image just carries the
+# Linux-built node_modules (preserved via anonymous volumes) and runs next dev.
+FROM oven/bun:1.3.9-slim AS dev
+WORKDIR /app
+ENV NODE_ENV=development
+ENV NEXT_TELEMETRY_DISABLED=1
+COPY --from=deps /app ./
+COPY . .
+EXPOSE 3000
+CMD ["bun", "run", "--cwd", "apps/web", "dev"]
+
 FROM oven/bun:1.3.9-slim AS builder
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+# Bun places workspace bins (e.g. next) in each workspace's node_modules/.bin,
+# so copy the whole installed tree, not just root node_modules.
+COPY --from=deps /app ./
 COPY . .
 # NEXT_PUBLIC_* are inlined at build time, so they must be present here.
 ARG NEXT_PUBLIC_API_URL

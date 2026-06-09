@@ -41,6 +41,30 @@ docker compose up --build
 - API: http://localhost:4000/health
 - The API container applies DB migrations on startup.
 
+### Dev mode with hot reload (default)
+
+`docker compose up` runs a **hot-reloading dev environment** — `docker-compose.override.yml`
+is auto-merged. The repo is bind-mounted into the containers, so editing any file on the host
+(components, styles, `public/`, API code) is picked up live (`next dev` + `bun --hot`). Each
+workspace's `node_modules` is shadowed by an anonymous volume so the host's macOS modules never
+clobber the container's Linux ones.
+
+```bash
+docker compose up --build   # first run (builds the dev images)
+docker compose up           # subsequent runs
+```
+
+> If `5432` is taken on your host, set `POSTGRES_PORT` in `.env` (containers talk to Postgres
+> over the internal network regardless).
+
+### Production-style run
+
+Bypass the dev override to build the optimized standalone images:
+
+```bash
+docker compose -f docker-compose.yml up --build
+```
+
 ## Local development
 
 ```bash

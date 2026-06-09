@@ -32,7 +32,7 @@
   --color-card-from: oklch(0.76 0.17 50);
   --color-card-to: oklch(0.93 0.07 85);
 
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-yantramanav), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 
   --radius-card: 1.75rem;

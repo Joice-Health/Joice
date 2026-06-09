@@ -1,0 +1,48 @@
+# Auto-merged by `docker compose` on top of docker-compose.yml.
+# Turns `docker compose up` into a hot-reloading DEV environment:
+#   - the repo is bind-mounted into each container, so edits on the host are live
+#   - every workspace node_modules (and .next) is shadowed by an anonymous volume,
+#     so the host's macOS-native modules never clobber the container's Linux ones
+#   - api runs `bun --hot`, web runs `next dev`
+#
+# For a PRODUCTION run instead, bypass this file:
+#   docker compose -f docker-compose.yml up --build
+services:
+  api:
+    build:
+      target: dev
+    environment:
+      NODE_ENV: development
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/api/node_modules
+      - /app/apps/web/node_modules
+      - /app/packages/api-client/node_modules
+      - /app/packages/config/node_modules
+      - /app/packages/core/node_modules
+      - /app/packages/db/node_modules
+      - /app/packages/ui/node_modules
+
+  web:
+    build:
+      target: dev
+    environment:
+      NODE_ENV: development
+      # Runtime public config for `next dev` (prod inlines these at build time).
+      NEXT_PUBLIC_API_URL: http://localhost:4000
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      # File-watch polling — reliable change detection across the bind mount.
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/api/node_modules
+      - /app/apps/web/node_modules
+      - /app/apps/web/.next
+      - /app/packages/api-client/node_modules
+      - /app/packages/config/node_modules
+      - /app/packages/core/node_modules
+      - /app/packages/db/node_modules
+      - /app/packages/ui/node_modules

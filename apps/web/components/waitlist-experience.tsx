@@ -44,7 +44,7 @@ function JoinView({ referredBy }: { referredBy: string | null }) {
         </span>
       ) : null}
 
-      <h1 className="text-balance text-[2.75rem] font-semibold leading-[1.02] tracking-[-0.03em] text-ink sm:text-6xl">
+      <h1 className="text-balance text-[2.75rem] leading-[1.02] tracking-[-0.03em] text-ink sm:text-6xl">
         The future of peptide medicine.
       </h1>
       <p className="mt-6 max-w-md text-pretty text-lg leading-relaxed text-muted">
@@ -77,7 +77,7 @@ function SuccessView({ entry }: { entry: WaitlistEntryView }) {
   return (
     <section className="flex w-full flex-1 flex-col animate-fade-up">
       <div className="mb-8">
-        <h1 className="text-[2rem] font-semibold tracking-[-0.03em] text-ink sm:text-[2.5rem]">
+        <h1 className="text-[2rem] tracking-[-0.03em] text-ink sm:text-[2.5rem]">
           You&apos;re on the list.
         </h1>
         <p className="mt-3 text-base leading-relaxed text-muted">
