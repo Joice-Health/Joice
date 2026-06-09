@@ -69,9 +69,7 @@ export function ShareCard({ entry }: { entry: WaitlistEntryView }) {
 
       <div className="flex items-center justify-between border-t border-line px-6 py-4">
         <span className="font-mono text-[10px] uppercase leading-tight tracking-[0.15em] text-muted">
-          Introducing
-          <br />
-          Joice Peptides
+          The New Standard of You
         </span>
         <span className="text-lg font-semibold lowercase tracking-tight text-ink/30">joice</span>
       </div>
