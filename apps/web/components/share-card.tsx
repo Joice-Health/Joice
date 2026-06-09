@@ -16,12 +16,12 @@ export function ShareCard({ entry }: { entry: WaitlistEntryView }) {
   const referenceId = entry.referralCode.toUpperCase();
 
   return (
-    <div className="relative w-full overflow-hidden rounded-card bg-surface ring-1 ring-black/[0.05] shadow-[0_40px_80px_-32px_rgba(40,30,10,0.45),0_8px_24px_-12px_rgba(40,30,10,0.18)]">
+    <div className="relative w-full overflow-hidden rounded-card ring-1 ring-black/[0.05] shadow-[0_40px_80px_-32px_rgba(40,30,10,0.45),0_8px_24px_-12px_rgba(40,30,10,0.18)]">
       {/* Lit top edge */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-px bg-white/70" />
 
-      {/* Warm gradient header — echoes the reference card's collectible feel */}
-      <div className="relative h-44 overflow-hidden bg-gradient-to-b from-card-from to-card-to">
+      {/* Translucent warm header — frosts the video behind the card */}
+      <div className="relative h-44 overflow-hidden bg-gradient-to-b from-card-from/70 to-card-to/55 backdrop-blur-xl backdrop-saturate-150">
         {/* Specular glass sheen sweeping across the header */}
         <div className="pointer-events-none absolute -inset-x-10 -top-24 h-48 rotate-12 bg-gradient-to-b from-white/35 to-transparent blur-md" />
         <div className="absolute inset-0 flex items-start justify-between p-5">
@@ -36,6 +36,8 @@ export function ShareCard({ entry }: { entry: WaitlistEntryView }) {
         </div>
       </div>
 
+      {/* Opaque lower section — keeps the data + QR crisp and legible */}
+      <div className="bg-surface">
       {/* Lower data plate */}
       <div className="grid grid-cols-[1fr_auto] gap-4 p-6">
         <dl className="space-y-4 font-mono text-ink">
@@ -72,6 +74,7 @@ export function ShareCard({ entry }: { entry: WaitlistEntryView }) {
           Joice Peptides
         </span>
         <span className="text-lg font-semibold lowercase tracking-tight text-ink/30">joice</span>
+      </div>
       </div>
     </div>
   );

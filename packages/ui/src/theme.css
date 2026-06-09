@@ -19,7 +19,8 @@
   /* Neutrals — warm off-white canvas + near-black ink */
   --color-canvas: oklch(0.985 0.004 95);
   --color-surface: oklch(1 0 0);
-  --color-ink: oklch(0.22 0.01 160);
+  /* Very dark grey — intentionally never pure black. */
+  --color-ink: oklch(0.28 0.006 165);
   --color-muted: oklch(0.52 0.01 160);
   --color-line: oklch(0.92 0.005 160);
 
