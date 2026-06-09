@@ -1,0 +1,11 @@
+@import 'tailwindcss';
+@import '@joice/ui/theme.css';
+
+/* Detect Tailwind classes used inside the shared UI package. */
+@source '../../../packages/ui/src';
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+  }
+}

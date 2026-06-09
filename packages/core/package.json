@@ -1,0 +1,24 @@
+{
+  "name": "@joice/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schemas": "./src/schemas.ts"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@joice/db": "*",
+    "nanoid": "^5.0.9",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@joice/config": "*",
+    "@types/node": "^22.10.7",
+    "typescript": "^5.7.3"
+  }
+}

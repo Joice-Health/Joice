@@ -1,0 +1,29 @@
+{
+  "name": "@joice/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@joice/api": "*",
+    "@joice/core": "*",
+    "hono": "^4.12.23"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "^5.101.0",
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@joice/config": "*",
+    "@tanstack/react-query": "^5.101.0",
+    "@types/react": "^19.0.7",
+    "react": "^19.0.0",
+    "typescript": "^5.7.3"
+  }
+}
