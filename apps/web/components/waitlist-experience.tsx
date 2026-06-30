@@ -10,8 +10,16 @@ import { WaitlistCounter } from './waitlist-counter';
 import { ShareCard } from './share-card';
 import { ShareActions } from './share-actions';
 
-export function WaitlistExperience({ referredBy }: { referredBy: string | null }) {
+export function WaitlistExperience({
+  referredBy,
+  forceReset = false,
+}: {
+  referredBy: string | null;
+  /** Dev helper: ?reset clears the saved card so the form shows again. */
+  forceReset?: boolean;
+}) {
   const entry = useWaitlistStore((s) => s.entry);
+  const reset = useWaitlistStore((s) => s.reset);
   const [mounted, setMounted] = useState(false);
 
   // The persisted store rehydrates from localStorage on the client only. We render
@@ -19,7 +27,10 @@ export function WaitlistExperience({ referredBy }: { referredBy: string | null }
   // as new), then swap to their saved card after mount — so the hero is still SSR'd
   // and there's no hydration mismatch. Returning users see a brief join-view flash.
   useEffect(() => setMounted(true), []);
-  const showCard = mounted && entry;
+  useEffect(() => {
+    if (forceReset) reset();
+  }, [forceReset, reset]);
+  const showCard = mounted && entry && !forceReset;
 
   return (
     <>

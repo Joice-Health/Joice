@@ -18,6 +18,12 @@ const RIPPLE_SPEED = 4.5; // outward travel speed
 const RIPPLE_FALLOFF = 6.0; // spatial decay
 const RIPPLE_DECAY = 1.7; // temporal decay
 const ADD_MIN_DIST = 0.012; // min cursor travel (uv) between trail drops
+const FADE_GAP_MIN = 16.0; // min seconds between brightness dips
+const FADE_GAP_MAX = 38.0; // max seconds between dips
+const FADE_DEPTH_MIN = 0.6; // darkest brightness during a dip (1 = unchanged)
+const FADE_DEPTH_MAX = 0.78; // shallowest dip
+const FADE_HOLD = 1.2; // seconds to linger dim before returning
+const FADE_RATE = 0.6; // easing speed (smaller = slower, gentler fade)
 
 const VERT = `
 attribute vec2 position;
@@ -32,6 +38,7 @@ uniform sampler2D uTex;
 uniform float uTime;
 uniform float uCanvasAspect;
 uniform float uVideoAspect;
+uniform float uBrightness; // global dim factor for the slow fade in/out
 uniform vec3 uRipples[${MAX_RIPPLES}]; // xy = uv center, z = start time (<0 = inactive)
 
 const float LIFE = ${RIPPLE_LIFE.toFixed(2)};
@@ -67,7 +74,7 @@ void main(){
   float cr = texture2D(uTex, s + disp * 1.04).r;
   float cg = texture2D(uTex, s + disp).g;
   float cb = texture2D(uTex, s + disp * 0.96).b;
-  gl_FragColor = vec4(cr, cg, cb, 1.0);
+  gl_FragColor = vec4(vec3(cr, cg, cb) * uBrightness, 1.0);
 }
 `;
 
@@ -140,6 +147,7 @@ export function WaterBackground({ src, className }: { src: string; className?: s
     const uTime = gl.getUniformLocation(program, 'uTime');
     const uCanvasAspect = gl.getUniformLocation(program, 'uCanvasAspect');
     const uVideoAspect = gl.getUniformLocation(program, 'uVideoAspect');
+    const uBrightness = gl.getUniformLocation(program, 'uBrightness');
     const uRipples = gl.getUniformLocation(program, 'uRipples');
 
     const ripples = new Float32Array(MAX_RIPPLES * 3).fill(-1);
@@ -147,9 +155,18 @@ export function WaterBackground({ src, className }: { src: string; className?: s
     let last = { x: -1, y: -1 };
     const start = performance.now();
 
+    // Slow brightness fade: dip toward a random depth at random long intervals,
+    // hold briefly, then ease back to full. `target` is eased into `bright`.
+    const gap = () => FADE_GAP_MIN + Math.random() * (FADE_GAP_MAX - FADE_GAP_MIN);
+    let bright = 1.0;
+    let target = 1.0;
+    let lastFrame = start;
+    let nextDip = gap(); // seconds (relative to start) until the next dip begins
+    let returnAt = 0; // seconds at which to ease back to full (0 = not dipping)
+
     const onMove = (e: PointerEvent) => {
       const x = e.clientX / window.innerWidth;
-      const y = e.clientY / window.innerHeight;
+      const y = 1 - e.clientY / window.innerHeight; // flip: vUv.y is 0 at the bottom
       const dx = x - last.x;
       const dy = y - last.y;
       if (last.x >= 0 && dx * dx + dy * dy < ADD_MIN_DIST * ADD_MIN_DIST) return;
@@ -185,9 +202,27 @@ export function WaterBackground({ src, className }: { src: string; className?: s
       gl.bindTexture(gl.TEXTURE_2D, texture);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
 
-      gl.uniform1f(uTime, (performance.now() - start) / 1000);
+      const now = performance.now();
+      const t = (now - start) / 1000;
+      const dt = Math.min((now - lastFrame) / 1000, 0.1);
+      lastFrame = now;
+
+      // Advance the fade state machine, then ease toward the current target.
+      if (returnAt === 0 && t >= nextDip) {
+        target = FADE_DEPTH_MIN + Math.random() * (FADE_DEPTH_MAX - FADE_DEPTH_MIN);
+        returnAt = t + FADE_HOLD;
+      } else if (returnAt > 0 && t >= returnAt && target < 1.0) {
+        target = 1.0;
+      } else if (returnAt > 0 && target === 1.0 && bright > 0.99) {
+        returnAt = 0;
+        nextDip = t + gap();
+      }
+      bright += (target - bright) * (1 - Math.exp(-FADE_RATE * dt));
+
+      gl.uniform1f(uTime, t);
       gl.uniform1f(uCanvasAspect, canvas.width / canvas.height);
       gl.uniform1f(uVideoAspect, (video.videoWidth || 16) / (video.videoHeight || 9));
+      gl.uniform1f(uBrightness, bright);
       gl.uniform3fv(uRipples, ripples);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
 
