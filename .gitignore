@@ -33,6 +33,14 @@ yarn-error.log*
 # testing
 coverage
 
+# terraform (state contains secrets — never commit)
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.*
+infra/*.tfvars
+infra/.terraform.lock.hcl.backup
+crash.log
+
 # misc
 *.tsbuildinfo
 next-env.d.ts
