@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { Button, cn } from '@joice/ui';
 import { buildShareUrl } from '@/lib/env';
 
-const SHARE_MESSAGE = 'I just joined the Joice waitlist — AI-guided peptides done right. Join me:';
+const SHARE_MESSAGE =
+  'Clinician-guided peptide care, built to keep you yourself. Lock in the Joice founding member rate:';
 
 export function ShareActions({ referralCode }: { referralCode: string }) {
   const shareUrl = buildShareUrl(referralCode);
@@ -45,7 +46,7 @@ export function ShareActions({ referralCode }: { referralCode: string }) {
   return (
     <div className="flex w-full flex-col gap-3">
       <Button onClick={copyLink} variant="glassBrand" size="lg" className="w-full">
-        {copied ? '✓ Link copied' : 'Copy referral link'}
+        {copied ? '✓ Link copied' : 'Get your invite link'}
       </Button>
 
       <div className="grid grid-cols-3 gap-3">

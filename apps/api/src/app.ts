@@ -47,9 +47,9 @@ const routes = app
     rateLimit({ windowMs: 60_000, max: 10 }),
     zValidator('json', joinWaitlistSchema),
     async (c) => {
-      const { email, ref } = c.req.valid('json');
+      const { email, firstName, lastName, ref } = c.req.valid('json');
       const ipHash = await hashIp(clientIp(c));
-      const entry = await waitlist.join({ email, ref, ipHash });
+      const entry = await waitlist.join({ email, firstName, lastName, ref, ipHash });
       return c.json(entry, 201);
     },
   )

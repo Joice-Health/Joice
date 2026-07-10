@@ -29,6 +29,10 @@ export const waitlistEntries = pgTable(
     /** Stored lowercased + trimmed; the natural unique key for idempotent signups. */
     email: text('email').notNull(),
 
+    /** Collected at signup (V1 brief). Nullable for rows created before the fields existed. */
+    firstName: text('first_name'),
+    lastName: text('last_name'),
+
     /** Short, URL-safe slug shared in referral links (e.g. ?ref=ab12cd34). */
     referralCode: text('referral_code').notNull(),
 

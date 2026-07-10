@@ -13,7 +13,7 @@ const variants: Record<Variant, string> = {
   // Solid focal action — green gradient with a soft colored glow + lit top edge.
   primary: cn(
     'text-white bg-gradient-to-b from-brand-500 to-brand-600',
-    'shadow-[0_14px_34px_-12px_rgba(20,120,90,0.55)] ring-1 ring-inset ring-white/25',
+    'shadow-[0_14px_34px_-12px_rgba(90,85,75,0.5)] ring-1 ring-inset ring-white/25',
     'hover:from-brand-400 hover:to-brand-500 active:from-brand-600 active:to-brand-700',
     'disabled:from-brand-300 disabled:to-brand-300 disabled:shadow-none',
   ),
@@ -26,7 +26,7 @@ const variants: Record<Variant, string> = {
   // Brand-tinted frosted glass.
   glassBrand: cn(
     'text-brand-800 bg-brand-400/15 backdrop-blur-xl',
-    'shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5),0_10px_28px_-14px_rgba(20,120,90,0.4)]',
+    'shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5),0_10px_28px_-14px_rgba(90,85,75,0.35)]',
     'hover:bg-brand-400/25 active:bg-brand-400/30 disabled:opacity-50',
   ),
   ghost: 'text-ink hover:bg-white/45 hover:backdrop-blur-md disabled:opacity-50',

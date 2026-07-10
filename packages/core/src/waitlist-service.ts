@@ -67,7 +67,7 @@ export function createWaitlistService(db: Database) {
      * so re-submitting never errors or creates duplicates. A valid `ref` attributes
      * the signup to its referrer and bumps their referral count in one transaction.
      */
-    async join({ email, ref, ipHash }: JoinWaitlistArgs): Promise<WaitlistEntryView> {
+    async join({ email, firstName, lastName, ref, ipHash }: JoinWaitlistArgs): Promise<WaitlistEntryView> {
       const existing = await findByEmail(email);
       if (existing) return toView(existing);
 
@@ -84,6 +84,8 @@ export function createWaitlistService(db: Database) {
               .insert(waitlistEntries)
               .values({
                 email,
+                firstName,
+                lastName,
                 referralCode: generateReferralCode(),
                 referredByCode: ref ?? null,
                 referredById: referrer?.id ?? null,

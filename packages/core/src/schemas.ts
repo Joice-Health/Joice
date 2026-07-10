@@ -6,6 +6,16 @@ import { z } from 'zod';
  */
 
 export const joinWaitlistSchema = z.object({
+  firstName: z
+    .string()
+    .trim()
+    .min(1, 'Enter your first name')
+    .max(100, 'First name is too long'),
+  lastName: z
+    .string()
+    .trim()
+    .min(1, 'Enter your last name')
+    .max(100, 'Last name is too long'),
   email: z
     .string()
     .trim()
