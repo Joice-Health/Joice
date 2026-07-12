@@ -1,6 +1,16 @@
+output "site_url" {
+  description = "Canonical public site URL (set as CLOUDFRONT_URL repo variable for CI)."
+  value       = local.canonical_url
+}
+
 output "cloudfront_url" {
-  description = "Public site URL (set as CLOUDFRONT_URL repo variable for CI)."
+  description = "CloudFront default domain (still works; redirects to the canonical domain)."
   value       = "https://${aws_cloudfront_distribution.main.domain_name}"
+}
+
+output "nameservers" {
+  description = "Set these NS records at each domain's registrar."
+  value       = { for zone, z in aws_route53_zone.main : zone => z.name_servers }
 }
 
 output "alb_dns" {
@@ -45,7 +55,7 @@ output "github_repo_variables" {
   value       = <<-EOT
     AWS_REGION=${var.region}
     AWS_ROLE_ARN=${var.github_repository != "" ? aws_iam_role.github_actions[0].arn : "<set github_repository and re-apply>"}
-    CLOUDFRONT_URL=https://${aws_cloudfront_distribution.main.domain_name}
+    CLOUDFRONT_URL=${local.canonical_url}
     ECR_WEB=${aws_ecr_repository.app["web"].repository_url}
     ECR_API=${aws_ecr_repository.app["api"].repository_url}
     ECS_CLUSTER=${aws_ecs_cluster.main.name}

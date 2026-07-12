@@ -51,14 +51,25 @@ images, pushes to ECR, and rolls the services with zero downtime.
   Flip to `ARM64` (+ `runs-on: ubuntu-24.04-arm` and `platforms: linux/arm64`
   in the workflow) for ~20% cheaper compute.
 
-## Custom domain (later)
+## Domains
 
-1. Get an ACM cert **in us-east-1** for the domain (DNS validation).
-2. In `cloudfront.tf`: set `aliases`, swap `viewer_certificate` to the cert ARN
-   with `minimum_protocol_version = "TLSv1.2_2021"`.
-3. Point DNS (ALIAS/CNAME) at the CloudFront domain.
-4. Rebuild web with `NEXT_PUBLIC_APP_URL=https://yourdomain` (update the GitHub
-   variable) so share links/QRs use the real domain.
+Canonical: **joicehealth.com** (`domain_name` variable). Redirects: **joice.health**
+(`redirect_domains`) — apex + www of every domain 301 to the canonical via a CloudFront
+Function that preserves path and query string (`?ref=` attribution survives). Route53
+zones + the multi-SAN ACM cert + validation and alias records are all in `dns.tf`.
+
+**Cutover runbook:**
+1. `terraform apply` — creates the zones and cert, then **waits on cert validation**.
+2. While it waits: `terraform output nameservers` → set those NS at each domain's
+   registrar. Validation completes once the NS cutover propagates (minutes to hours;
+   re-run apply if it times out).
+3. Update the GitHub repo variable `CLOUDFRONT_URL=https://joicehealth.com` and re-run
+   the deploy workflow so share links/QRs bake the real domain.
+4. Optional: transfer the domain registrations themselves to Route53 (console →
+   Route53 → Registered domains → Transfer). Not required — NS delegation is enough —
+   and not manageable from Terraform.
+
+Old `*.cloudfront.net` links keep working: they 301 to the canonical domain.
 
 ## Before-PHI checklist (HIPAA hardening for Phase 1)
 

@@ -86,10 +86,16 @@ variable "github_repository" {
   default     = "Joicehealth/Joice"
 }
 
-# ---- Future: custom domain (fill both to wire TLS + aliases; see infra/README.md) ----
+# ---- Domains ----
 
 variable "domain_name" {
-  description = "Custom domain for the site (e.g. joice.com). Empty = use the CloudFront default domain."
+  description = "Canonical domain the site is served on."
   type        = string
-  default     = ""
+  default     = "joicehealth.com"
+}
+
+variable "redirect_domains" {
+  description = "Domains that 301-redirect (apex + www) to the canonical domain."
+  type        = list(string)
+  default     = ["joice.health"]
 }

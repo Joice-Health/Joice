@@ -72,9 +72,6 @@ resource "random_password" "ip_hash_salt" {
   special = false
 }
 
-locals {
-  cloudfront_url = "https://${aws_cloudfront_distribution.main.domain_name}"
-}
 
 resource "aws_ecs_task_definition" "web" {
   family                   = "${var.project}-web"
@@ -143,7 +140,7 @@ resource "aws_ecs_task_definition" "api" {
         { name = "PORT", value = "4000" },
         # Same-origin in prod (CloudFront routes /api/*), so CORS never triggers;
         # set it anyway so any cross-origin caller is scoped to the real site.
-        { name = "WEB_ORIGIN", value = local.cloudfront_url },
+        { name = "WEB_ORIGIN", value = local.canonical_url },
         { name = "IP_HASH_SALT", value = random_password.ip_hash_salt.result },
       ]
       secrets = [
