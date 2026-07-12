@@ -87,6 +87,18 @@ salted IP hashes (never raw IPs). Before handling any health data:
 - [ ] RDS **Multi-AZ**, longer backup retention, consider KMS CMKs over AWS-managed keys
 - [ ] App-level: audit logging, access controls, session management for any PHI surfaces
 
+## Team preview gate
+
+The main site (everything except `/waitlist` and `/team`) is hidden behind a shared
+password until launch — Next.js middleware redirects the public to `/waitlist`. Team
+members log in at **/team**.
+
+- Set the password once in `infra/terraform.tfvars` (gitignored):
+  `team_password = "…"` → `terraform apply` (rolls the web service; no rebuild).
+- Rotate: change the value, apply — every issued cookie is invalidated.
+- **Launch:** set `site_launched = true`, apply. The gate disappears; all URLs are
+  already final.
+
 ## Teardown
 
 ```bash

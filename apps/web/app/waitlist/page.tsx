@@ -1,3 +1,4 @@
+import { AmbientBackground } from '@/components/ambient-background';
 import { WaitlistExperience } from '@/components/waitlist-experience';
 
 export default async function WaitlistPage({
@@ -8,8 +9,11 @@ export default async function WaitlistPage({
   const { ref, reset } = await searchParams;
 
   return (
-    <main className="relative mx-auto flex min-h-dvh w-full max-w-xl flex-col items-center px-6 py-10">
-      <WaitlistExperience referredBy={ref ?? null} forceReset={reset !== undefined} />
-    </main>
+    <>
+      <AmbientBackground />
+      <main className="relative mx-auto flex min-h-dvh w-full max-w-xl flex-col items-center px-6 py-10">
+        <WaitlistExperience referredBy={ref ?? null} forceReset={reset !== undefined} />
+      </main>
+    </>
   );
 }

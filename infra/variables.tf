@@ -86,6 +86,20 @@ variable "github_repository" {
   default     = "Joicehealth/Joice"
 }
 
+# ---- Team preview gate ----
+
+variable "team_password" {
+  description = "Shared password for the pre-launch main site (/team). Set in terraform.tfvars (gitignored)."
+  type        = string
+  sensitive   = true
+}
+
+variable "site_launched" {
+  description = "true opens the main site to everyone (removes the team gate)."
+  type        = bool
+  default     = false
+}
+
 # ---- Domains ----
 
 variable "domain_name" {

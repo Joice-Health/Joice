@@ -100,6 +100,9 @@ resource "aws_ecs_task_definition" "web" {
         { name = "NODE_ENV", value = "production" },
         { name = "PORT", value = "3000" },
         { name = "HOSTNAME", value = "0.0.0.0" },
+        # Team preview gate — runtime-only, so rotating/flipping = apply, no rebuild.
+        { name = "TEAM_PASSWORD", value = var.team_password },
+        { name = "SITE_LAUNCHED", value = tostring(var.site_launched) },
       ]
       logConfiguration = {
         logDriver = "awslogs"

@@ -35,6 +35,9 @@ services:
       # File-watch polling — reliable change detection across the bind mount.
       WATCHPACK_POLLING: "true"
       CHOKIDAR_USEPOLLING: "true"
+      # Team preview gate (see .env / .env.example)
+      TEAM_PASSWORD: ${TEAM_PASSWORD:-joice-dev}
+      SITE_LAUNCHED: ${SITE_LAUNCHED:-false}
     volumes:
       - .:/app
       - /app/node_modules
