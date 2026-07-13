@@ -1,5 +1,5 @@
-import { AmbientBackground } from '@/components/ambient-background';
-import { WaitlistExperience } from '@/components/waitlist-experience';
+import { AmbientBackground } from '@/components/ui/ambient-background';
+import { WaitlistExperience } from '@/components/waitlist/waitlist-experience';
 
 export default async function WaitlistPage({
   searchParams,

@@ -61,7 +61,7 @@ describe('feature flag cache', () => {
 
   test('mutations invalidate the cache immediately', async () => {
     let selects = 0;
-    let clock = 0;
+    const clock = 0;
     const row = { id: 'f1', key: 'new_flag', enabled: false, description: null };
     const db = stubDb({ rows: [row], returningRow: row, onSelect: () => selects++ });
     const flags = createFeatureFlagService(db, createAuditService(db), {

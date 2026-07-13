@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { auth } from '@clerk/nextjs/server';
 import { UserButton } from '@clerk/nextjs';
-import { BrandMark } from '@/components/brand-mark';
+import { BrandMark } from '@/components/ui/brand-mark';
 import { AdminNav } from '@/components/admin/nav';
 import { AdminProviders } from '../providers';
 

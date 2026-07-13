@@ -1,4 +1,4 @@
-import { BrandMark } from '@/components/brand-mark';
+import { BrandMark } from '@/components/ui/brand-mark';
 import { Button, Input } from '@joice/ui';
 
 export const metadata = { robots: { index: false, follow: false } };

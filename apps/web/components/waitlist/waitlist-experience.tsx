@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useWaitlistByCode } from '@joice/api-client';
 import type { WaitlistEntryView } from '@joice/core';
 import { useWaitlistStore } from '@/lib/store';
-import { BrandMark } from './brand-mark';
+import { BrandMark } from '@/components/ui/brand-mark';
 import { WaitlistForm } from './waitlist-form';
 import { WaitlistCounter } from './waitlist-counter';
 import { ShareCard } from './share-card';
