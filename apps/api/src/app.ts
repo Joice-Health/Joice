@@ -4,17 +4,12 @@ import { logger } from 'hono/logger';
 import { secureHeaders } from 'hono/secure-headers';
 import { HTTPException } from 'hono/http-exception';
 import { zValidator } from '@hono/zod-validator';
-import {
-  createWaitlistService,
-  joinWaitlistSchema,
-  referralCodeParamSchema,
-} from '@joice/core';
-import { getDatabase } from '@joice/db';
+import { joinWaitlistSchema, referralCodeParamSchema } from '@joice/core';
 import { allowedOrigins } from './env';
 import { rateLimit, clientIp } from './middleware/rate-limit';
 import { hashIp } from './hash';
-
-const waitlist = createWaitlistService(getDatabase());
+import { featureFlags, waitlist } from './services';
+import { adminRoutes } from './admin/routes';
 
 const app = new Hono();
 
@@ -24,8 +19,8 @@ app.use(
   '/api/*',
   cors({
     origin: allowedOrigins,
-    allowMethods: ['GET', 'POST', 'OPTIONS'],
-    allowHeaders: ['Content-Type'],
+    allowMethods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization'],
   }),
 );
 
@@ -65,7 +60,12 @@ const routes = app
       if (!entry) return c.json({ error: 'Referral code not found' }, 404);
       return c.json(entry);
     },
-  );
+  )
+  // Runtime feature flags for both apps; served from a ~30s in-memory cache.
+  .get('/api/flags', rateLimit({ windowMs: 60_000, max: 60 }), async (c) => {
+    return c.json(await featureFlags.evaluateAll());
+  })
+  .route('/api/admin', adminRoutes);
 
 export type AppType = typeof routes;
 // `routes` is the same instance as `app`, but typed with the full route chain.

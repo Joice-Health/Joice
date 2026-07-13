@@ -1,5 +1,6 @@
-export { createApiClient, type ApiClient } from './client';
+export { createApiClient, type ApiClient, type ApiClientOptions } from './client';
 export { ApiClientProvider, useApiClient } from './provider';
+export * from './admin/hooks';
 export {
   useJoinWaitlist,
   useWaitlistByCode,

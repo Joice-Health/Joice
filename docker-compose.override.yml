@@ -38,6 +38,10 @@ services:
       # Team preview gate (see .env / .env.example)
       TEAM_PASSWORD: ${TEAM_PASSWORD:-joice-dev}
       SITE_LAUNCHED: ${SITE_LAUNCHED:-false}
+      # Clerk (admin auth) — next dev reads NEXT_PUBLIC_* at runtime.
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-}
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-}
+      API_URL_INTERNAL: http://api:4000
     volumes:
       - .:/app
       - /app/node_modules

@@ -103,6 +103,12 @@ resource "aws_ecs_task_definition" "web" {
         # Team preview gate — runtime-only, so rotating/flipping = apply, no rebuild.
         { name = "TEAM_PASSWORD", value = var.team_password },
         { name = "SITE_LAUNCHED", value = tostring(var.site_launched) },
+        # Server components can't fetch the browser-relative API URL; go via CloudFront.
+        { name = "API_URL_INTERNAL", value = local.canonical_url },
+      ]
+      secrets = [
+        # Clerk session verification in middleware/server components (admin auth).
+        { name = "CLERK_SECRET_KEY", valueFrom = aws_secretsmanager_secret.clerk_secret_key.arn },
       ]
       logConfiguration = {
         logDriver = "awslogs"
@@ -145,9 +151,11 @@ resource "aws_ecs_task_definition" "api" {
         # set it anyway so any cross-origin caller is scoped to the real site.
         { name = "WEB_ORIGIN", value = local.canonical_url },
         { name = "IP_HASH_SALT", value = random_password.ip_hash_salt.result },
+        { name = "CLERK_PUBLISHABLE_KEY", value = var.clerk_publishable_key },
       ]
       secrets = [
         { name = "DATABASE_URL", valueFrom = aws_secretsmanager_secret.database_url.arn },
+        { name = "CLERK_SECRET_KEY", valueFrom = aws_secretsmanager_secret.clerk_secret_key.arn },
       ]
       logConfiguration = {
         logDriver = "awslogs"

@@ -48,6 +48,7 @@ jobs:
           build-args: |
             NEXT_PUBLIC_API_URL=
             NEXT_PUBLIC_APP_URL=${{ vars.CLOUDFRONT_URL }}
+            NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ vars.CLERK_PUBLISHABLE_KEY }}
           tags: |
             ${{ vars.ECR_WEB }}:latest
             ${{ vars.ECR_WEB }}:${{ github.sha }}

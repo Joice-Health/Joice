@@ -61,5 +61,6 @@ output "github_repo_variables" {
     ECS_CLUSTER=${aws_ecs_cluster.main.name}
     ECS_SERVICE_WEB=${aws_ecs_service.web.name}
     ECS_SERVICE_API=${aws_ecs_service.api.name}
+    CLERK_PUBLISHABLE_KEY=${var.clerk_publishable_key != "" ? var.clerk_publishable_key : "<set clerk_publishable_key and re-apply>"}
   EOT
 }

@@ -1,15 +1,36 @@
-import { NextResponse, type NextRequest } from 'next/server';
+import { NextResponse, type NextRequest, type NextFetchEvent } from 'next/server';
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { TEAM_COOKIE, isValidTeamCookie, siteLaunched } from '@/lib/team-auth';
 
 /**
- * Preview gate: the main site (everything outside the public set) requires a
- * valid team cookie until SITE_LAUNCHED=true. Visitors without one are sent to
- * /waitlist — the public never sees a login screen or learns the gate exists.
+ * Two gates, one middleware:
+ *
+ * 1. /admin/* — Clerk. Requires a signed-in user whose publicMetadata role is
+ *    `admin` (surfaced via the session-token `metadata` claim). Non-admins are
+ *    sent to /waitlist so the admin surface is never revealed.
+ * 2. Everything else — the preview gate: until SITE_LAUNCHED=true, the main
+ *    site requires a valid team cookie; anonymous visitors land on /waitlist.
+ *
+ * If Clerk isn't configured (no publishable key), the site still runs: /admin
+ * is simply unreachable and only the preview gate applies.
  */
+
+const isAdminRoute = createRouteMatcher(['/admin(.*)']);
+const isAdminSignInRoute = createRouteMatcher(['/admin/sign-in(.*)']);
 
 const PUBLIC_PATHS = ['/waitlist', '/team'];
 
-export async function middleware(request: NextRequest) {
+const clerkConfigured = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+
+function redirectToWaitlist(request: NextRequest) {
+  const url = request.nextUrl.clone();
+  url.pathname = '/waitlist';
+  url.search = '';
+  return NextResponse.redirect(url);
+}
+
+/** Preview gate for the pre-launch main site. */
+async function teamGate(request: NextRequest) {
   if (siteLaunched()) return NextResponse.next();
 
   const { pathname } = request.nextUrl;
@@ -22,10 +43,41 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const url = request.nextUrl.clone();
-  url.pathname = '/waitlist';
-  url.search = '';
-  return NextResponse.redirect(url);
+  return redirectToWaitlist(request);
+}
+
+const withClerk = clerkMiddleware(
+  async (auth, request) => {
+    if (isAdminRoute(request)) {
+      if (isAdminSignInRoute(request)) return NextResponse.next();
+
+      const { userId, sessionClaims, redirectToSignIn } = await auth();
+      // returnBackUrl must be relative: the dev server binds 0.0.0.0, so
+      // request.url's host is unreliable and an absolute URL causes a
+      // sign-in ↔ app redirect loop across origins.
+      if (!userId) {
+        return redirectToSignIn({
+          returnBackUrl: request.nextUrl.pathname + request.nextUrl.search,
+        });
+      }
+      if (sessionClaims?.metadata?.role !== 'admin') {
+        return redirectToWaitlist(request);
+      }
+      return NextResponse.next();
+    }
+
+    return teamGate(request);
+  },
+  // Use the in-app sign-in page, never the hosted Account Portal.
+  { signInUrl: '/admin/sign-in' },
+);
+
+export default function middleware(request: NextRequest, event: NextFetchEvent) {
+  if (!clerkConfigured) {
+    if (isAdminRoute(request)) return redirectToWaitlist(request);
+    return teamGate(request);
+  }
+  return withClerk(request, event);
 }
 
 export const config = {
