@@ -61,6 +61,29 @@ resource "aws_acm_certificate_validation" "main" {
   validation_record_fqdns = [for r in aws_route53_record.cert_validation : r.fqdn]
 }
 
+# ---- Clerk (auth + email) CNAMEs on the canonical domain ----
+# Values come from the Clerk dashboard (Domains) and must match exactly.
+
+locals {
+  clerk_cnames = {
+    "accounts"        = "accounts.clerk.services"
+    "clerk"           = "frontend-api.clerk.services"
+    "clk._domainkey"  = "dkim1.ntg093l6b8dg.clerk.services"
+    "clk2._domainkey" = "dkim2.ntg093l6b8dg.clerk.services"
+    "clkmail"         = "mail.ntg093l6b8dg.clerk.services"
+  }
+}
+
+resource "aws_route53_record" "clerk" {
+  for_each = local.clerk_cnames
+
+  zone_id = aws_route53_zone.main[var.domain_name].zone_id
+  name    = "${each.key}.${var.domain_name}"
+  type    = "CNAME"
+  ttl     = 300
+  records = [each.value]
+}
+
 # ---- Alias records: apex + www of every domain -> CloudFront ----
 
 locals {
