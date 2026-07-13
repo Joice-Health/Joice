@@ -11,6 +11,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.5.17",
     "@joice/api-client": "*",
     "@joice/core": "*",
     "@joice/ui": "*",
@@ -19,6 +20,7 @@
     "qrcode.react": "^4.2.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "server-only": "^0.0.1",
     "zustand": "^5.0.14"
   },
   "devDependencies": {

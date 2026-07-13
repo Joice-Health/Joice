@@ -24,9 +24,14 @@ services:
     environment:
       DATABASE_URL: postgresql://joice:joice@postgres:5432/joice
       PORT: 4000
-      WEB_ORIGIN: http://localhost:3000
+      # Both dev origins: the dev server binds 0.0.0.0, so the site is reachable
+      # (and occasionally linked) via either host.
+      WEB_ORIGIN: http://localhost:3000,http://0.0.0.0:3000
       IP_HASH_SALT: change-me-in-production
       NODE_ENV: production
+      # Clerk (admin auth) — set real dev keys in .env
+      CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY:-pk_test_placeholder}
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-sk_test_placeholder}
     ports:
       - '4000:4000'
     depends_on:
@@ -41,11 +46,16 @@ services:
         # Browser-reachable URLs (published host ports), inlined at build time.
         NEXT_PUBLIC_API_URL: http://localhost:4000
         NEXT_PUBLIC_APP_URL: http://localhost:3000
+        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-}
     restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: 3000
       HOSTNAME: 0.0.0.0
+      # Clerk (admin auth) — set real dev keys in .env
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-}
+      # Server components reach the API service directly inside the compose network.
+      API_URL_INTERNAL: http://api:4000
     ports:
       - '3000:3000'
     depends_on:

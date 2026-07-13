@@ -15,6 +15,13 @@
       "when": 1783702960606,
       "tag": "0001_lovely_tomas",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783892078040,
+      "tag": "0002_sharp_vampiro",
+      "breakpoints": true
     }
   ]
 }

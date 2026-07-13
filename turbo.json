@@ -8,7 +8,11 @@
     "NODE_ENV",
     "WEB_ORIGIN",
     "NEXT_PUBLIC_API_URL",
-    "NEXT_PUBLIC_APP_URL"
+    "NEXT_PUBLIC_APP_URL",
+    "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+    "CLERK_PUBLISHABLE_KEY",
+    "CLERK_SECRET_KEY",
+    "API_URL_INTERNAL"
   ],
   "tasks": {
     "build": {
@@ -23,6 +27,9 @@
       "dependsOn": ["^build"]
     },
     "type-check": {
+      "dependsOn": ["^build"]
+    },
+    "test": {
       "dependsOn": ["^build"]
     },
     "db:generate": {

@@ -100,6 +100,21 @@ variable "site_launched" {
   default     = false
 }
 
+# ---- Clerk (admin auth) ----
+
+variable "clerk_publishable_key" {
+  description = "Clerk publishable key (pk_...). Also set as the CLERK_PUBLISHABLE_KEY GitHub repo variable for the web image build."
+  type        = string
+  default     = ""
+}
+
+variable "clerk_secret_key" {
+  description = "Clerk secret key (sk_...). Set in terraform.tfvars (gitignored); stored in Secrets Manager for the ECS tasks."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 # ---- Domains ----
 
 variable "domain_name" {
