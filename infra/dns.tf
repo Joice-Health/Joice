@@ -95,3 +95,14 @@ resource "aws_route53_record" "alias_aaaa" {
     evaluate_target_health = false
   }
 }
+
+# ---- Email (Google Workspace) ----
+
+# Mirrors the registrar's MX record so mail keeps flowing after the NS cutover.
+resource "aws_route53_record" "mx" {
+  zone_id = aws_route53_zone.main[var.domain_name].zone_id
+  name    = var.domain_name
+  type    = "MX"
+  ttl     = 3600
+  records = ["1 smtp.google.com"]
+}
