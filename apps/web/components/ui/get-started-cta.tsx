@@ -2,7 +2,7 @@ import { Eyebrow } from '@/components/ui/eyebrow';
 import { CtaLink } from '@/components/ui/cta-link';
 
 /** The page's one dark, high-contrast moment. */
-export function ClosingCta() {
+export function GetStartedCta() {
   return (
     <section className="relative overflow-hidden rounded-card bg-ink px-6 py-16 text-center sm:py-20">
       <div

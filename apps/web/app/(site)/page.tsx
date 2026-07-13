@@ -4,7 +4,7 @@ import { ClinicalTeam } from '@/components/home/clinical-team';
 import { HowItWorks } from '@/components/home/how-it-works';
 import { CareAreas } from '@/components/home/care-areas';
 import { Teasers } from '@/components/home/teasers';
-import { ClosingCta } from '@/components/home/closing-cta';
+import { GetStartedCta } from '@/components/ui/get-started-cta';
 
 /**
  * Main site home — team-gated until SITE_LAUNCHED (middleware redirects the
@@ -20,7 +20,7 @@ export default function Home() {
       <HowItWorks />
       <CareAreas />
       <Teasers />
-      <ClosingCta />
+      <GetStartedCta />
     </>
   );
 }
