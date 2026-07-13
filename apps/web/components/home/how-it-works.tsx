@@ -6,10 +6,10 @@ const STEPS = [
   { n: '03', label: 'Prescribe + access', detail: 'Protocols shipped, tracked, adjusted.' },
 ];
 
-export function HowItWorks() {
+export function HowItWorks({ eyebrow = 'How it works' }: { eyebrow?: string }) {
   return (
     <section className="py-16 sm:py-20">
-      <Eyebrow>How it works</Eyebrow>
+      <Eyebrow>{eyebrow}</Eyebrow>
       <div className="mt-6 grid gap-4 md:grid-cols-3">
         {STEPS.map((step) => (
           <div
