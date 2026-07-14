@@ -50,6 +50,16 @@ output "db_endpoint" {
   value       = aws_db_instance.main.endpoint
 }
 
+output "notes_bucket" {
+  description = "S3 bucket for the RAG source notes (upload target for the approved vault)."
+  value       = aws_s3_bucket.notes.bucket
+}
+
+output "ingest_run_task_command" {
+  description = "Paste-ready command to run the one-off RAG ingestion task."
+  value       = "aws ecs run-task --cluster ${aws_ecs_cluster.main.name} --task-definition ${aws_ecs_task_definition.ingest.family} --launch-type FARGATE --network-configuration 'awsvpcConfiguration={subnets=[${join(",", aws_subnet.public[*].id)}],securityGroups=[${aws_security_group.api.id}],assignPublicIp=ENABLED}'"
+}
+
 output "github_repo_variables" {
   description = "Paste-ready list of GitHub repo Variables for the deploy workflow."
   value       = <<-EOT

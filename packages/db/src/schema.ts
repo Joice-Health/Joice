@@ -9,6 +9,7 @@ import {
   timestamp,
   uniqueIndex,
   uuid,
+  vector,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
@@ -191,3 +192,51 @@ export const auditLogs = pgTable(
 
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type NewAuditLog = typeof auditLogs.$inferInsert;
+
+/**
+ * RAG knowledge base: heading-level chunks of the doctor's (PHI-reviewed)
+ * reference notes, embedded with Bedrock Titan v2 (1024 dims). Derived data —
+ * safe to truncate and rebuild by re-running the joice-ingest task. The HNSW
+ * index and `CREATE EXTENSION vector` live in a hand-edited migration
+ * (drizzle-kit generates neither).
+ */
+export const noteChunks = pgTable(
+  'note_chunks',
+  {
+    id: uuid('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+
+    /** S3 key of the source markdown file. */
+    sourcePath: text('source_path').notNull(),
+
+    /** sha256 of the whole source file — unchanged hash lets ingestion skip the file. */
+    sourceHash: text('source_hash').notNull(),
+
+    /** Order of the chunk within its file. */
+    chunkIndex: integer('chunk_index').notNull(),
+
+    /** Heading breadcrumb, e.g. `BPC-157 > Dosing > Oral`. Null for preamble text. */
+    headingPath: text('heading_path'),
+
+    content: text('content').notNull(),
+
+    /** Rough size (~chars/4) used to budget how many chunks fit in a prompt. */
+    tokenCount: integer('token_count'),
+
+    embedding: vector('embedding', { dimensions: 1024 }).notNull(),
+
+    /** Obsidian frontmatter (tags etc.) captured at ingest time. */
+    metadata: jsonb('metadata').$type<Record<string, unknown>>(),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('note_chunks_source_path_chunk_index_unique').on(table.sourcePath, table.chunkIndex),
+    index('note_chunks_source_path_idx').on(table.sourcePath),
+  ],
+);
+
+export type NoteChunk = typeof noteChunks.$inferSelect;
+export type NewNoteChunk = typeof noteChunks.$inferInsert;

@@ -115,6 +115,14 @@ variable "clerk_secret_key" {
   default     = ""
 }
 
+# ---- RAG ----
+
+variable "rag_model" {
+  description = "Bedrock model ID for the peptide chatbot (cross-region inference profile)."
+  type        = string
+  default     = "us.anthropic.claude-sonnet-5"
+}
+
 # ---- Domains ----
 
 variable "domain_name" {

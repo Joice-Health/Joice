@@ -152,6 +152,9 @@ resource "aws_ecs_task_definition" "api" {
         { name = "WEB_ORIGIN", value = local.canonical_url },
         { name = "IP_HASH_SALT", value = random_password.ip_hash_salt.result },
         { name = "CLERK_PUBLISHABLE_KEY", value = var.clerk_publishable_key },
+        # RAG: Bedrock model + region (IAM-authenticated via the task role, no keys).
+        { name = "RAG_MODEL", value = var.rag_model },
+        { name = "BEDROCK_REGION", value = var.region },
       ]
       secrets = [
         { name = "DATABASE_URL", valueFrom = aws_secretsmanager_secret.database_url.arn },

@@ -2,13 +2,14 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { secureHeaders } from 'hono/secure-headers';
+import { streamSSE } from 'hono/streaming';
 import { HTTPException } from 'hono/http-exception';
 import { zValidator } from '@hono/zod-validator';
-import { joinWaitlistSchema, referralCodeParamSchema } from '@joice/core';
+import { chatRequestSchema, joinWaitlistSchema, referralCodeParamSchema } from '@joice/core';
 import { allowedOrigins } from './env';
 import { rateLimit, clientIp } from './middleware/rate-limit';
 import { hashIp } from './hash';
-import { featureFlags, waitlist } from './services';
+import { featureFlags, recommendations, waitlist } from './services';
 import { adminRoutes } from './admin/routes';
 
 const app = new Hono();
@@ -65,6 +66,43 @@ const routes = app
   .get('/api/flags', rateLimit({ windowMs: 60_000, max: 60 }), async (c) => {
     return c.json(await featureFlags.evaluateAll());
   })
+  // RAG chatbot. Public pre-launch but tightly rate-limited — every request
+  // costs Bedrock tokens. Non-streaming JSON variant keeps the typed-client
+  // flow; /stream is the chat-UI path (SSE isn't consumable via hc hooks).
+  .post(
+    '/api/peptide-recommendations',
+    rateLimit({ windowMs: 60_000, max: 5 }),
+    zValidator('json', chatRequestSchema),
+    async (c) => {
+      const { messages } = c.req.valid('json');
+      return c.json(await recommendations.recommend(messages));
+    },
+  )
+  .post(
+    '/api/peptide-recommendations/stream',
+    rateLimit({ windowMs: 60_000, max: 5 }),
+    zValidator('json', chatRequestSchema),
+    async (c) => {
+      const { messages } = c.req.valid('json');
+      return streamSSE(c, async (stream) => {
+        try {
+          for await (const event of recommendations.recommendStream(messages)) {
+            if (event.type === 'delta') {
+              await stream.writeSSE({ event: 'delta', data: JSON.stringify({ text: event.text }) });
+            } else {
+              await stream.writeSSE({ event: 'complete', data: JSON.stringify(event.recommendation) });
+            }
+          }
+        } catch (err) {
+          console.error('RAG stream error:', err);
+          await stream.writeSSE({
+            event: 'error',
+            data: JSON.stringify({ error: 'Something went wrong. Please try again.' }),
+          });
+        }
+      });
+    },
+  )
   .route('/api/admin', adminRoutes);
 
 export type AppType = typeof routes;

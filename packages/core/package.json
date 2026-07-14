@@ -13,6 +13,7 @@
     "test": "bun test"
   },
   "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.1086.0",
     "@joice/db": "*",
     "nanoid": "^5.0.9",
     "zod": "^3.24.1"

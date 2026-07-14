@@ -40,10 +40,69 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
   })
 }
 
-# Task role: what the app itself can do at runtime (nothing yet — least privilege).
+# Task role: what the app itself can do at runtime.
 resource "aws_iam_role" "task" {
   name               = "${var.project}-task"
   assume_role_policy = data.aws_iam_policy_document.ecs_assume.json
+}
+
+# RAG: the API embeds member questions (Titan) and generates answers (Claude),
+# both via Bedrock so the whole AI path stays under the AWS BAA.
+resource "aws_iam_role_policy" "task_bedrock" {
+  name = "invoke-bedrock-models"
+  role = aws_iam_role.task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "bedrock:InvokeModel",
+          "bedrock:InvokeModelWithResponseStream",
+        ]
+        Resource = [
+          # Claude is invoked via cross-region inference profiles (us.anthropic.*),
+          # which fan out to foundation models in sibling regions — hence bedrock:*.
+          "arn:aws:bedrock:*::foundation-model/anthropic.*",
+          "arn:aws:bedrock:${var.region}:${data.aws_caller_identity.current.account_id}:inference-profile/*.anthropic.*",
+          "arn:aws:bedrock:${var.region}::foundation-model/amazon.titan-embed-text-v2:0",
+        ]
+      }
+    ]
+  })
+}
+
+# Ingestion task role: reads the notes bucket, embeds chunks via Titan. No Claude.
+resource "aws_iam_role" "ingestion_task" {
+  name               = "${var.project}-ingestion-task"
+  assume_role_policy = data.aws_iam_policy_document.ecs_assume.json
+}
+
+resource "aws_iam_role_policy" "ingestion_task" {
+  name = "read-notes-embed"
+  role = aws_iam_role.ingestion_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket"]
+        Resource = [aws_s3_bucket.notes.arn]
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["s3:GetObject"]
+        Resource = ["${aws_s3_bucket.notes.arn}/*"]
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["bedrock:InvokeModel"]
+        Resource = ["arn:aws:bedrock:${var.region}::foundation-model/amazon.titan-embed-text-v2:0"]
+      },
+    ]
+  })
 }
 
 # ---- GitHub Actions OIDC deploy role ----

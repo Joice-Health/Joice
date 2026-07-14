@@ -14,6 +14,13 @@ const envSchema = z.object({
    */
   CLERK_SECRET_KEY: z.string().default('sk_test_placeholder'),
   CLERK_PUBLISHABLE_KEY: z.string().default('pk_test_placeholder'),
+  /**
+   * RAG chatbot — everything runs through Bedrock (AWS BAA; IAM-authenticated
+   * via the ECS task role, no API keys). Locally, requests fail with 500 until
+   * AWS creds with Bedrock access are present; the rest of the API still works.
+   */
+  RAG_MODEL: z.string().default('us.anthropic.claude-sonnet-5'),
+  BEDROCK_REGION: z.string().default('us-east-1'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 });
 

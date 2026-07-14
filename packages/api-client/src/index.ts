@@ -7,8 +7,16 @@ export {
   useWaitlistStats,
   waitlistKeys,
 } from './hooks';
+export {
+  usePeptideRecommendation,
+  streamPeptideRecommendation,
+  type ChatStreamEvent,
+} from './chat';
 export type {
+  ChatMessage,
+  Citation,
   JoinWaitlistInput,
+  PeptideRecommendation,
   WaitlistEntryView,
   WaitlistStats,
 } from '@joice/core';

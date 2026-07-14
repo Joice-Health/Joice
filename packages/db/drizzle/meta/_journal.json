@@ -22,6 +22,13 @@
       "when": 1783892078040,
       "tag": "0002_sharp_vampiro",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1783971383201,
+      "tag": "0003_clear_shadowcat",
+      "breakpoints": true
     }
   ]
 }

@@ -53,3 +53,47 @@ export const waitlistStatsSchema = z.object({
 });
 
 export type WaitlistStats = z.infer<typeof waitlistStatsSchema>;
+
+// ---- Peptide chatbot (RAG) ----
+
+export const chatMessageSchema = z.object({
+  role: z.enum(['user', 'assistant']),
+  content: z.string().trim().min(1).max(2000, 'Message is too long'),
+});
+
+export type ChatMessage = z.infer<typeof chatMessageSchema>;
+
+/**
+ * Stateless chat: the client sends the visible conversation each turn (capped),
+ * the last message being the user's new question. Persistence arrives with
+ * member accounts.
+ */
+export const chatRequestSchema = z.object({
+  messages: z
+    .array(chatMessageSchema)
+    .min(1)
+    .max(20, 'Conversation is too long — start a new one')
+    .refine((msgs) => msgs[msgs.length - 1]!.role === 'user', {
+      message: 'The last message must be from the user',
+    }),
+});
+
+export type ChatRequest = z.infer<typeof chatRequestSchema>;
+
+export const citationSchema = z.object({
+  /** Footnote number as it appears in the answer, e.g. the 1 in `[1]`. */
+  index: z.number().int().positive(),
+  sourcePath: z.string(),
+  headingPath: z.string().nullable(),
+  citedText: z.string(),
+});
+
+export type Citation = z.infer<typeof citationSchema>;
+
+export const peptideRecommendationSchema = z.object({
+  /** Answer text with inline `[n]` footnote markers. */
+  answer: z.string(),
+  citations: z.array(citationSchema),
+});
+
+export type PeptideRecommendation = z.infer<typeof peptideRecommendationSchema>;
