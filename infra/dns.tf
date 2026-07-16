@@ -129,3 +129,25 @@ resource "aws_route53_record" "mx" {
   ttl     = 3600
   records = ["1 smtp.google.com"]
 }
+
+resource "aws_route53_record" "spf" {
+  zone_id = aws_route53_zone.main[var.domain_name].zone_id
+  name    = var.domain_name
+  type    = "TXT"
+  ttl     = 3600
+  records = ["v=spf1 include:_spf.google.com ~all"]
+}
+
+locals {
+  # From Google Admin (Apps > Google Workspace > Gmail > Authenticate email).
+  google_dkim = "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwpe7yCk8NZzKPvf+PNiisongW3VDs879xq/pfmShhUCzHvMrPIeddF5s42+Sukx+2NRbWDCW5YWT6hMjPUmHd0nDJqWsZlb/Gi7g2+yLPpH6G01Cm1ptPr343h8LQ/xrR49Ohg9LPi+sK63pLODiojE55z8joPANj8mIjh6gTZgGuWz+sepORvC/sx3LMDDbRJiQYJu8crjzwI/NNQWKkhF4gw5AtutMN1IEB+KCe3CddMoBVObuw7NObDwPdRqZHFmsXS7cuhqV682sazXoKzzm/fADEwOOkeanOOdXDugEJ04XHdkQyd11cvLNK8uXp5siC1+sJJEoK0v2yFLvHQIDAQAB"
+}
+
+resource "aws_route53_record" "google_dkim" {
+  zone_id = aws_route53_zone.main[var.domain_name].zone_id
+  name    = "google._domainkey.${var.domain_name}"
+  type    = "TXT"
+  ttl     = 3600
+  # Route53 caps each TXT character-string at 255 chars; "" splices the halves back together.
+  records = ["${substr(local.google_dkim, 0, 255)}\"\"${substr(local.google_dkim, 255, 255)}"]
+}
