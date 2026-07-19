@@ -143,6 +143,35 @@ locals {
   google_dkim = "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwpe7yCk8NZzKPvf+PNiisongW3VDs879xq/pfmShhUCzHvMrPIeddF5s42+Sukx+2NRbWDCW5YWT6hMjPUmHd0nDJqWsZlb/Gi7g2+yLPpH6G01Cm1ptPr343h8LQ/xrR49Ohg9LPi+sK63pLODiojE55z8joPANj8mIjh6gTZgGuWz+sepORvC/sx3LMDDbRJiQYJu8crjzwI/NNQWKkhF4gw5AtutMN1IEB+KCe3CddMoBVObuw7NObDwPdRqZHFmsXS7cuhqV682sazXoKzzm/fADEwOOkeanOOdXDugEJ04XHdkQyd11cvLNK8uXp5siC1+sJJEoK0v2yFLvHQIDAQAB"
 }
 
+# ---- Patient portal + consults (vendor-hosted) ----
+
+# Patient portal on the vendor's Vercel project; "care" must match the custom
+# domain configured on their side.
+resource "aws_route53_record" "portal" {
+  zone_id = aws_route53_zone.main[var.domain_name].zone_id
+  name    = "care.${var.domain_name}"
+  type    = "CNAME"
+  ttl     = 300
+  records = ["7a0aee5a15afe95c.vercel-dns-017.com"]
+}
+
+resource "aws_route53_record" "consults" {
+  zone_id = aws_route53_zone.main[var.domain_name].zone_id
+  name    = "consults.${var.domain_name}"
+  type    = "CNAME"
+  ttl     = 300
+  records = ["djtiy2x59d7qf.cloudfront.net"]
+}
+
+# CloudFront alternate-domain ownership verification for the consults CNAME.
+resource "aws_route53_record" "consults_challenge" {
+  zone_id = aws_route53_zone.main[var.domain_name].zone_id
+  name    = "_cf-challenge.consults.${var.domain_name}"
+  type    = "TXT"
+  ttl     = 300
+  records = ["djtiy2x59d7qf.cloudfront.net"]
+}
+
 resource "aws_route53_record" "google_dkim" {
   zone_id = aws_route53_zone.main[var.domain_name].zone_id
   name    = "google._domainkey.${var.domain_name}"

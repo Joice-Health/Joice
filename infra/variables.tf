@@ -83,7 +83,7 @@ variable "db_skip_final_snapshot" {
 variable "github_repository" {
   description = "GitHub repo (owner/name) allowed to assume the deploy role via OIDC. Empty disables the OIDC role."
   type        = string
-  default     = "Joicehealth/Joice"
+  default     = "Joice-Health/Joice"
 }
 
 # ---- Team preview gate ----
