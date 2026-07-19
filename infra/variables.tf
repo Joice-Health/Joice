@@ -81,9 +81,9 @@ variable "db_skip_final_snapshot" {
 # ---- CI/CD ----
 
 variable "github_repository" {
-  description = "GitHub repo (owner/name) allowed to assume the deploy role via OIDC. Empty disables the OIDC role."
+  description = "GitHub repo (owner/name) allowed to assume the deploy role via OIDC. Empty disables the OIDC role. GitHub appends immutable IDs to the OIDC sub claim for this repo (see `gh api /repos/<owner>/<name>/actions/oidc/customization/sub`), so the IDs must be part of the value — a plain owner/name never matches."
   type        = string
-  default     = "Joice-Health/Joice"
+  default     = "Joice-Health@305843096/Joice@1293584206"
 }
 
 # ---- Team preview gate ----
