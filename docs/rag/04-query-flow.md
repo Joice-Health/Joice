@@ -10,7 +10,7 @@ sequenceDiagram
     participant API as Hono API
     participant T as Bedrock Titan
     participant PG as Postgres (pgvector)
-    participant C as Bedrock Claude (Sonnet 5)
+    participant C as Bedrock chat model (Claude / Nova)
 
     B->>CF: POST /api/peptide-recommendations/stream<br/>{ messages: [...] }
     CF->>API: (origin-lock header verified, caching disabled)
@@ -22,13 +22,12 @@ sequenceDiagram
     alt no chunks survive the floor
         API-->>B: SSE: delta("not covered...") + complete (Claude never called)
     else chunks retrieved
-        API->>C: messages.stream — system (cached) + document blocks (citations on) + conversation
+        API->>C: ConverseStream — system + conversation + numbered documents
         loop generation
-            C-->>API: text delta
+            C-->>API: text delta (with inline [n] markers)
             API-->>B: SSE event: delta {text}
         end
-        C-->>API: final message (text blocks + citation spans)
-        API->>API: annotate() — citation spans → [n] footnotes + citation list
+        API->>API: parseCitations() — [n] markers → citation list
         API-->>B: SSE event: complete {answer, citations}
     end
 ```
@@ -92,8 +91,8 @@ Same request, `text/event-stream` response:
 
 | SSE `event:` | `data:` payload | Meaning |
 |---|---|---|
-| `delta` | `{ "text": "..." }` | A raw text fragment as Claude generates. **No `[n]` markers** — those are computed at the end |
-| `complete` | the full JSON object above | Authoritative final answer (with footnotes) + citations. **The UI replaces the accumulated deltas with this** |
+| `delta` | `{ "text": "..." }` | A raw text fragment as the model generates — `[n]` markers stream inline |
+| `complete` | the full JSON object above | Authoritative final answer + the parsed citations list. **The UI replaces the accumulated deltas with this** |
 | `error` | `{ "error": "..." }` | Generation failed mid-stream; show the message, keep the conversation usable |
 
 Client-side, `streamPeptideRecommendation(client, messages)` in
@@ -137,77 +136,59 @@ structurally cannot hallucinate.
 
 ## Prompt construction
 
-Built in `buildRequest()` + `toParams()` (`packages/core/src/bedrock.ts`). The
-Claude request is shaped for **grounding, citations, and prompt-cache reuse**:
+Built in `buildRequest()` (`recommendation-service.ts`) and sent through the
+**model-agnostic Bedrock Converse API** (`createGenerationClient` in
+`bedrock.ts`) — so `RAG_MODEL` can be any Bedrock chat model (Claude in prod,
+Nova in dev; see [05](05-local-development.md)). The retrieved chunks are
+numbered and inlined into the final user turn:
 
-```jsonc
-{
-  "model": "us.anthropic.claude-sonnet-5",
-  "max_tokens": 1024,
-  "system": [
-    {
-      "type": "text",
-      "text": "<the stable system prompt>",
-      "cache_control": { "type": "ephemeral" }     // ← cached prefix: every request reuses it
-    }
-  ],
-  "messages": [
-    // prior conversation turns, verbatim...
-    { "role": "user", "content": "Tell me about BPC-157" },
-    { "role": "assistant", "content": "BPC-157 is a peptide..." },
-    // the final user turn carries the retrieved chunks as CITABLE DOCUMENTS:
-    {
-      "role": "user",
-      "content": [
-        {
-          "type": "document",
-          "source": { "type": "text", "media_type": "text/plain", "data": "<chunk content>" },
-          "title": "peptides/bpc-157.md — BPC-157 > Dosing > Oral",
-          "citations": { "enabled": true }          // ← native citations
-        },
-        // ...one block per retrieved chunk (≤ 8)...
-        { "type": "text", "text": "How is it dosed?" }
-      ]
-    }
-  ]
-}
+```
+system: <the stable SYSTEM_PROMPT>
+
+...prior conversation turns, verbatim...
+
+user (final turn):
+<documents>
+[1] peptides/bpc-157.md — BPC-157 > Dosing
+Sample research protocols describe 250–500 mcg once or twice daily. ...
+
+[2] peptides/bpc-157.md — BPC-157 > Dosing > Cycling
+The sample notes describe 4–8 week cycles followed by an equal break, ...
+</documents>
+
+How is it dosed?
 ```
 
 Why this shape:
 
-- **System prompt first with `cache_control`** — it never changes, so every
-  request after the first reads it from Bedrock's prompt cache (~0.1× input
-  price for that span). Volatile content (chunks + question) comes after the
-  breakpoint.
-- **Native citations, not prompt-engineered markers** — with
-  `citations: {enabled: true}`, Claude's response text blocks carry structured
-  `citations` arrays (`document_index`, `cited_text`, char offsets). No
-  "please add [1] markers" prompting, no regex parsing, no marker
-  hallucination.
+- **Prompt-based `[n]` citations** — the system prompt instructs the model to
+  cite each claim with the source document's number in brackets; the service
+  parses the markers back out. This works identically on every Bedrock model.
+  (Anthropic-native citation spans were the original design, but they require
+  Anthropic model access, which is gated on the account's use-case form —
+  and prompt-based markers proved accurate in practice.)
 - **The system prompt** (constant `SYSTEM_PROMPT` in the service) enforces:
-  answer only from the documents; say plainly when they don't cover it (or only
-  partially); educational information, **not medical advice** — no diagnosing,
-  prescribing, or individual dosing (defer to the clinical team); never invent
-  sources or numbers.
-- `max_tokens: 1024` bounds cost and keeps answers chat-sized. No
-  `temperature` — Sonnet 5 rejects sampling params.
+  answer only from the documents; cite with `[n]`; say plainly when the
+  documents don't cover it (or only partially); educational information,
+  **not medical advice** — no diagnosing, prescribing, or individual dosing
+  (defer to the clinical team); never invent sources or numbers.
+- `maxTokens: 1024` bounds cost and keeps answers chat-sized. No sampling
+  params.
 
-## Citation annotation
+## Citation parsing
 
-`annotate()` (exported from the service, unit-tested) converts Claude's spans
-into user-facing footnotes:
+`parseCitations()` (exported from the service, unit-tested) maps the model's
+markers to structured citations:
 
-1. Walk the response text blocks in order, concatenating `text`.
-2. Each cited `document_index` gets a footnote number in **first-use order**
-   (document 3 cited first → it is `[1]`).
-3. After each block's text, append its markers (`[1]`, `[2]`…), deduped within
-   the block.
-4. Build the `citations` array mapping footnote → the retrieved chunk's
-   `sourcePath` + `headingPath`, plus the first `cited_text` for that document.
-5. Citations pointing at unknown document indexes are dropped defensively.
+1. Scan the answer for `[n]` markers, in first-appearance order, deduped.
+2. Each `n` maps to retrieved chunk `n − 1`; markers pointing at documents
+   that weren't provided are dropped defensively.
+3. Build the `citations` array: footnote number, the chunk's `sourcePath` +
+   `headingPath`, and a ≤200-char snippet of the chunk as `citedText`.
 
-The chat UI renders the `citations` list as chips under the answer
-(`[1] BPC-157 > Dosing`, hover shows the cited text).
+The markers stay inline in the answer text (they stream live, which reads
+naturally in the chat UI); the chat UI renders the `citations` list as chips
+under the answer (`[1] BPC-157 > Dosing`, hover shows the snippet).
 
 ## The chat UI (`apps/web/components/chat/peptide-chat.tsx`)
 

@@ -14,11 +14,14 @@ one-time [model access](#2-aws-credentials-for-real-answers) enabled on the
 account).
 
 ```bash
-# 1 · Fresh AWS session, then paste the three values it prints into .env
-#     (AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_SESSION_TOKEN)
-aws sso login && aws configure export-credentials --format env
+# 1 · Fresh AWS session → .env → api container, in one step (browser approval).
+#     Re-run whenever the api logs show ExpiredTokenException — SSO sessions on
+#     this account last ~1 hour. First time only, also set in .env:
+#       RAG_MODEL=us.amazon.nova-pro-v1:0     # until the Anthropic use-case form is approved
+./scripts/dev-aws-refresh.sh
 
-# 2 · Start the stack (postgres is the pgvector image; api runs migrations at boot)
+# 2 · Start the rest of the stack (postgres is the pgvector image; api runs
+#     migrations at boot — the refresh script already started it)
 docker compose up -d
 
 # 3 · Seed the knowledge base from the bundled fixtures — local folder, no S3
@@ -62,7 +65,7 @@ The rest of this page is the same flow with every knob explained.
 
 | Var | Where it's read | Local default | Notes |
 |---|---|---|---|
-| `RAG_MODEL` | `apps/api/src/env.ts` | `us.anthropic.claude-sonnet-5` | Bedrock **cross-region inference profile** id (the `us.` prefix matters — the bare model id is rejected for on-demand invoke) |
+| `RAG_MODEL` | `apps/api/src/env.ts` | `us.anthropic.claude-sonnet-5` | Bedrock **cross-region inference profile** id (`us.` prefix). Any Bedrock chat model works (Converse API). **Until the account's Anthropic use-case form is approved, use `us.amazon.nova-pro-v1:0` locally** — Amazon models need no form |
 | `BEDROCK_REGION` | api + ingest script | `us-east-1` | Where Titan/Claude are invoked |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` | api container (compose passes them through) | empty | Local stand-in for the ECS task role. In prod these don't exist — the task role provides SigV4 |
 | `NOTES_BUCKET` | `apps/api/scripts/ingest.ts` only | empty | S3 source for ingestion (prod). The API never reads it |

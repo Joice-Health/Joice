@@ -74,7 +74,7 @@ Key properties of this shape:
 |---|---|---|
 | DB | `packages/db/src/schema.ts` → `noteChunks` | The vector table: chunk text + `vector(1024)` embedding + source metadata |
 | DB | `packages/db/drizzle/0003_clear_shadowcat.sql` | Hand-edited migration: `CREATE EXTENSION vector` + HNSW index (drizzle-kit emits neither) |
-| Core | `packages/core/src/bedrock.ts` | `createEmbeddingClient` (Titan) + `createClaudeClient` (AnthropicBedrock) behind stub-friendly interfaces |
+| Core | `packages/core/src/bedrock.ts` | `createEmbeddingClient` (Titan) + `createGenerationClient` (model-agnostic Converse API) behind stub-friendly interfaces |
 | Core | `packages/core/src/chunker.ts` | Pure markdown → chunks: frontmatter, heading breadcrumbs, wikilinks, size caps |
 | Core | `packages/core/src/recommendation-service.ts` | The RAG brain: retrieve → floor-check → prompt → generate → citation annotation |
 | Core | `packages/core/src/schemas.ts` | Wire contracts: `chatRequestSchema`, `Citation`, `PeptideRecommendation` (browser-safe via `@joice/core/schemas`) |
@@ -111,11 +111,11 @@ Full detail with sequence diagrams: [04 — Query Flow](04-query-flow.md).
 
 | Decision | Choice | Why |
 |---|---|---|
-| LLM access | **Bedrock** (`AnthropicBedrock` client — the classic `bedrock-runtime` InvokeModel path — model `us.anthropic.claude-sonnet-5`) | HIPAA-eligible under the free self-service AWS BAA; traffic never reaches Anthropic; IAM auth means zero API-key secrets. The direct Anthropic API's BAA is a negotiated enterprise agreement; Voyage AI (the embeddings alternative) has **no publicly documented BAA** at all. (The SDK's newer Mantle endpoint 404s on this account — the classic path is the one that works.) |
+| LLM access | **Bedrock Converse API** (`@aws-sdk/client-bedrock-runtime`, model-agnostic). Prod default `us.anthropic.claude-sonnet-5`; dev runs `us.amazon.nova-pro-v1:0` until the account's Anthropic use-case form is approved | HIPAA-eligible under the free self-service AWS BAA; traffic never reaches Anthropic; IAM auth means zero API-key secrets. Converse works with **any** Bedrock chat model, so the Anthropic-access blocker doesn't block development. (The Anthropic SDK's Bedrock clients were tried first — the Mantle endpoint 404s on this account and InvokeModel is gated on the same use-case form.) |
+| Citations | **Prompt-based `[n]` markers**: documents are numbered in the prompt, the model cites inline, `parseCitations()` maps markers back to source file + heading | Works identically across models (Nova today, Claude later). Anthropic-native citation spans are a possible upgrade once Claude access lands, but the seam is one function |
 | Embeddings | **Titan Text Embeddings V2**, 1024 dims, normalized | Serverless on Bedrock under the same BAA, ~$0.02 per 1M input tokens. Voyage is higher quality but only runs inside AWS as an always-on SageMaker endpoint (cost + ops). Upgrade path exists without schema changes at 1024 dims. |
 | Model | Claude Sonnet 5, via `RAG_MODEL` env | Near-Opus quality on grounded Q&A at $3/$15 per MTok. Swappable with a `terraform apply` (runtime env, no rebuild). |
-| Citations | Claude's **native citations** (`citations: {enabled: true}` on document blocks) | The API returns structured citation spans (`document_index`, `cited_text`) — far more reliable than asking the model to emit `[1]` markers in prose and parsing them back out. |
-| Grounding | Similarity floor (0.4) **before** the LLM call + a restrictive system prompt | Off-corpus questions cost zero Claude tokens and can't hallucinate; the prompt handles partial coverage. |
+| Grounding | Similarity floor (0.4) **before** the LLM call + a restrictive system prompt | Off-corpus questions cost zero generation tokens and can't hallucinate; the prompt handles partial coverage. |
 | Vector store | pgvector on the existing RDS instance | No new database, no new vendor; corpus is small (one vault); HNSW index built up front while the table is empty. |
 | Ingestion | One-off ECS `RunTask` reusing the **api image** | The image already contains the whole monorepo — only the command differs. No third image, no CI changes, no scheduler (the vault is a one-time upload; re-run manually if it ever changes). |
 | Service placement | Routes on the existing API service | A separate internal service adds an always-on task + service discovery and improves neither compliance nor performance at current traffic. The logic lives in `@joice/core` behind injected clients, so extracting later is mechanical. |
@@ -127,7 +127,7 @@ Full detail with sequence diagrams: [04 — Query Flow](04-query-flow.md).
 
 Per answered question: ~8 chunks × ~400 tokens + system prompt ≈ 4–5K input
 tokens (≈ $0.015) + ≤ 1K output tokens (≈ $0.015) → **≈ 2–3¢ per answer** on
-Sonnet 5, less with prompt caching (the system prompt carries a
-`cache_control` breakpoint). Embedding a question is ~50 tokens on Titan —
-effectively free. Ingesting an entire vault of a few hundred notes costs cents.
-The rate limit (5/min/IP) bounds worst-case abuse at trivial spend.
+Sonnet 5 (Nova Pro, the dev model, is roughly 4× cheaper). Embedding a
+question is ~50 tokens on Titan — effectively free. Ingesting an entire vault
+of a few hundred notes costs cents. The rate limit (5/min/IP) bounds
+worst-case abuse at trivial spend.
