@@ -9,3 +9,174 @@
     font-family: var(--font-sans);
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * Ask Joice — "dawn"
+ *
+ * A real sunrise is half cool: pale blue-grey sky above, warm light only at the
+ * horizon. That cool/warm split is the page's whole idea — cool reads as
+ * clinical rigor, warm as hope — and it keeps the palette from becoming the
+ * usual all-orange wellness gradient. The amber is the brand hue (~60) with its
+ * chroma raised, so the sunrise is an intensification of Joice, not a new color.
+ *
+ * `--level` is written from the live AnalyserNode (0–1) while the member speaks
+ * or the assistant answers: the sun's corona and the horizon glow are driven by
+ * real audio, not a canned animation.
+ * ------------------------------------------------------------------------- */
+.dawn {
+  --dawn-sky: oklch(0.96 0.012 240);
+  --dawn-haze: oklch(0.975 0.008 80);
+  --dawn-horizon: oklch(0.93 0.05 70);
+  --dawn-ember: oklch(0.78 0.11 62);
+  --dawn-ember-deep: oklch(0.58 0.11 52);
+  --dawn-cool: oklch(0.55 0.03 245);
+  --level: 0;
+
+  position: relative;
+  isolation: isolate;
+}
+
+/* The sky: cool before first light, warming as it descends toward the horizon.
+ * Full-bleed — the page sits inside the site's max-width container, so the
+ * light has to break out of it to reach the viewport edges. */
+.dawn::before {
+  content: '';
+  position: absolute;
+  top: -12%;
+  left: 50%;
+  width: 100vw;
+  margin-left: -50vw;
+  height: 92%;
+  z-index: -2;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    var(--dawn-sky) 0%,
+    color-mix(in oklch, var(--dawn-sky), var(--dawn-haze) 60%) 45%,
+    transparent 100%
+  );
+}
+
+/* ---- The horizon ----
+ * A luminous line the sun rises out of. Everything above it is sky; the typed
+ * path and the sources sit below it, on the ground. The bloom brightens with
+ * `--level`, so the light genuinely rises while someone speaks. */
+.horizon {
+  position: absolute;
+  left: 50%;
+  top: 68%;
+  width: 100vw;
+  margin-left: -50vw;
+  height: 1px;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    color-mix(in oklch, var(--dawn-ember), transparent 70%) 16%,
+    color-mix(in oklch, var(--dawn-ember), transparent calc(25% - var(--level) * 20%)) 50%,
+    color-mix(in oklch, var(--dawn-ember), transparent 70%) 84%,
+    transparent 100%
+  );
+  transition: background 240ms ease-out;
+}
+
+/* The bloom sitting on the line — first light spreading along the horizon. */
+.horizon::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  translate: -50% 0;
+  width: 100%;
+  height: clamp(180px, 26vw, 340px);
+  pointer-events: none;
+  background: radial-gradient(
+    58% 100% at 50% 100%,
+    color-mix(in oklch, var(--dawn-horizon), transparent calc(30% - var(--level) * 25%)) 0%,
+    color-mix(in oklch, var(--dawn-horizon), transparent 72%) 45%,
+    transparent 78%
+  );
+  opacity: calc(0.9 + var(--level) * 0.1);
+  transition: opacity 240ms ease-out;
+}
+
+/* --- The sun: the microphone --- */
+.sun {
+  position: relative;
+  display: grid;
+  place-items: center;
+  border-radius: 9999px;
+  isolation: isolate;
+}
+
+/* A sun is luminous, not a shaded sphere: light concentrated at the centre and
+ * bleeding outward, rather than a top-lit ball. */
+.sun-core {
+  position: relative;
+  z-index: 1;
+  border-radius: 9999px;
+  background: radial-gradient(
+    circle at 50% 50%,
+    oklch(1 0.02 90) 0%,
+    oklch(0.96 0.06 78) 34%,
+    var(--dawn-ember) 72%,
+    color-mix(in oklch, var(--dawn-ember), var(--dawn-ember-deep) 55%) 100%
+  );
+  box-shadow:
+    0 0 calc(40px + var(--level) * 90px)
+      color-mix(in oklch, var(--dawn-ember), transparent calc(45% - var(--level) * 30%)),
+    0 0 calc(14px + var(--level) * 26px) oklch(0.97 0.05 82 / 0.55);
+  transform: scale(calc(1 + var(--level) * 0.06));
+  transition: transform 120ms ease-out;
+}
+
+/* Corona rings — they breathe at rest and expand with the voice. */
+.sun-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in oklch, var(--dawn-ember), transparent 45%);
+  transform: scale(calc(1.08 + var(--level) * 0.55));
+  opacity: calc(0.55 - var(--level) * 0.15);
+  transition:
+    transform 140ms ease-out,
+    opacity 140ms ease-out;
+}
+
+.sun-ring-outer {
+  transform: scale(calc(1.24 + var(--level) * 1.05));
+  opacity: calc(0.3 - var(--level) * 0.1);
+}
+
+.sun-idle .sun-ring {
+  animation: sun-breathe 5.5s ease-in-out infinite;
+}
+
+.sun-idle .sun-ring-outer {
+  animation: sun-breathe 5.5s ease-in-out 0.6s infinite;
+}
+
+@keyframes sun-breathe {
+  0%,
+  100% {
+    transform: scale(1.08);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.22;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sun-idle .sun-ring,
+  .sun-idle .sun-ring-outer {
+    animation: none;
+  }
+  .sun-core,
+  .sun-ring,
+  .dawn::before {
+    transition: none;
+  }
+}

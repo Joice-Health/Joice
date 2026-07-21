@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { Button } from '@joice/ui';
+import { cn } from '@joice/ui';
 import {
   streamPeptideRecommendation,
   useApiClient,
@@ -9,11 +9,12 @@ import {
   type ChatMessage,
   type Citation,
 } from '@joice/api-client';
-import { Eyebrow } from '@/components/ui/eyebrow';
 import { apiUrl } from '@/lib/env';
 import { AnswerMarkdown } from './answer-markdown';
+import { useAudioLevel } from './use-audio-level';
 import { useRecorder } from './use-recorder';
 import { useSpeaker } from './use-speaker';
+import { VoiceSun } from './voice-sun';
 import { VoiceVisualizer } from './voice-visualizer';
 
 interface DisplayMessage {
@@ -29,18 +30,9 @@ const MAX_HISTORY = 20;
 /** What Polly reads aloud — footnote markers are noise when spoken. */
 const speakable = (text: string) => text.replace(/\[\d+\]/g, '').replace(/\s{2,}/g, ' ').trim();
 
-function MicIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className={className} aria-hidden="true">
-      <rect x="9" y="3" width="6" height="11" rx="3" />
-      <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
-    </svg>
-  );
-}
-
 function SpeakerIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
       <path d="M11 5 6.5 8.5H3v7h3.5L11 19V5Z" />
       <path d="M15 9a4.2 4.2 0 0 1 0 6M17.5 6.5a8 8 0 0 1 0 11" />
     </svg>
@@ -56,10 +48,9 @@ function StopIcon({ className }: { className?: string }) {
 }
 
 /**
- * The member-facing RAG chat. Text: streams the answer over SSE, then swaps in
- * the final citation-annotated text. Voice: mic → Transcribe → the same SSE
- * pipeline → the answer is spoken back (Polly) with a visualizer driven by the
- * real audio. Every assistant message also has a play button.
+ * Ask Joice. The page opens on a horizon at first light: the microphone is the
+ * sun, and speaking raises the light behind the conversation. Typing is the
+ * quiet second path underneath.
  */
 export function PeptideChat() {
   const client = useApiClient();
@@ -69,6 +60,7 @@ export function PeptideChat() {
   const [pending, setPending] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [voiceHint, setVoiceHint] = useState<string | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const speaker = useSpeaker();
@@ -77,9 +69,25 @@ export function PeptideChat() {
     onError: (message) => setVoiceHint(message),
   });
 
+  /**
+   * Pressing the mic interrupts the assistant: otherwise its voice keeps
+   * playing into the room and bleeds straight back into the recording.
+   */
+  const toggleMic = () => {
+    if (recorder.recording) {
+      recorder.stop();
+      return;
+    }
+    speaker.stop();
+    void recorder.start();
+  };
+
+  // One rAF loop feeds the sun's corona and the horizon glow from live audio.
+  useAudioLevel(rootRef, recorder.analyser ?? speaker.analyser);
+
   const scrollToEnd = () => {
     requestAnimationFrame(() => {
-      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
+      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
     });
   };
 
@@ -128,7 +136,9 @@ export function PeptideChat() {
     });
     scrollToEnd();
 
-    const updateAssistant = (patch: Partial<DisplayMessage> | ((m: DisplayMessage) => DisplayMessage)) => {
+    const updateAssistant = (
+      patch: Partial<DisplayMessage> | ((m: DisplayMessage) => DisplayMessage),
+    ) => {
       setMessages((prev) => {
         const next = [...prev];
         const last = next[next.length - 1]!;
@@ -162,137 +172,263 @@ export function PeptideChat() {
     }
   }
 
+  const started = messages.length > 0;
   const busy = pending || transcribing;
+  const sunState = recorder.recording
+    ? 'listening'
+    : recorder.arming
+      ? 'arming'
+      : busy
+        ? 'busy'
+        : 'idle';
+
+  const status = recorder.arming
+    ? 'Connecting microphone…'
+    : recorder.recording
+      ? `Listening — pause when you're done · ${recorder.elapsed}s`
+      : transcribing
+        ? 'Writing that down…'
+        : pending
+          ? 'Looking through the research…'
+          : null;
+
+  const composer = (
+    <form
+      className={cn('flex items-end gap-3', started && 'border-t border-line/70 px-4 py-4 sm:px-6')}
+      onSubmit={(e) => {
+        e.preventDefault();
+        void send(input.trim());
+      }}
+    >
+      {started ? (
+        <VoiceSun
+          state={sunState}
+          size="sm"
+          disabled={busy && !recorder.recording}
+          onClick={() => toggleMic()}
+        />
+      ) : null}
+      <textarea
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            void send(input.trim());
+          }
+        }}
+        rows={started ? 1 : 2}
+        maxLength={2000}
+        disabled={transcribing || recorder.recording}
+        placeholder={brainUi.inputPlaceholder}
+        aria-label="Type your question"
+        className={cn(
+          'min-h-11 flex-1 resize-none bg-transparent text-ink outline-none',
+          'placeholder:text-muted/70 disabled:opacity-50',
+          started ? 'py-2' : 'rounded-card bg-surface/70 px-5 py-3.5 shadow-[0_1px_0_0_rgba(255,255,255,0.9)_inset]',
+        )}
+      />
+      <button
+        type="submit"
+        disabled={busy || recorder.recording || input.trim().length === 0}
+        className={cn(
+          'h-11 shrink-0 rounded-full px-5 text-sm font-medium transition-colors outline-none',
+          'bg-ink text-canvas hover:bg-ink/90',
+          'focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas',
+          'disabled:cursor-not-allowed disabled:bg-ink/25',
+        )}
+      >
+        {pending ? 'Asking…' : 'Ask'}
+      </button>
+    </form>
+  );
 
   return (
-    <div className="flex flex-col rounded-card bg-surface shadow-[0_20px_50px_-24px_rgba(31,38,32,0.25)]">
-      <div ref={scrollRef} className="flex max-h-[60vh] min-h-72 flex-col gap-4 overflow-y-auto p-6">
-        {messages.length === 0 ? (
-          <div className="m-auto max-w-sm text-center">
-            <Eyebrow>Ask Joice</Eyebrow>
-            <p className="mt-3 text-pretty text-muted">{brainUi.emptyStateHint}</p>
-          </div>
-        ) : (
-          messages.map((message, i) => {
-            const messageId = `msg-${i}`;
-            const isSpeaking = speaker.speakingId === messageId;
-            return (
-              <div key={i} className={message.role === 'user' ? 'self-end' : 'self-start'}>
-                <div
-                  className={
-                    message.role === 'user'
-                      ? 'max-w-md rounded-card bg-gradient-to-b from-brand-500 to-brand-600 px-4 py-3 text-white'
-                      : message.error
-                        ? 'max-w-2xl rounded-card bg-red-50 px-4 py-3 text-red-800'
-                        : 'max-w-2xl px-1 py-2'
-                  }
-                >
-                  {message.role === 'assistant' && message.content && !message.error ? (
-                    // Answers are markdown (bold, lists, occasional tables).
-                    <AnswerMarkdown>{message.content}</AnswerMarkdown>
-                  ) : (
-                    <span className="whitespace-pre-wrap leading-relaxed">
-                      {message.content || (pending && i === messages.length - 1 ? 'Thinking…' : '')}
-                    </span>
-                  )}
-                </div>
-
-                {message.role === 'assistant' && message.content && !message.error ? (
-                  <div className="mt-1 flex items-center gap-2 px-1">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        isSpeaking ? speaker.stop() : void speaker.speak(speakable(message.content), messageId)
-                      }
-                      aria-label={isSpeaking ? 'Stop reading answer' : 'Read answer aloud'}
-                      className="rounded-full p-1.5 text-muted transition-colors hover:bg-brand-400/15 hover:text-brand-700"
-                    >
-                      {isSpeaking ? <StopIcon className="h-4 w-4" /> : <SpeakerIcon className="h-4 w-4" />}
-                    </button>
-                    {isSpeaking ? (
-                      <VoiceVisualizer analyser={speaker.analyser} className="h-6 w-36 text-brand-600" />
-                    ) : null}
-                  </div>
-                ) : null}
-
-                {brainUi.showCitations && message.citations && message.citations.length > 0 ? (
-                  <ul className="mt-2 flex flex-wrap gap-2 px-1">
-                    {message.citations.map((citation) => (
-                      <li
-                        key={citation.index}
-                        title={citation.citedText}
-                        className="rounded-full bg-brand-400/15 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-brand-800"
-                      >
-                        [{citation.index}] {citation.headingPath ?? citation.sourcePath.replace(/\.md$/, '')}
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-              </div>
-            );
-          })
+    <div ref={rootRef} className="dawn flex flex-col items-center">
+      {/* ---- Hero: the horizon ---- */}
+      <header
+        className={cn(
+          'flex flex-col items-center text-center transition-all duration-700',
+          started ? 'pt-10 pb-6' : 'pt-14 pb-6 sm:pt-20',
         )}
+      >
+        <span className="font-mono text-[10px] font-bold tracking-[0.28em] text-brand-700 uppercase">
+          Ask Joice
+        </span>
+
+        {!started ? (
+          <>
+            <h1 className="mt-6 max-w-3xl text-balance text-5xl leading-[0.98] font-extralight tracking-[-0.035em] text-ink sm:text-7xl">
+              Ask it{' '}
+              <span className="font-medium text-[var(--dawn-ember-deep)] italic">out loud</span>.
+            </h1>
+            <p className="mt-6 max-w-md text-pretty leading-relaxed text-muted">
+              {brainUi.emptyStateHint}
+            </p>
+          </>
+        ) : (
+          <h1 className="sr-only">Ask Joice</h1>
+        )}
+
+        {/* The sun rising out of the horizon — the primary way in. */}
+        {!started ? (
+          <div className="relative mt-14 flex w-full justify-center">
+            <span className="horizon" aria-hidden="true" />
+            <VoiceSun
+              state={sunState}
+              disabled={busy && !recorder.recording}
+              onClick={() => toggleMic()}
+            />
+          </div>
+        ) : null}
+
+        {!started ? (
+          <div className="mt-5 flex h-9 flex-col items-center gap-2">
+            {recorder.recording ? (
+              <VoiceVisualizer
+                analyser={recorder.analyser}
+                className="h-6 w-56 text-[var(--dawn-ember-deep)]"
+              />
+            ) : null}
+            <p
+              aria-live="polite"
+              className={cn(
+                'font-mono text-[10px] tracking-[0.22em] uppercase',
+                status ? 'text-[var(--dawn-ember-deep)]' : 'text-muted',
+              )}
+            >
+              {status ?? 'Press to speak'}
+            </p>
+          </div>
+        ) : null}
+      </header>
+
+      {/* ---- Conversation ---- */}
+      <div
+        className={cn(
+          'w-full max-w-3xl transition-all duration-500',
+          started &&
+            'rounded-card bg-surface/85 shadow-[0_1px_0_0_rgba(255,255,255,0.9)_inset,0_30px_70px_-40px_rgba(60,45,25,0.35)] backdrop-blur-xl',
+        )}
+      >
+        {started ? (
+          <div
+            ref={scrollRef}
+            className="flex max-h-[52vh] flex-col gap-6 overflow-y-auto scroll-pt-6 px-4 py-7 sm:px-6"
+          >
+            {messages.map((message, i) => {
+              const messageId = `msg-${i}`;
+              const isSpeaking = speaker.speakingId === messageId;
+              return (
+                <div key={i} className={message.role === 'user' ? 'self-end' : 'self-start'}>
+                  {message.role === 'user' ? (
+                    <div className="max-w-md rounded-card rounded-br-lg bg-ink px-4 py-3 text-canvas">
+                      {message.content}
+                    </div>
+                  ) : message.error ? (
+                    <div className="max-w-2xl rounded-card bg-red-50 px-4 py-3 text-red-800">
+                      {message.content}
+                    </div>
+                  ) : (
+                    <div className="max-w-2xl">
+                      {message.content ? (
+                        <AnswerMarkdown>{message.content}</AnswerMarkdown>
+                      ) : (
+                        <p className="font-mono text-[10px] tracking-[0.22em] text-muted uppercase">
+                          Looking through the research…
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {message.role === 'assistant' && message.content && !message.error ? (
+                    <div className="mt-2 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          isSpeaking
+                            ? speaker.stop()
+                            : void speaker.speak(speakable(message.content), messageId)
+                        }
+                        aria-label={isSpeaking ? 'Stop reading answer' : 'Read answer aloud'}
+                        className="rounded-full p-1.5 text-muted transition-colors hover:bg-brand-400/15 hover:text-[var(--dawn-ember-deep)] focus-visible:ring-2 focus-visible:ring-brand-500 outline-none"
+                      >
+                        {isSpeaking ? <StopIcon className="h-4 w-4" /> : <SpeakerIcon className="h-4 w-4" />}
+                      </button>
+                      {isSpeaking ? (
+                        <VoiceVisualizer
+                          analyser={speaker.analyser}
+                          className="h-5 w-28 text-[var(--dawn-ember-deep)]"
+                        />
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  {brainUi.showCitations && message.citations && message.citations.length > 0 ? (
+                    <ul className="mt-3 flex flex-wrap gap-2">
+                      {message.citations.map((citation) => (
+                        <li
+                          key={citation.index}
+                          title={citation.citedText}
+                          className="rounded-full bg-brand-400/12 px-3 py-1 font-mono text-[10px] tracking-[0.1em] text-brand-800 uppercase"
+                        >
+                          [{citation.index}]{' '}
+                          {citation.headingPath ?? citation.sourcePath.replace(/\.md$/, '')}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        ) : null}
+
+        {/* Composer: quiet second path below the horizon when idle. */}
+        {started ? (
+          composer
+        ) : (
+          <div className="mx-auto max-w-xl px-4">
+            <p className="mb-2.5 text-center font-mono text-[10px] tracking-[0.22em] text-muted/70 uppercase">
+              or type instead
+            </p>
+            {composer}
+          </div>
+        )}
+
+        {started && status ? (
+          <p
+            aria-live="polite"
+            className="px-6 pb-4 font-mono text-[10px] tracking-[0.22em] text-[var(--dawn-ember-deep)] uppercase"
+          >
+            {status}
+          </p>
+        ) : null}
       </div>
 
       {voiceHint ? (
-        <p className="px-6 pt-2 text-sm text-muted">{voiceHint}</p>
+        <p className="mt-4 max-w-md text-center text-sm text-muted" role="status">
+          {voiceHint}
+        </p>
       ) : null}
 
-      <form
-        className="flex items-end gap-3 border-t border-line p-4"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void send(input.trim());
-        }}
-      >
-        {recorder.recording || recorder.arming ? (
-          <div className="flex min-h-11 flex-1 items-center gap-3 rounded-card bg-canvas px-4 py-3">
-            <VoiceVisualizer
-              analyser={recorder.recording ? recorder.analyser : null}
-              className={`h-8 flex-1 text-brand-600 ${recorder.arming ? 'animate-pulse opacity-50' : ''}`}
-            />
-            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
-              {recorder.arming ? 'Connecting mic…' : `Listening · pause to send · ${recorder.elapsed}s`}
+      {/* ---- What makes the answers trustworthy ---- */}
+      <ul className="mt-14 mb-6 grid w-full max-w-3xl gap-px overflow-hidden rounded-card bg-line/60 sm:grid-cols-3">
+        {[
+          ['Grounded', 'Answers come from our clinical team’s research library.'],
+          ['Sourced', 'Every claim shows the study it came from.'],
+          ['Honest', 'If the research doesn’t cover it, it says so.'],
+        ].map(([label, detail]) => (
+          <li key={label} className="bg-canvas/80 px-5 py-4 backdrop-blur-sm">
+            <span className="font-mono text-[10px] font-bold tracking-[0.22em] text-[var(--dawn-ember-deep)] uppercase">
+              {label}
             </span>
-          </div>
-        ) : (
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                void send(input.trim());
-              }
-            }}
-            rows={2}
-            maxLength={2000}
-            placeholder={transcribing ? 'Transcribing…' : brainUi.inputPlaceholder}
-            disabled={transcribing}
-            className="min-h-11 flex-1 resize-none rounded-card bg-canvas px-4 py-3 text-ink outline-none placeholder:text-muted focus-visible:ring-2 focus-visible:ring-brand-400 disabled:opacity-60"
-          />
-        )}
+            <p className="mt-1.5 text-sm leading-relaxed text-muted">{detail}</p>
+          </li>
+        ))}
+      </ul>
 
-        <Button
-          type="button"
-          variant={recorder.recording ? 'primary' : 'glass'}
-          onClick={() => (recorder.recording ? recorder.stop() : void recorder.start())}
-          disabled={busy || recorder.arming}
-          aria-label={recorder.recording ? 'Stop recording' : 'Ask by voice'}
-          className="px-4"
-        >
-          {recorder.recording ? <StopIcon className="h-5 w-5" /> : <MicIcon className="h-5 w-5" />}
-        </Button>
-
-        <Button
-          type="submit"
-          disabled={busy || recorder.recording || recorder.arming || input.trim().length === 0}
-        >
-          {pending ? 'Answering…' : 'Ask'}
-        </Button>
-      </form>
-
-      <p className="px-6 pb-4 text-center font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+      <p className="pb-16 text-center font-mono text-[10px] tracking-[0.2em] text-muted/80 uppercase">
         {brainUi.disclaimer}
       </p>
     </div>
