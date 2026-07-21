@@ -101,52 +101,77 @@ console.log(`Found ${keys.length} markdown files in ${source.label}`);
 let skipped = 0;
 let replaced = 0;
 let chunksWritten = 0;
+let consecutiveFailures = 0;
+const failures: string[] = [];
 
-for (const key of keys) {
-  const raw = await source.read(key);
-  const sourceHash = await sha256(raw);
+/** Systemic problems (expired creds, dead DB) fail every file — abort fast. */
+const MAX_CONSECUTIVE_FAILURES = 5;
 
-  const existing = await db
-    .select({ sourceHash: noteChunks.sourceHash })
-    .from(noteChunks)
-    .where(eq(noteChunks.sourcePath, key))
-    .limit(1);
-  if (existing[0]?.sourceHash === sourceHash) {
-    skipped++;
-    continue;
-  }
+for (const [index, key] of keys.entries()) {
+  const progress = `(${index + 1}/${keys.length})`;
+  try {
+    const raw = await source.read(key);
+    const sourceHash = await sha256(raw);
 
-  const { metadata, chunks } = chunkMarkdown(raw);
-  if (chunks.length === 0) {
-    console.warn(`⚠ ${key}: no content after chunking — skipping`);
-    continue;
-  }
+    const existing = await db
+      .select({ sourceHash: noteChunks.sourceHash })
+      .from(noteChunks)
+      .where(eq(noteChunks.sourcePath, key))
+      .limit(1);
+    if (existing[0]?.sourceHash === sourceHash) {
+      skipped++;
+      consecutiveFailures = 0;
+      continue;
+    }
 
-  // Breadcrumb prefixed for embedding only — retrieval works better when the
-  // vector carries the heading context; the stored content stays clean.
-  const vectors = await embeddings.embedBatch(
-    chunks.map((c) => (c.headingPath ? `${c.headingPath}\n\n${c.content}` : c.content)),
-  );
+    const { metadata, chunks } = chunkMarkdown(raw);
+    if (chunks.length === 0) {
+      console.warn(`⚠ ${progress} ${key}: no content after chunking — skipping`);
+      consecutiveFailures = 0;
+      continue;
+    }
 
-  await db.transaction(async (tx) => {
-    await tx.delete(noteChunks).where(eq(noteChunks.sourcePath, key));
-    await tx.insert(noteChunks).values(
-      chunks.map((chunk, i) => ({
-        sourcePath: key,
-        sourceHash,
-        chunkIndex: chunk.chunkIndex,
-        headingPath: chunk.headingPath,
-        content: chunk.content,
-        tokenCount: chunk.tokenCount,
-        embedding: vectors[i]!,
-        metadata,
-      })),
+    // Breadcrumb prefixed for embedding only — retrieval works better when the
+    // vector carries the heading context; the stored content stays clean.
+    const vectors = await embeddings.embedBatch(
+      chunks.map((c) => (c.headingPath ? `${c.headingPath}\n\n${c.content}` : c.content)),
     );
-  });
 
-  replaced++;
-  chunksWritten += chunks.length;
-  console.log(`✓ ${key}: ${chunks.length} chunks`);
+    await db.transaction(async (tx) => {
+      await tx.delete(noteChunks).where(eq(noteChunks.sourcePath, key));
+      await tx.insert(noteChunks).values(
+        chunks.map((chunk, i) => ({
+          sourcePath: key,
+          sourceHash,
+          chunkIndex: chunk.chunkIndex,
+          headingPath: chunk.headingPath,
+          content: chunk.content,
+          tokenCount: chunk.tokenCount,
+          embedding: vectors[i]!,
+          metadata,
+        })),
+      );
+    });
+
+    replaced++;
+    chunksWritten += chunks.length;
+    consecutiveFailures = 0;
+    console.log(`✓ ${progress} ${key}: ${chunks.length} chunks`);
+  } catch (error) {
+    // One bad file must not kill a 1,500-file run — the transaction means it
+    // left no partial rows, and the hash-skip means a re-run picks it up.
+    failures.push(key);
+    consecutiveFailures++;
+    console.error(`✗ ${progress} ${key}: ${(error as Error).message?.slice(0, 200)}`);
+    if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+      console.error(
+        `\n🛑 ${MAX_CONSECUTIVE_FAILURES} files failed in a row — this looks systemic ` +
+          '(expired AWS credentials? database down?). Fix the cause and re-run; ' +
+          'completed files are skipped by hash.',
+      );
+      process.exit(1);
+    }
+  }
 }
 
 // Orphan sweep: rows whose source file no longer exists in the source.
@@ -158,6 +183,11 @@ const orphanPaths = [...new Set(orphans.map((o) => o.sourcePath))];
 if (orphanPaths.length > 0) console.log(`Removed orphaned files: ${orphanPaths.join(', ')}`);
 
 console.log(
-  `✅ Ingest complete: ${keys.length} files scanned, ${skipped} unchanged, ${replaced} (re)ingested, ${chunksWritten} chunks written`,
+  `✅ Ingest complete: ${keys.length} files scanned, ${skipped} unchanged, ${replaced} (re)ingested, ${chunksWritten} chunks written` +
+    (failures.length ? `, ${failures.length} FAILED` : ''),
 );
+if (failures.length > 0) {
+  console.error(`Failed files (re-run to retry — completed files are skipped):\n${failures.map((f) => `  - ${f}`).join('\n')}`);
+  process.exit(1);
+}
 process.exit(0);

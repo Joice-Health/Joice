@@ -30,12 +30,26 @@ flowchart LR
 Local-only; never deployed. Run on the machine that has the raw vault:
 
 ```bash
-# Full run with the automated PHI scan (needs AWS creds; see below)
-bun apps/api/scripts/prep-vault.ts ~/ObsidianVaults/clinical ./approved --scan-phi
+# AUTOMATIC PII cleanup (recommended for PII-heavy vaults): detect + redact.
+# Every detected span becomes a readable token ([name], [date], [phone], …);
+# a local regex pass catches email/phone/SSN shapes as backup. Keep the output
+# dir OUTSIDE the repo so git can never commit it.
+bun apps/api/scripts/prep-vault.ts ~/ObsidianVaults/clinical ~/joice-notes-approved --redact
+
+# Detect-only (report, files copied unchanged — you edit by hand)
+bun apps/api/scripts/prep-vault.ts ~/ObsidianVaults/clinical ~/joice-notes-approved --scan-phi
 
 # Dedupe-only (PHI review is then entirely manual)
-bun apps/api/scripts/prep-vault.ts ~/ObsidianVaults/clinical ./approved
+bun apps/api/scripts/prep-vault.ts ~/ObsidianVaults/clinical ~/joice-notes-approved
 ```
+
+With `--redact`, the human step becomes a **spot-check instead of an edit job**:
+the report lists every redaction as `token ← original text` (restore false
+positives like a peptide name read as a person), and files with **high PHI
+density** (>8 spans per 1,000 chars — patient case files rather than reference
+notes) are flagged for deletion, since redaction just guts them. The report
+contains the original PII, so `phi-report.md` must never be uploaded or
+ingested — it exists only for the local review.
 
 What it does, in order:
 

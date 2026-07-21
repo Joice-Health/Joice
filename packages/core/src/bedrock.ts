@@ -4,6 +4,7 @@ import {
   ConverseStreamCommand,
   InvokeModelCommand,
 } from '@aws-sdk/client-bedrock-runtime';
+import { NodeHttpHandler } from '@smithy/node-http-handler';
 
 /**
  * Thin Bedrock clients behind narrow interfaces. Everything AI-related goes
@@ -22,6 +23,41 @@ import {
 
 const TITAN_MODEL_ID = 'amazon.titan-embed-text-v2:0';
 
+/**
+ * Shared client config: force HTTP/1.1 (Bun's http2 drops connections under
+ * sustained load — "http2 request did not get a response") and give the SDK
+ * generous built-in retries on top of ours.
+ */
+function createRuntimeClient(region: string): BedrockRuntimeClient {
+  return new BedrockRuntimeClient({
+    region,
+    maxAttempts: 5,
+    requestHandler: new NodeHttpHandler({
+      connectionTimeout: 5_000,
+      socketTimeout: 60_000,
+    }),
+  });
+}
+
+const RETRYABLE = /http2|ECONNRESET|ECONNREFUSED|EPIPE|ETIMEDOUT|socket|Throttl|TooManyRequests|ServiceUnavailable|InternalServer|ModelTimeout|timed? ?out/i;
+
+/** Retry transient transport/throttle failures with exponential backoff + jitter. */
+async function withRetry<T>(operation: () => Promise<T>, attempts = 5): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      const text = `${(error as Error)?.name ?? ''} ${(error as Error)?.message ?? ''}`;
+      if (!RETRYABLE.test(text) || attempt === attempts - 1) throw error;
+      const delay = 500 * 2 ** attempt + Math.floor(Math.random() * 250);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+  throw lastError;
+}
+
 /** Must match the `vector(1024)` column in @joice/db — changing it means re-embedding. */
 export const EMBEDDING_DIMENSIONS = 1024;
 
@@ -31,20 +67,22 @@ export interface EmbeddingClient {
 }
 
 export function createEmbeddingClient(opts: { region: string }): EmbeddingClient {
-  const client = new BedrockRuntimeClient({ region: opts.region });
+  const client = createRuntimeClient(opts.region);
 
   async function embed(text: string): Promise<number[]> {
-    const response = await client.send(
-      new InvokeModelCommand({
-        modelId: TITAN_MODEL_ID,
-        contentType: 'application/json',
-        accept: 'application/json',
-        body: JSON.stringify({
-          inputText: text,
-          dimensions: EMBEDDING_DIMENSIONS,
-          normalize: true,
+    const response = await withRetry(() =>
+      client.send(
+        new InvokeModelCommand({
+          modelId: TITAN_MODEL_ID,
+          contentType: 'application/json',
+          accept: 'application/json',
+          body: JSON.stringify({
+            inputText: text,
+            dimensions: EMBEDDING_DIMENSIONS,
+            normalize: true,
+          }),
         }),
-      }),
+      ),
     );
     const parsed = JSON.parse(new TextDecoder().decode(response.body)) as {
       embedding: number[];
@@ -114,19 +152,22 @@ function toConverseInput(request: GenerationRequest) {
 }
 
 export function createGenerationClient(opts: { region: string }): GenerationClient {
-  const client = new BedrockRuntimeClient({ region: opts.region });
+  const client = createRuntimeClient(opts.region);
 
   return {
     async generate(request) {
-      const response = await client.send(new ConverseCommand(toConverseInput(request)));
+      const response = await withRetry(() =>
+        client.send(new ConverseCommand(toConverseInput(request))),
+      );
       return (
         response.output?.message?.content?.map((block) => block.text ?? '').join('') ?? ''
       );
     },
 
     async *generateStream(request) {
-      const response = await client.send(
-        new ConverseStreamCommand(toConverseInput(request)),
+      // Retry covers the initial send; once tokens flow, failures surface as-is.
+      const response = await withRetry(() =>
+        client.send(new ConverseStreamCommand(toConverseInput(request))),
       );
       let full = '';
       for await (const event of response.stream ?? []) {
