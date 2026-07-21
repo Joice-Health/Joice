@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { logger } from 'hono/logger';
+import { requestId, type RequestIdVariables } from 'hono/request-id';
 import { secureHeaders } from 'hono/secure-headers';
 import { streamSSE } from 'hono/streaming';
 import { HTTPException } from 'hono/http-exception';
@@ -18,12 +18,18 @@ import { allowedOrigins, env } from './env';
 import { upgradeWebSocket } from './ws';
 import { rateLimit, clientIp } from './middleware/rate-limit';
 import { hashIp } from './hash';
+import { checkHealth } from './health';
+import { requestLog } from './middleware/request-log';
 import { brainConfig, featureFlags, recommendations, speech, transcriber, waitlist } from './services';
 import { adminRoutes } from './admin/routes';
 
-const app = new Hono();
+const app = new Hono<{ Variables: RequestIdVariables }>();
 
-app.use('*', logger());
+// requestId first — everything downstream, including the logger and the error
+// handler, reads the id it sets. It also echoes it as X-Request-Id, so the id
+// in a bug report matches the id in CloudWatch.
+app.use('*', requestId());
+app.use('*', requestLog);
 app.use('*', secureHeaders());
 app.use(
   '/api/*',
@@ -36,8 +42,12 @@ app.use(
 
 app.onError((err, c) => {
   if (err instanceof HTTPException) return err.getResponse();
-  console.error('Unhandled error:', err);
-  return c.json({ error: 'Something went wrong. Please try again.' }, 500);
+  // The id goes to both sides: the member can quote it, and it's the key that
+  // finds this stack trace among everything else in the log group.
+  const reqId = c.get('requestId');
+  console.error(JSON.stringify({ reqId, path: c.req.path, error: String(err) }));
+  console.error(err);
+  return c.json({ error: 'Something went wrong. Please try again.', reqId }, 500);
 });
 
 /**
@@ -170,7 +180,12 @@ app.get(
  * `/stats` is registered before `/:code` so it isn't swallowed by the param route.
  */
 const routes = app
-  .get('/health', (c) => c.json({ ok: true as const }))
+  // 503 when the DB is unreachable, so the ALB drains the task and the ECS
+  // circuit breaker can actually catch a broken release. See health.ts.
+  .get('/health', async (c) => {
+    const report = await checkHealth();
+    return c.json(report, report.ok ? 200 : 503);
+  })
   .post(
     '/api/waitlist',
     rateLimit({ windowMs: 60_000, max: 10 }),

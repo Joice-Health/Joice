@@ -74,3 +74,8 @@ output "github_repo_variables" {
     CLERK_PUBLISHABLE_KEY=${var.clerk_publishable_key != "" ? var.clerk_publishable_key : "<set clerk_publishable_key and re-apply>"}
   EOT
 }
+
+output "alerts_topic_arn" {
+  description = "SNS topic alarms publish to. Empty until alert_email is set — see README § Alerting."
+  value       = local.alerting ? aws_sns_topic.alerts[0].arn : ""
+}

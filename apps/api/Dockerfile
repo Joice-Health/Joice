@@ -27,6 +27,11 @@ ENV NODE_ENV=production
 # Copy the whole installed tree so workspace-local node_modules are present too.
 COPY --from=deps /app ./
 COPY . .
+# Which commit this image is. /health reports it, so you can tell at a glance
+# whether a task is running the build you think it is. Last, so a new SHA
+# doesn't invalidate any layer above it.
+ARG BUILD_SHA=dev
+ENV BUILD_SHA=$BUILD_SHA
 EXPOSE 4000
 # Apply migrations, then start the API.
 CMD ["sh", "-c", "bun packages/db/src/migrate.ts && bun apps/api/src/index.ts"]

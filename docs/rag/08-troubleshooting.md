@@ -2,6 +2,27 @@
 
 Symptom → cause → fix, roughly in the order you'll hit them.
 
+## Start here: turn a report into a log line
+
+Every response carries an `X-Request-Id` header, and a 500 puts the same value
+in its body as `reqId`. That id appears on every log line for that request, so
+a member's "it broke around 2pm" becomes one exact query:
+
+```bash
+# Prod
+aws logs filter-log-events --log-group-name /ecs/joice-api \
+  --filter-pattern '{ $.reqId = "PASTE-THE-ID" }'
+
+# Local
+docker compose logs api | grep PASTE-THE-ID
+```
+
+Logs are one JSON object per line (`reqId`, `method`, `path`, `status`, `ms`) —
+never bodies or query strings, since request bodies here are member questions.
+`GET /health` tells you which build is answering (`sha`) and whether that task
+can reach the database (`db`), which is the first thing to check when behavior
+differs between requests: you may be hitting two different tasks.
+
 ## Local stack
 
 | Symptom | Likely cause | Fix |

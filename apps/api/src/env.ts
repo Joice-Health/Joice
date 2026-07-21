@@ -30,6 +30,11 @@ const envSchema = z.object({
   BEDROCK_REGION: z.string().default('us-east-1'),
   /** Polly neural voice for spoken answers. */
   POLLY_VOICE_ID: z.string().default('Ruth'),
+  /**
+   * Git SHA of the image, baked in at build time and reported by /health.
+   * "dev" locally, where the running code is whatever is bind-mounted.
+   */
+  BUILD_SHA: z.string().default('dev'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 });
 

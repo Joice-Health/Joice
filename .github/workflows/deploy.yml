@@ -17,7 +17,14 @@ env:
   AWS_REGION: ${{ vars.AWS_REGION }}
 
 jobs:
+  # Nothing ships without a green type-check, lint and test run. The api image
+  # never type-checks during its own build, so without this gate a type error
+  # deploys cleanly.
+  checks:
+    uses: ./.github/workflows/ci.yml
+
   build-and-deploy:
+    needs: checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -63,6 +70,8 @@ jobs:
           target: release
           push: true
           platforms: linux/amd64
+          build-args: |
+            BUILD_SHA=${{ github.sha }}
           tags: |
             ${{ vars.ECR_API }}:latest
             ${{ vars.ECR_API }}:${{ github.sha }}

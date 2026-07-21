@@ -34,10 +34,48 @@ GitHub → repo → Settings → Secrets and variables → Actions → **Variabl
 Push to `main` (or run the **Deploy to AWS** workflow manually) — it builds both
 images, pushes to ECR, and rolls the services with zero downtime.
 
+## Alerting (`alarms.tf`)
+
+Off by default. Set `alert_email` in `terraform.tfvars` and apply; everything in
+`alarms.tf` is `count`-gated on that variable, so an empty value creates nothing.
+
+```hcl
+alert_email = "you@example.com"
+```
+
+```bash
+terraform plan -out=alarms.plan   # expect: 1 SNS topic, 1 subscription, 3 alarms
+terraform apply alarms.plan
+```
+
+**Then confirm the subscription** — AWS emails a link, and until it's clicked the
+subscription sits in `PendingConfirmation` and delivers nothing. Verify with:
+
+```bash
+aws sns list-subscriptions-by-topic \
+  --topic-arn "$(terraform output -raw alerts_topic_arn)" \
+  --query 'Subscriptions[].[Protocol,Endpoint,SubscriptionArn]' --output table
+```
+
+| Alarm | Fires when | What it means |
+|---|---|---|
+| `joice-api-5xx` | >5 target 5xx in 5 min | The app is throwing. Grab a `reqId` from `/ecs/joice-api` and search the log group for it |
+| `joice-api-unhealthy-tasks` | any unhealthy target for 2 min | Tasks fail `/health` — the app is broken *or* it can't reach RDS. Two periods so a rolling deploy's drain doesn't page |
+| `joice-rds-free-storage` | free storage <20% | Growing RDS storage is rate-limited, so this has to fire with room to act, not at 0 |
+
+Each also sends an OK notification, so a resolved incident closes itself out.
+
 ## Day-2 notes
 
-- **Deploys:** every push to `main`. Images are tagged `:latest` + `:<sha>`;
-  task definitions point at `:latest` and CI forces a new deployment.
+- **Deploys:** every push to `main`, **gated on CI** — `.github/workflows/ci.yml`
+  (type-check, lint, test) is called by `deploy.yml` as a `needs:` dependency, so
+  a red check cannot ship. The api image never type-checks during its own build,
+  so this gate is the only thing catching a type error.
+- **Which build is live:** `GET /health` reports `sha` (baked in as `BUILD_SHA`
+  at image build time) alongside a real database probe. A 503 there is a task
+  that cannot serve, which is what lets the ECS circuit breaker roll back.
+- **Images** are tagged `:latest` + `:<sha>`; task definitions point at `:latest`
+  and CI forces a new deployment.
   (Phase-1 upgrade: pin-by-digest task definition renders.)
 - **State is local** (`terraform.tfstate`, gitignored, contains the DB password).
   Before collaborators/CI applies: create a versioned S3 bucket, uncomment the
