@@ -28,8 +28,6 @@ interface DisplayMessage {
 /** Schema cap on the API: at most 20 messages per request. */
 const MAX_HISTORY = 20;
 
-/** What Polly reads aloud — footnote markers are noise when spoken. */
-const speakable = (text: string) => text.replace(/\[\d+\]/g, '').replace(/\s{2,}/g, ' ').trim();
 
 function SpeakerIcon({ className }: { className?: string }) {
   return (
@@ -165,27 +163,33 @@ export function PeptideChat() {
       });
     };
 
+    // Voice question → spoken answer (typed questions stay text-only). Speech
+    // is fed sentence-by-sentence as the text arrives, so it starts talking
+    // almost immediately instead of after the whole answer is written.
+    if (opts.viaVoice) await speaker.startStream(`msg-${assistantIndex}`);
+
     try {
       for await (const event of streamPeptideRecommendation(client, history)) {
         if (event.type === 'delta') {
           updateAssistant((m) => ({ ...m, content: m.content + event.text }));
+          if (opts.viaVoice) speaker.pushText(event.text);
         } else if (event.type === 'complete') {
           updateAssistant({
             content: event.recommendation.answer,
             citations: event.recommendation.citations,
           });
-          // Voice question → spoken answer (typed questions stay text-only).
-          if (opts.viaVoice) {
-            void speaker.speak(speakable(event.recommendation.answer), `msg-${assistantIndex}`);
-          }
+          if (opts.viaVoice) speaker.endStream();
         } else {
           updateAssistant({ content: event.error, error: true });
+          if (opts.viaVoice) speaker.stop();
         }
         scrollToEnd();
       }
     } catch {
       updateAssistant({ content: 'Something went wrong. Please try again.', error: true });
+      if (opts.viaVoice) speaker.stop();
     } finally {
+      if (opts.viaVoice) speaker.endStream(); // no-op if already ended
       setPending(false);
     }
   }
@@ -373,7 +377,7 @@ export function PeptideChat() {
                         onClick={() =>
                           isSpeaking
                             ? speaker.stop()
-                            : void speaker.speak(speakable(message.content), messageId)
+                            : void speaker.speak(message.content, messageId)
                         }
                         aria-label={isSpeaking ? 'Stop reading answer' : 'Read answer aloud'}
                         className="rounded-full p-1.5 text-muted transition-colors hover:bg-brand-400/15 hover:text-[var(--dawn-ember-deep)] focus-visible:ring-2 focus-visible:ring-brand-500 outline-none"

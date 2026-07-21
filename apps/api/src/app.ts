@@ -193,7 +193,10 @@ const routes = app
   })
   .post(
     '/api/voice/speak',
-    rateLimit({ windowMs: 60_000, max: 10 }),
+    // Answers are synthesized sentence-by-sentence so speech starts while the
+    // text is still streaming — one answer is several small calls, not one big
+    // one. Same total characters (and so the same Polly cost), more requests.
+    rateLimit({ windowMs: 60_000, max: 60 }),
     zValidator('json', speakRequestSchema),
     async (c) => {
       const { text } = c.req.valid('json');

@@ -280,6 +280,16 @@ sequenceDiagram
 - **Speak-back policy**: voice-asked questions get a spoken answer
   automatically; typed questions stay silent; every assistant message has a
   play/stop button.
+- **Speech starts while the answer is still being written.** Text deltas are
+  cut into sentences as they stream in, each is synthesized the moment it's
+  complete, and the clips are scheduled back-to-back on the audio clock
+  (gapless). Measured on a 1,560-character answer: speech begins at **1.8s**
+  instead of 3.8s, and the gap grows with answer length. Polly synthesis
+  itself is ~0.4s regardless of chunk size — the old delay was almost entirely
+  waiting for generation to finish. Sentence detection requires whitespace
+  after the `.`, which is what keeps "2.5 mg" from being split mid-dose, and
+  markdown is stripped before anything is read aloud so asterisks aren't
+  spoken.
 - **The visualizer is real**: a canvas fed by `AnalyserNode.getByteFrequencyData`
   on the actual audio graph — mic input while recording, Polly playback while
   the AI talks. Color inherits `currentColor` (design tokens); honors
