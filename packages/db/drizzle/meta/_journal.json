@@ -29,6 +29,13 @@
       "when": 1783971383201,
       "tag": "0003_clear_shadowcat",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1784669886527,
+      "tag": "0004_sticky_vapor",
+      "breakpoints": true
     }
   ]
 }

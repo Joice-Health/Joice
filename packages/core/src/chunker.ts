@@ -112,19 +112,61 @@ export function chunkMarkdown(raw: string): ChunkedDocument {
   return { metadata, chunks };
 }
 
+/**
+ * Break a run that has no blank lines in it. Prefers a line break, then a
+ * sentence, then a word — a hard character cut only if the text offers nothing
+ * at all. Without this, a section with no paragraph breaks stayed whole: a long
+ * markdown table (blank-line-free by definition) became a single chunk that
+ * exceeded Titan's input limit, and the embed call failed the entire file.
+ */
+function splitLongRun(text: string, max: number): string[] {
+  const pieces: string[] = [];
+  let rest = text;
+  while (rest.length > max) {
+    const window = rest.slice(0, max);
+    // Strictly in preference order, not "whichever falls latest" — a word break
+    // is available almost everywhere, so taking the furthest one would always
+    // win and cut table rows and list items in half. Only a break in the back
+    // half counts, or the pieces come out lopsided.
+    const candidates: Array<[number, number]> = [
+      [window.lastIndexOf('\n'), 1],
+      [window.lastIndexOf('. '), 2],
+      [window.lastIndexOf(' '), 1],
+    ];
+    const found = candidates.find(([at]) => at > max / 2);
+    const cut = found ? found[0] + found[1] : max;
+    pieces.push(rest.slice(0, cut).trim());
+    rest = rest.slice(cut);
+  }
+  if (rest.trim()) pieces.push(rest.trim());
+  return pieces;
+}
+
 function splitOversized(content: string): string[] {
   if (content.length <= MAX_SECTION_CHARS) return [content];
 
   const pieces: string[] = [];
   let buffer = '';
+  const flush = () => {
+    if (buffer.trim()) pieces.push(buffer);
+    buffer = '';
+  };
+
   for (const paragraph of content.split(/\n{2,}/)) {
+    // A single paragraph can exceed the cap on its own — the table case. Emit
+    // what's buffered, then break the paragraph down rather than carrying it.
+    if (paragraph.length > MAX_SECTION_CHARS) {
+      flush();
+      pieces.push(...splitLongRun(paragraph, MAX_SECTION_CHARS));
+      continue;
+    }
     if (buffer && buffer.length + paragraph.length + 2 > MAX_SECTION_CHARS) {
-      pieces.push(buffer);
+      flush();
       buffer = paragraph;
     } else {
       buffer = buffer ? `${buffer}\n\n${paragraph}` : paragraph;
     }
   }
-  if (buffer.trim()) pieces.push(buffer);
+  flush();
   return pieces;
 }

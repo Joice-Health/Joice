@@ -1,7 +1,8 @@
-import { cosineDistance, noteChunks, sql, type Database } from '@joice/db';
+import { asc, cosineDistance, noteChunks, sql, type Database } from '@joice/db';
 import type { EmbeddingClient, GenerationClient } from './bedrock';
 import type { ResolvedBrainConfig } from './admin/schemas';
 import { buildSystemPrompt } from './prompt';
+import { citedIndexes, stripCitationMarkers } from './citations';
 import type { ChatMessage, Citation, PeptideRecommendation } from './schemas';
 
 /**
@@ -106,7 +107,8 @@ export function createRecommendationService(
     { topK, similarityFloor }: { topK: number; similarityFloor: number },
   ): Promise<RetrievedChunk[]> {
     const queryVector = await embeddings.embed(question);
-    const similarity = sql<number>`1 - (${cosineDistance(noteChunks.embedding, queryVector)})`;
+    const distance = cosineDistance(noteChunks.embedding, queryVector);
+    const similarity = sql<number>`1 - (${distance})`;
 
     const rows = await db
       .select({
@@ -116,7 +118,12 @@ export function createRecommendationService(
         similarity,
       })
       .from(noteChunks)
-      .orderBy(sql`${similarity} desc`)
+      // Order by the raw distance, ascending. This must stay the bare operator
+      // expression: `ORDER BY 1 - (a <=> b) DESC` is mathematically identical
+      // but pgvector's HNSW index cannot serve it, so it fell back to scanning
+      // every chunk (265ms over 31k rows, versus 20ms on the index). Similarity
+      // stays as a projection, which is all the floor below needs.
+      .orderBy(asc(distance))
       .limit(topK);
 
     return rows.filter((row) => row.similarity >= similarityFloor);
@@ -160,7 +167,7 @@ export function createRecommendationService(
   ): PeptideRecommendation {
     if (!config.showCitations) {
       // Defensive: strip any markers the model emitted despite instructions.
-      return { answer: answer.replace(/\[\d+\]/g, '').replace(/ {2,}/g, ' ').trim(), citations: [] };
+      return { answer: stripCitationMarkers(answer), citations: [] };
     }
     return { answer: answer.trim(), citations: parseCitations(answer, chunks) };
   }
@@ -223,12 +230,9 @@ function documentTitle(chunk: RetrievedChunk): string {
  */
 export function parseCitations(answer: string, chunks: RetrievedChunk[]): Citation[] {
   const citations: Citation[] = [];
-  const seen = new Set<number>();
-  for (const match of answer.matchAll(/\[(\d+)\]/g)) {
-    const n = Number(match[1]);
+  for (const n of citedIndexes(answer)) {
     const chunk = chunks[n - 1];
-    if (!chunk || seen.has(n)) continue;
-    seen.add(n);
+    if (!chunk) continue;
     citations.push({
       index: n,
       sourcePath: chunk.sourcePath,

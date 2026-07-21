@@ -11,6 +11,7 @@ import {
   joinWaitlistSchema,
   referralCodeParamSchema,
   speakRequestSchema,
+  stripCitationMarkers,
   type TranscribeSession,
 } from '@joice/core';
 import type { WSContext } from 'hono/ws';
@@ -244,8 +245,12 @@ const routes = app
     async (c) => {
       const { messages } = c.req.valid('json');
       return streamSSE(c, async (stream) => {
+        // A closed tab should stop costing money. Without this the generation
+        // ran to completion, billed in full, writing to nobody.
+        const aborted = c.req.raw.signal;
         try {
           for await (const event of recommendations.recommendStream(messages)) {
+            if (aborted.aborted || stream.aborted || stream.closed) break;
             if (event.type === 'delta') {
               await stream.writeSSE({ event: 'delta', data: JSON.stringify({ text: event.text }) });
             } else {
@@ -253,6 +258,8 @@ const routes = app
             }
           }
         } catch (err) {
+          if (aborted.aborted || stream.aborted) return; // the client left; not an error
+          console.error(JSON.stringify({ reqId: c.get('requestId'), error: String(err) }));
           console.error('RAG stream error:', err);
           await stream.writeSSE({
             event: 'error',
@@ -282,7 +289,7 @@ const routes = app
     zValidator('json', speakRequestSchema),
     async (c) => {
       const { text } = c.req.valid('json');
-      const spoken = text.replace(/\[\d+\]/g, '').replace(/\s{2,}/g, ' ').trim();
+      const spoken = stripCitationMarkers(text);
       const audio = await speech.synthesize(spoken);
       c.header('Content-Type', 'audio/mpeg');
       return c.body(audio.buffer as ArrayBuffer);

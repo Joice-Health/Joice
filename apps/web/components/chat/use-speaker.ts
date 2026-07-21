@@ -2,6 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiUrl } from '@/lib/env';
+import { forSpeech, takeChunk } from './speech-text';
+
+// Re-exported so existing importers keep working; the implementations moved to
+// speech-text.ts, which has no React imports and so can be unit-tested.
+export { forSpeech, takeChunk };
 
 /**
  * Speaks answers *while they are still being written*.
@@ -15,53 +20,6 @@ import { apiUrl } from '@/lib/env';
  * Raw fetch is the sanctioned exception here (like SSE) — audio bytes don't
  * flow through the typed hooks.
  */
-
-/** The first clip is kept short so speech starts fast; later ones batch up. */
-const FIRST_CHUNK_MIN = 24;
-const CHUNK_MIN = 140;
-
-/**
- * A sentence ends at .!? followed by whitespace and a capital or digit.
- * Requiring whitespace after the period is what keeps "2.5 mg" intact, which
- * matters a lot in dosing answers.
- */
-const SENTENCE_END = /[.!?]["')\]]*\s+(?=[A-Z0-9])/;
-
-/** Markdown is for the eye — strip it before anything is read aloud. */
-export function forSpeech(text: string): string {
-  return text
-    .replace(/\[\d+\]/g, '') // citation markers
-    .replace(/```[\s\S]*?```/g, '')
-    .replace(/`([^`]+)`/g, '$1')
-    .replace(/^#{1,6}\s+/gm, '')
-    .replace(/\*\*([^*]+)\*\*/g, '$1')
-    .replace(/\*([^*]+)\*/g, '$1')
-    .replace(/^\s*[-*]\s+/gm, '')
-    .replace(/^\s*\d+\.\s+/gm, '')
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    .replace(/[ \t]{2,}/g, ' ')
-    .replace(/\s+([.,;:!?])/g, '$1') // stripping [1] leaves a space before the period
-    .trim();
-}
-
-/** Pull the next speakable chunk out of the buffer, or null if it's not ready. */
-export function takeChunk(buffer: string, isFirst: boolean, flush: boolean): [string, string] | null {
-  const text = buffer.trimStart();
-  if (!text) return null;
-  if (flush) return [text, ''];
-
-  const min = isFirst ? FIRST_CHUNK_MIN : CHUNK_MIN;
-  let searchFrom = 0;
-  while (searchFrom < text.length) {
-    const rest = text.slice(searchFrom);
-    const match = SENTENCE_END.exec(rest);
-    if (!match) return null;
-    const end = searchFrom + match.index + match[0].length;
-    if (end >= min) return [text.slice(0, end).trim(), text.slice(end)];
-    searchFrom = end;
-  }
-  return null;
-}
 
 export function useSpeaker() {
   const [speakingId, setSpeakingId] = useState<string | null>(null);
@@ -110,7 +68,11 @@ export function useSpeaker() {
     bufferRef.current = '';
     nextIndexRef.current = 0;
     playIndexRef.current = 0;
-    pendingRef.current = 0;
+    // pendingRef is deliberately NOT reset. The abort above makes every
+    // in-flight request settle, and each one decrements in its `finally` —
+    // zeroing here made those decrements drive the count negative, after which
+    // `pendingRef.current > 0` read false with work still outstanding and the
+    // speaking indicator cleared in the middle of a sentence.
     endedRef.current = true;
     nextStartRef.current = 0;
     setSpeakingId(null);
@@ -178,7 +140,12 @@ export function useSpeaker() {
         if (generation !== generationRef.current) return; // superseded
         readyRef.current.set(index, decoded);
         drain();
-      } catch {
+      } catch (error) {
+        // Swallowing this is how an entire answer went unspoken with no trace:
+        // an oversized chunk 400'd and the silence looked like a design choice.
+        if ((error as Error)?.name !== 'AbortError') {
+          console.warn('speak: chunk failed, skipping it', error);
+        }
         // A dropped clip shouldn't strand the rest: let the queue move past it.
         if (generation === generationRef.current) {
           playIndexRef.current = Math.max(playIndexRef.current, index + 1);

@@ -62,8 +62,17 @@ export type ChatStreamEvent =
 export async function* streamPeptideRecommendation(
   client: ApiClient,
   messages: ChatMessage[],
+  /**
+   * Abort the request. Pass this whenever the answer can stop mattering — the
+   * member navigating away, asking something else, or hitting stop. Generation
+   * is billed per token whether or not anyone is still reading.
+   */
+  signal?: AbortSignal,
 ): AsyncGenerator<ChatStreamEvent> {
-  const res = await client.api['peptide-recommendations'].stream.$post({ json: { messages } });
+  const res = await client.api['peptide-recommendations'].stream.$post(
+    { json: { messages } },
+    { init: { signal } },
+  );
   if (!res.ok || !res.body) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
     yield { type: 'error', error: body.error ?? `Request failed (${res.status})` };
@@ -74,31 +83,37 @@ export async function* streamPeptideRecommendation(
   const decoder = new TextDecoder();
   let buffer = '';
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
 
-    // SSE frames are separated by a blank line.
-    const frames = buffer.split(/\r?\n\r?\n/);
-    buffer = frames.pop() ?? '';
+      // SSE frames are separated by a blank line.
+      const frames = buffer.split(/\r?\n\r?\n/);
+      buffer = frames.pop() ?? '';
 
-    for (const frame of frames) {
-      let event = 'message';
-      let data = '';
-      for (const line of frame.split(/\r?\n/)) {
-        if (line.startsWith('event:')) event = line.slice(6).trim();
-        else if (line.startsWith('data:')) data += line.slice(5).trim();
-      }
-      if (!data) continue;
+      for (const frame of frames) {
+        let event = 'message';
+        let data = '';
+        for (const line of frame.split(/\r?\n/)) {
+          if (line.startsWith('event:')) event = line.slice(6).trim();
+          else if (line.startsWith('data:')) data += line.slice(5).trim();
+        }
+        if (!data) continue;
 
-      if (event === 'delta') {
-        yield { type: 'delta', text: (JSON.parse(data) as { text: string }).text };
-      } else if (event === 'complete') {
-        yield { type: 'complete', recommendation: JSON.parse(data) as PeptideRecommendation };
-      } else if (event === 'error') {
-        yield { type: 'error', error: (JSON.parse(data) as { error: string }).error };
+        if (event === 'delta') {
+          yield { type: 'delta', text: (JSON.parse(data) as { text: string }).text };
+        } else if (event === 'complete') {
+          yield { type: 'complete', recommendation: JSON.parse(data) as PeptideRecommendation };
+        } else if (event === 'error') {
+          yield { type: 'error', error: (JSON.parse(data) as { error: string }).error };
+        }
       }
     }
+  } finally {
+    // Runs on early `break`/`return` by the consumer too. Without it the body
+    // stayed open and the server kept generating an answer nobody would read.
+    await reader.cancel().catch(() => {});
   }
 }

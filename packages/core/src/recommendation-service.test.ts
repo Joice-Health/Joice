@@ -1,4 +1,6 @@
 import { describe, expect, test } from 'bun:test';
+import type { SQL } from 'drizzle-orm';
+import { PgDialect } from 'drizzle-orm/pg-core';
 import type { Database } from '@joice/db';
 import { DEFAULT_BRAIN_SETTINGS, type ResolvedBrainConfig } from './admin/schemas';
 import type { EmbeddingClient, GenerationClient, GenerationRequest } from './bedrock';
@@ -9,12 +11,19 @@ import {
   type RetrievedChunk,
 } from './recommendation-service';
 
-/** Stub covering the single select().from().orderBy().limit() chain retrieve() makes. */
-function stubDb(rows: unknown[]) {
+/**
+ * Stub covering the single select().from().orderBy().limit() chain retrieve()
+ * makes. `captured.orderBy` records the ordering expression so a test can
+ * assert it stayed index-usable — see the "retrieval ordering" suite.
+ */
+function stubDb(rows: unknown[], captured: { orderBy?: unknown } = {}) {
   const db = {
     select: () => ({
       from: () => ({
-        orderBy: () => ({ limit: () => Promise.resolve(rows) }),
+        orderBy: (expr: unknown) => {
+          captured.orderBy = expr;
+          return { limit: () => Promise.resolve(rows) };
+        },
       }),
     }),
   };
@@ -136,12 +145,14 @@ describe('recommend', () => {
   test('showCitations=false strips stray markers and returns no citations', async () => {
     const service = createRecommendationService(stubDb([chunk()]), {
       embeddings: stubEmbeddings,
-      generation: stubGeneration('Protocols use 250-500mcg daily [1]. Take with food [1].'),
+      generation: stubGeneration('Protocols use 250-500mcg daily [1]. Take with food [1, 2].'),
       getConfig: configOf({ showCitations: false }),
     });
 
     const result = await service.recommend([{ role: 'user', content: 'Dosing?' }]);
-    expect(result.answer).toBe('Protocols use 250-500mcg daily . Take with food .');
+    // No space stranded before the period, and grouped markers go too — the
+    // old stripper matched only [1] and left " ." behind.
+    expect(result.answer).toBe('Protocols use 250-500mcg daily. Take with food.');
     expect(result.citations).toEqual([]);
   });
 });
@@ -305,5 +316,30 @@ describe('parseCitations', () => {
     const citations = parseCitations('Claim [1].', [long]);
     expect(citations[0]!.citedText).toHaveLength(201); // 200 chars + ellipsis
     expect(citations[0]!.citedText.endsWith('…')).toBe(true);
+  });
+});
+
+describe('retrieval ordering', () => {
+  /**
+   * The one property that decides whether every question costs 20ms or 265ms.
+   * pgvector's HNSW index can only serve an ORDER BY that is the bare distance
+   * operator; `ORDER BY 1 - (a <=> b) DESC` returns the identical rows in the
+   * identical order and silently falls back to scanning the whole corpus.
+   * Nothing about the answers changes, which is exactly why this needs a test.
+   */
+  test('orders by the raw distance operator, so the HNSW index applies', async () => {
+    const captured: { orderBy?: unknown } = {};
+    const service = createRecommendationService(stubDb([chunk()], captured), {
+      embeddings: stubEmbeddings,
+      generation: stubGeneration('An answer [1].'),
+      getConfig: configOf(),
+    });
+    await service.recommend([{ role: 'user', content: 'bpc-157 dosing' }]);
+
+    const rendered = new PgDialect().sqlToQuery(captured.orderBy as SQL).sql;
+    expect(rendered).toBe('"note_chunks"."embedding" <=> $1 asc');
+    // Guard the specific regression rather than only the happy shape.
+    expect(rendered).not.toContain('1 -');
+    expect(rendered).not.toContain('desc');
   });
 });

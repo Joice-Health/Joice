@@ -65,3 +65,41 @@ describe('chunkMarkdown', () => {
     expect(chunks[0]!.tokenCount).toBe(Math.ceil(chunks[0]!.content.length / 4));
   });
 });
+
+describe('oversized sections without paragraph breaks', () => {
+  /**
+   * The regression: a markdown table has no blank lines, so the paragraph split
+   * produced one piece the size of the whole table. That single chunk exceeded
+   * Titan's input limit and the embed call failed the entire file — one long
+   * reference table could take a whole document out of the corpus.
+   */
+  test('a long markdown table is split into embeddable chunks', () => {
+    const rows = Array.from(
+      { length: 400 },
+      (_, i) => `| Peptide ${i} | ${i * 10}mcg | daily | see protocol notes for details |`,
+    );
+    const table = ['| Name | Dose | Frequency | Notes |', '|---|---|---|---|', ...rows].join('\n');
+    const { chunks } = chunkMarkdown(`# Dosing reference\n\n${table}`);
+
+    expect(table.length).toBeGreaterThan(6000);
+    expect(chunks.length).toBeGreaterThan(1);
+    for (const chunk of chunks) expect(chunk.content.length).toBeLessThanOrEqual(6000);
+    // Every chunk keeps the breadcrumb, so retrieval still knows what they are.
+    for (const chunk of chunks) expect(chunk.headingPath).toBe('Dosing reference');
+  });
+
+  test('splits on row boundaries rather than mid-row', () => {
+    const rows = Array.from({ length: 400 }, (_, i) => `| Row ${i} | value ${i} | note ${i} |`);
+    const { chunks } = chunkMarkdown(`# T\n\n${rows.join('\n')}`);
+    for (const chunk of chunks) {
+      expect(chunk.content.startsWith('| Row')).toBe(true);
+      expect(chunk.content.endsWith('|')).toBe(true);
+    }
+  });
+
+  test('a single unbroken run is still cut rather than left oversized', () => {
+    const { chunks } = chunkMarkdown(`# X\n\n${'x'.repeat(20_000)}`);
+    expect(chunks.length).toBe(4);
+    for (const chunk of chunks) expect(chunk.content.length).toBeLessThanOrEqual(6000);
+  });
+});

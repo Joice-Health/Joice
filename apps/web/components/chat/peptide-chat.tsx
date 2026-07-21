@@ -1,14 +1,14 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { cn } from '@joice/ui';
 import {
   streamPeptideRecommendation,
   useApiClient,
   useBrainUi,
-  type ChatMessage,
   type Citation,
 } from '@joice/api-client';
+import { buildChatHistory } from '@joice/core/schemas';
 import { apiUrl } from '@/lib/env';
 import { AnswerMarkdown } from './answer-markdown';
 import { useAudioLevel } from './use-audio-level';
@@ -24,9 +24,6 @@ interface DisplayMessage {
   citations?: Citation[];
   error?: boolean;
 }
-
-/** Schema cap on the API: at most 20 messages per request. */
-const MAX_HISTORY = 20;
 
 
 function SpeakerIcon({ className }: { className?: string }) {
@@ -61,13 +58,25 @@ export function PeptideChat() {
   const [voiceHint, setVoiceHint] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  /** Cancels the in-flight answer; see the note in send(). */
+  const askAbortRef = useRef<AbortController | null>(null);
+
+  // Leaving the page must stop the generation, not just stop rendering it.
+  useEffect(() => () => askAbortRef.current?.abort(), []);
 
   const speaker = useSpeaker();
   const live = useLiveTranscript();
   const recorder = useRecorder({
     onChunk: live.push,
     onAudio: (pcm) => void finishVoiceTurn(pcm),
-    onError: (message) => setVoiceHint(message),
+    onError: (message) => {
+      setVoiceHint(message);
+      // toggleMic opens the transcription socket before the mic is granted, so
+      // that live text starts the instant audio does. If the mic is then denied
+      // — or nothing is said — that socket is billing AWS with nobody reading
+      // it. Closing it here covers every way starting can fail.
+      void live.finish();
+    },
   });
 
   /**
@@ -134,22 +143,29 @@ export function PeptideChat() {
     if (!question || pending) return;
     speaker.stop();
 
-    const full: ChatMessage[] = [
-      ...messages
-        .filter((m) => !m.error)
-        .map(({ role, content }): ChatMessage => ({ role, content })),
-      { role: 'user', content: question },
-    ];
-    const history = full.slice(-MAX_HISTORY);
+    // One generation at a time. Aborting the previous one stops Bedrock billing
+    // for an answer that has already been superseded or abandoned.
+    askAbortRef.current?.abort();
+    const abort = new AbortController();
+    askAbortRef.current = abort;
+
+    // Built from completed exchanges, not by trimming the visible thread —
+    // see buildChatHistory for the two shapes that broke Bedrock.
+    const history = buildChatHistory(messages, question);
 
     setInput('');
     setVoiceHint(null);
     setPending(true);
-    let assistantIndex = 0;
-    setMessages((prev) => {
-      assistantIndex = prev.length + 1;
-      return [...prev, { role: 'user', content: question }, { role: 'assistant', content: '' }];
-    });
+    // Computed here, not inside the updater: React may not have run the updater
+    // yet when speaker.startStream reads this below, and a stale 0 meant the
+    // stop button and speaking indicator attached to the wrong message and so
+    // never appeared on a voice answer.
+    const assistantIndex = messages.length + 1;
+    setMessages((prev) => [
+      ...prev,
+      { role: 'user', content: question },
+      { role: 'assistant', content: '' },
+    ]);
     scrollToEnd();
 
     const updateAssistant = (
@@ -169,7 +185,7 @@ export function PeptideChat() {
     if (opts.viaVoice) await speaker.startStream(`msg-${assistantIndex}`);
 
     try {
-      for await (const event of streamPeptideRecommendation(client, history)) {
+      for await (const event of streamPeptideRecommendation(client, history, abort.signal)) {
         if (event.type === 'delta') {
           updateAssistant((m) => ({ ...m, content: m.content + event.text }));
           if (opts.viaVoice) speaker.pushText(event.text);
@@ -185,10 +201,15 @@ export function PeptideChat() {
         }
         scrollToEnd();
       }
-    } catch {
-      updateAssistant({ content: 'Something went wrong. Please try again.', error: true });
+    } catch (error) {
+      // An abort is us cancelling deliberately — leave the message alone.
+      if ((error as Error)?.name !== 'AbortError') {
+        console.warn('ask: stream failed', error);
+        updateAssistant({ content: 'Something went wrong. Please try again.', error: true });
+      }
       if (opts.viaVoice) speaker.stop();
     } finally {
+      if (askAbortRef.current === abort) askAbortRef.current = null;
       if (opts.viaVoice) speaker.endStream(); // no-op if already ended
       setPending(false);
     }

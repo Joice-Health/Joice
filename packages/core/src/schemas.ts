@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { alternatesFromUser, MAX_HISTORY_TURNS } from './conversation';
 
 /**
  * Shared contracts used by both the API (request validation) and the web app
@@ -72,9 +73,16 @@ export const chatRequestSchema = z.object({
   messages: z
     .array(chatMessageSchema)
     .min(1)
-    .max(20, 'Conversation is too long — start a new one')
+    // MAX_HISTORY_TURNS exchanges plus the new question.
+    .max(MAX_HISTORY_TURNS * 2 + 1, 'Conversation is too long — start a new one')
     .refine((msgs) => msgs[msgs.length - 1]!.role === 'user', {
       message: 'The last message must be from the user',
+    })
+    // Bedrock's Converse API rejects anything that doesn't start with a user
+    // turn and alternate. Catching it here makes a malformed history a 400 that
+    // says so, instead of a 500 surfacing from three layers down.
+    .refine(alternatesFromUser, {
+      message: 'Messages must start with the user and alternate user/assistant',
     }),
 });
 
@@ -126,3 +134,13 @@ export const BRAIN_UI_DEFAULTS: BrainUi = {
   disclaimer: 'Educational information from our clinical notes — not medical advice',
   showCitations: true,
 };
+
+// Re-exported here (not just from the barrel) because the web app can only
+// import from this subpath — the barrel pulls in the Postgres driver.
+export { citedIndexes, stripCitationMarkers } from './citations';
+export {
+  alternatesFromUser,
+  buildChatHistory,
+  MAX_HISTORY_TURNS,
+  type HistoryMessage,
+} from './conversation';

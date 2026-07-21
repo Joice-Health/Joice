@@ -235,6 +235,13 @@ export const noteChunks = pgTable(
   (table) => [
     uniqueIndex('note_chunks_source_path_chunk_index_unique').on(table.sourcePath, table.chunkIndex),
     index('note_chunks_source_path_idx').on(table.sourcePath),
+    // Retrieval's whole performance story. Declared here to match migration
+    // 0003, which created it in raw SQL — undeclared, the next `db:generate`
+    // would have emitted a DROP and silently returned every question to a
+    // full scan of the corpus. Only an `ORDER BY embedding <=> $1` can use it.
+    index('note_chunks_embedding_hnsw_idx')
+      .using('hnsw', table.embedding.op('vector_cosine_ops'))
+      .with({ m: 16, ef_construction: 64 }),
   ],
 );
 
