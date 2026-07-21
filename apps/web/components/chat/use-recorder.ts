@@ -43,6 +43,45 @@ class CaptureProcessor extends AudioWorkletProcessor {
 registerProcessor('joice-capture', CaptureProcessor);
 `;
 
+/**
+ * Stateful 16kHz downsampler for the live stream. It carries the fractional
+ * read position across calls, so consecutive chunks join seamlessly — resampling
+ * each chunk independently would put a small discontinuity at every boundary,
+ * several times a second, right in the middle of speech.
+ */
+function createDownsampler(inputRate: number) {
+  const ratio = inputRate / TARGET_SAMPLE_RATE;
+  let carry = new Float32Array(0);
+  let position = 0;
+
+  return function push(frame: Float32Array): Uint8Array | null {
+    const merged = new Float32Array(carry.length + frame.length);
+    merged.set(carry);
+    merged.set(frame, carry.length);
+    carry = merged;
+
+    const available = Math.floor((carry.length - 1 - position) / ratio);
+    if (available <= 0) return null;
+
+    const out = new Uint8Array(available * 2);
+    const view = new DataView(out.buffer);
+    for (let i = 0; i < available; i++) {
+      const pos = position + i * ratio;
+      const left = Math.floor(pos);
+      const t = pos - left;
+      const sample = (carry[left] ?? 0) * (1 - t) + (carry[left + 1] ?? 0) * t;
+      const clamped = Math.max(-1, Math.min(1, sample));
+      view.setInt16(i * 2, clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff, true);
+    }
+
+    const consumed = position + available * ratio;
+    const keepFrom = Math.floor(consumed);
+    carry = carry.slice(keepFrom);
+    position = consumed - keepFrom;
+    return out;
+  };
+}
+
 function downsampleToPcm16(chunks: Float32Array[], inputRate: number): Uint8Array {
   let length = 0;
   for (const chunk of chunks) length += chunk.length;
@@ -69,13 +108,18 @@ function downsampleToPcm16(chunks: Float32Array[], inputRate: number): Uint8Arra
   return out;
 }
 
+/** ~200ms of 16kHz PCM16 per streamed chunk — steady partials without chatter. */
+const STREAM_CHUNK_BYTES = 6_400;
+
 export interface UseRecorderOptions {
   /** Called with 16kHz mono PCM16 when recording ends (auto or manual). */
   onAudio: (pcm: Uint8Array) => void;
+  /** Called continuously while recording, for live transcription. */
+  onChunk?: (pcm: Uint8Array) => void;
   onError: (message: string) => void;
 }
 
-export function useRecorder({ onAudio, onError }: UseRecorderOptions) {
+export function useRecorder({ onAudio, onChunk, onError }: UseRecorderOptions) {
   /** Mic tapped, device still being acquired — shows "connecting" feedback. */
   const [arming, setArming] = useState(false);
   const [recording, setRecording] = useState(false);
@@ -97,8 +141,8 @@ export function useRecorder({ onAudio, onError }: UseRecorderOptions) {
     silenceSince: number | null;
     cleanup: () => void;
   } | null>(null);
-  const callbacksRef = useRef({ onAudio, onError });
-  callbacksRef.current = { onAudio, onError };
+  const callbacksRef = useRef({ onAudio, onChunk, onError });
+  callbacksRef.current = { onAudio, onChunk, onError };
 
   /** Fully release the mic (browser indicator goes dark). */
   const releaseMic = useCallback(() => {
@@ -209,9 +253,35 @@ export function useRecorder({ onAudio, onError }: UseRecorderOptions) {
       };
       sessionRef.current = session;
 
+      // Live path: downsample continuously and hand off ~200ms at a time.
+      const downsample = createDownsampler(context.sampleRate);
+      let streamBuffer: Uint8Array[] = [];
+      let streamBytes = 0;
+      const flushStream = (force = false) => {
+        if (streamBytes === 0 || (!force && streamBytes < STREAM_CHUNK_BYTES)) return;
+        const merged = new Uint8Array(streamBytes);
+        let offset = 0;
+        for (const part of streamBuffer) {
+          merged.set(part, offset);
+          offset += part.length;
+        }
+        streamBuffer = [];
+        streamBytes = 0;
+        callbacksRef.current.onChunk?.(merged);
+      };
+
       const handleFrame = (frame: Float32Array) => {
         if (session.stopped) return;
         session.chunks.push(frame);
+
+        if (callbacksRef.current.onChunk) {
+          const pcm = downsample(frame);
+          if (pcm) {
+            streamBuffer.push(pcm);
+            streamBytes += pcm.length;
+            flushStream();
+          }
+        }
 
         let sum = 0;
         for (let i = 0; i < frame.length; i++) sum += frame[i]! * frame[i]!;
@@ -254,6 +324,7 @@ export function useRecorder({ onAudio, onError }: UseRecorderOptions) {
 
       session.cleanup = () => {
         clearInterval(ticker);
+        flushStream(true); // don't strand the final fraction of a second
         capture.disconnect();
         source.disconnect();
         // Stream stays warm — released by the WARM_MS timer, not here.

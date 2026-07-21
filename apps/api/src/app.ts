@@ -7,11 +7,14 @@ import { HTTPException } from 'hono/http-exception';
 import { zValidator } from '@hono/zod-validator';
 import {
   chatRequestSchema,
+  createTranscribeSession,
   joinWaitlistSchema,
   referralCodeParamSchema,
   speakRequestSchema,
+  type TranscribeSession,
 } from '@joice/core';
-import { allowedOrigins } from './env';
+import { allowedOrigins, env } from './env';
+import { upgradeWebSocket } from './ws';
 import { rateLimit, clientIp } from './middleware/rate-limit';
 import { hashIp } from './hash';
 import { brainConfig, featureFlags, recommendations, speech, transcriber, waitlist } from './services';
@@ -35,6 +38,64 @@ app.onError((err, c) => {
   console.error('Unhandled error:', err);
   return c.json({ error: 'Something went wrong. Please try again.' }, 500);
 });
+
+/**
+ * Live voice transcription. Audio streams up as it is spoken and partial
+ * transcripts stream back, so the text appears while the member is still
+ * talking — the batch POST /api/voice/transcribe below stays as the fallback
+ * for browsers or networks where the socket can't open.
+ *
+ * Deliberately NOT part of the typed route chain: it is never called through
+ * the RPC client, and an upgrade handler has no place in AppType.
+ *
+ * Wire protocol — client → server: binary frames of 16kHz mono PCM16, then
+ * `{"type":"end"}`. Server → client: `{"type":"partial"|"final","text":…}`
+ * and finally `{"type":"done"}`.
+ */
+app.get('/api/voice/stream', rateLimit({ windowMs: 60_000, max: 20 }), upgradeWebSocket(() => {
+  let session: TranscribeSession | null = null;
+  let pump: Promise<void> | null = null;
+
+  return {
+    onOpen(_event, ws) {
+      session = createTranscribeSession({ region: env.BEDROCK_REGION });
+      pump = (async () => {
+        try {
+          for await (const result of session!.results) {
+            ws.send(
+              JSON.stringify({ type: result.isPartial ? 'partial' : 'final', text: result.text }),
+            );
+          }
+          ws.send(JSON.stringify({ type: 'done' }));
+        } catch (error) {
+          console.error('voice stream error:', error);
+          ws.send(JSON.stringify({ type: 'error' }));
+        }
+      })();
+    },
+
+    onMessage(event, ws) {
+      const data = event.data;
+      if (typeof data === 'string') {
+        // Only control messages arrive as text.
+        if (data.includes('"end"')) session?.end();
+        return;
+      }
+      if (data instanceof ArrayBuffer) {
+        session?.write(new Uint8Array(data));
+      } else if (ArrayBuffer.isView(data)) {
+        session?.write(new Uint8Array(data.buffer, data.byteOffset, data.byteLength));
+      }
+      void ws;
+    },
+
+    onClose() {
+      session?.end();
+      session = null;
+      void pump;
+    },
+  };
+}));
 
 /**
  * Routes are defined in a single chain so `typeof routes` carries the full

@@ -12,6 +12,7 @@ import {
 import { apiUrl } from '@/lib/env';
 import { AnswerMarkdown } from './answer-markdown';
 import { useAudioLevel } from './use-audio-level';
+import { useLiveTranscript } from './use-live-transcript';
 import { useRecorder } from './use-recorder';
 import { useSpeaker } from './use-speaker';
 import { VoiceSun } from './voice-sun';
@@ -64,10 +65,26 @@ export function PeptideChat() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const speaker = useSpeaker();
+  const live = useLiveTranscript();
   const recorder = useRecorder({
-    onAudio: (pcm) => void transcribeAndAsk(pcm),
+    onChunk: live.push,
+    onAudio: (pcm) => void finishVoiceTurn(pcm),
     onError: (message) => setVoiceHint(message),
   });
+
+  /**
+   * Recording ended. Prefer the live transcript — it's already complete by the
+   * time the member stops — and only fall back to uploading the whole clip if
+   * the socket never worked.
+   */
+  async function finishVoiceTurn(pcm: Uint8Array) {
+    const streamed = await live.finish();
+    if (streamed) {
+      await send(streamed, { viaVoice: true });
+      return;
+    }
+    await transcribeAndAsk(pcm);
+  }
 
   /**
    * Pressing the mic interrupts the assistant: otherwise its voice keeps
@@ -79,6 +96,7 @@ export function PeptideChat() {
       return;
     }
     speaker.stop();
+    live.open(); // stream audio for live text; falls back silently if it can't
     void recorder.start();
   };
 
@@ -220,7 +238,7 @@ export function PeptideChat() {
         rows={started ? 1 : 2}
         maxLength={2000}
         disabled={transcribing || recorder.recording}
-        placeholder={brainUi.inputPlaceholder}
+        placeholder={recorder.recording && live.interim ? live.interim : brainUi.inputPlaceholder}
         aria-label="Type your question"
         className={cn(
           'min-h-11 flex-1 resize-none bg-transparent text-ink outline-none',
@@ -283,22 +301,29 @@ export function PeptideChat() {
         ) : null}
 
         {!started ? (
-          <div className="mt-5 flex h-9 flex-col items-center gap-2">
+          <div className="mt-5 flex min-h-24 w-full max-w-2xl flex-col items-center gap-3 px-4">
             {recorder.recording ? (
               <VoiceVisualizer
                 analyser={recorder.analyser}
                 className="h-6 w-56 text-[var(--dawn-ember-deep)]"
               />
             ) : null}
-            <p
-              aria-live="polite"
-              className={cn(
-                'font-mono text-[10px] tracking-[0.22em] uppercase',
-                status ? 'text-[var(--dawn-ember-deep)]' : 'text-muted',
-              )}
-            >
-              {status ?? 'Press to speak'}
-            </p>
+            {/* The words as they are spoken. */}
+            {live.interim ? (
+              <p className="max-w-xl text-balance text-lg leading-relaxed text-ink" aria-live="polite">
+                {live.interim}
+              </p>
+            ) : (
+              <p
+                aria-live="polite"
+                className={cn(
+                  'font-mono text-[10px] tracking-[0.22em] uppercase',
+                  status ? 'text-[var(--dawn-ember-deep)]' : 'text-muted',
+                )}
+              >
+                {status ?? 'Press to speak'}
+              </p>
+            )}
           </div>
         ) : null}
       </header>

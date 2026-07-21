@@ -246,7 +246,8 @@ sequenceDiagram
 
 | Endpoint | In | Out | Notes |
 |---|---|---|---|
-| `POST /api/voice/transcribe` | raw 16kHz mono PCM16 body (`application/octet-stream`, ≤2MB ≈ 60s) | `{ "transcript": "..." }` (empty string = nothing recognized) | 10 req/min/IP. Streams into Transcribe; nothing is stored |
+| `GET /api/voice/stream` (WebSocket) | binary frames of 16kHz mono PCM16 as it's captured, then `{"type":"end"}` | `{"type":"partial"\|"final","text":…}` as the member speaks, then `{"type":"done"}` | **The live path.** 20 upgrades/min/IP. Deliberately outside the typed route chain — never called through the RPC client |
+| `POST /api/voice/transcribe` | raw 16kHz mono PCM16 body (`application/octet-stream`, ≤2MB ≈ 60s) | `{ "transcript": "..." }` (empty string = nothing recognized) | Fallback for when the socket can't open. 10 req/min/IP |
 | `POST /api/voice/speak` | `{ "text": "..." }` (≤3000 chars; `[n]` markers stripped server-side) | mp3 bytes (`audio/mpeg`) | 10 req/min/IP. `POLLY_VOICE_ID` env picks the neural voice (default **Ruth**) |
 
 ### Client behavior (`use-recorder.ts`, `use-speaker.ts`, `voice-visualizer.tsx`)
@@ -254,6 +255,18 @@ sequenceDiagram
 - **Capture is raw PCM via AudioWorklet** (ScriptProcessor fallback), *not*
   MediaRecorder — Safari's MediaRecorder emits AAC, which Transcribe rejects.
   Recording is downsampled to 16kHz mono PCM16 in the browser before upload.
+- **Transcription is live.** Audio streams up over a WebSocket in ~200ms chunks
+  while the member speaks, and Transcribe's partial results stream back, so the
+  words appear as they're said rather than after a pause. Measured locally:
+  first words on screen at **0.7s**, final transcript **0.4s after** the audio
+  ends. The browser-side downsampler is *stateful* (it carries the fractional
+  read position across chunks) — resampling each chunk independently would put a
+  discontinuity into the audio several times a second.
+- **It degrades cleanly**: if the socket can't open, `finish()` returns null and
+  the whole recording is POSTed to the batch endpoint instead. Prod needs no
+  infra change — CloudFront's `/api/*` behavior already uses the `AllViewer`
+  origin request policy (which forwards `Upgrade`/`Sec-WebSocket-*`) with
+  caching disabled, and ALB carries WebSockets natively.
 - **VAD auto-stop**: after speech is first heard (RMS ≥ 0.012 — low on purpose,
   Chrome's auto-gain ramps up from silence), ~1.5s below the silence threshold
   (0.008) ends the recording; tap-stop always works; 60s hard cap. A recording

@@ -39,6 +39,7 @@ Symptom → cause → fix, roughly in the order you'll hit them.
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
+| No text appears while speaking, but the answer still arrives after a pause | The live WebSocket didn't open, so it fell back to the batch endpoint (by design). Check the browser console for a `/api/voice/stream` failure — a proxy stripping `Upgrade`, or the api container not restarted after the WS route was added | Locally: restart the api container. In prod: confirm the CloudFront `/api/*` behavior still uses the `AllViewer` origin request policy — a cache/origin policy that drops `Upgrade`/`Sec-WebSocket-*` silently disables live mode |
 | Mic button shows "Microphone access was blocked" | Browser permission denied, or the page isn't `localhost`/HTTPS (getUserMedia requires a secure context) | Re-allow the mic in the browser's site settings; use `localhost:3000`, not a LAN IP |
 | Recording never auto-stops | Background noise keeps RMS above the silence threshold | Tap the stop button (always works); tune `SILENCE_RMS`/`SILENCE_MS` in `apps/web/components/chat/use-recorder.ts` for noisy rooms |
 | "Didn't catch that" every time | No speech crossed the `SPEECH_RMS` threshold — quiet mic, wrong OS input device, or Chrome's auto-gain still ramping on a cold mic | Check the OS input device + level. The thresholds are AGC-aware (0.012/0.008) and the mic stays **warm for 60s** after a recording so gain stays adapted — the first-ever tap is the only cold one |
