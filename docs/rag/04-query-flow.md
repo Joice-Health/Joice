@@ -57,11 +57,15 @@ user**. Violations → `400` from zValidator. The conversation is stateless —
 the client resends the visible history each turn (the web component caps it at
 20 client-side too).
 
-Retrieval uses **only the last user message** as the query; the earlier turns
-are still sent to Claude for conversational context. (Query rewriting from
-history — e.g. resolving "how is *it* dosed?" into "how is BPC-157 dosed?"
-before embedding — is a known future improvement; the breadcrumb-prefixed
-embeddings soften the problem meanwhile.)
+**Follow-up understanding (condense-question step):** on follow-ups
+(`messages.length > 1`, and when the admin toggle is on), the last user
+message is first rewritten into a standalone search query by a small fast
+model (default Nova Lite) using the recent conversation — "is there a
+protocol for **that**?" becomes "tirzepatide dosing protocol" before it's
+embedded. First questions skip this entirely (zero added latency), any rewrite
+failure falls back to the raw question, and **generation always receives the
+original conversation verbatim** — only the retrieval query is rewritten.
+Controlled from `/admin/brain` (`queryRewriting`, `rewriteModel`).
 
 ### `POST /api/peptide-recommendations` — JSON (typed-client path)
 
@@ -250,9 +254,16 @@ sequenceDiagram
 - **Capture is raw PCM via AudioWorklet** (ScriptProcessor fallback), *not*
   MediaRecorder — Safari's MediaRecorder emits AAC, which Transcribe rejects.
   Recording is downsampled to 16kHz mono PCM16 in the browser before upload.
-- **VAD auto-stop**: after speech is first heard (RMS ≥ 0.02), ~1.5s below the
-  silence threshold ends the recording; tap-stop always works; 60s hard cap.
-  A recording with no detected speech never uploads ("didn't catch that").
+- **VAD auto-stop**: after speech is first heard (RMS ≥ 0.012 — low on purpose,
+  Chrome's auto-gain ramps up from silence), ~1.5s below the silence threshold
+  (0.008) ends the recording; tap-stop always works; 60s hard cap. A recording
+  with no detected speech never uploads ("didn't catch that").
+- **Warm mic**: after a recording the stream is kept alive for 60s so repeat
+  questions start instantly with gain already adapted (the browser's mic
+  indicator stays lit during that window — audio is only captured while the
+  "Listening" UI shows). Released after 60s idle, on tab hide, or on unmount.
+  Only the **first** tap pays device acquisition (worst on Bluetooth headsets,
+  which must switch into their mic profile — physics, not code).
 - **Speak-back policy**: voice-asked questions get a spoken answer
   automatically; typed questions stay silent; every assistant message has a
   play/stop button.

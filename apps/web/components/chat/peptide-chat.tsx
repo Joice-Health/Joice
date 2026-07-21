@@ -5,11 +5,13 @@ import { Button } from '@joice/ui';
 import {
   streamPeptideRecommendation,
   useApiClient,
+  useBrainUi,
   type ChatMessage,
   type Citation,
 } from '@joice/api-client';
 import { Eyebrow } from '@/components/ui/eyebrow';
 import { apiUrl } from '@/lib/env';
+import { AnswerMarkdown } from './answer-markdown';
 import { useRecorder } from './use-recorder';
 import { useSpeaker } from './use-speaker';
 import { VoiceVisualizer } from './voice-visualizer';
@@ -61,6 +63,7 @@ function StopIcon({ className }: { className?: string }) {
  */
 export function PeptideChat() {
   const client = useApiClient();
+  const brainUi = useBrainUi(); // admin-managed copy + citation visibility
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [input, setInput] = useState('');
   const [pending, setPending] = useState(false);
@@ -167,10 +170,7 @@ export function PeptideChat() {
         {messages.length === 0 ? (
           <div className="m-auto max-w-sm text-center">
             <Eyebrow>Ask Joice</Eyebrow>
-            <p className="mt-3 text-pretty text-muted">
-              Ask anything about the peptides and protocols in our clinical notes —
-              answers cite the exact source they came from. Tap the mic to ask out loud.
-            </p>
+            <p className="mt-3 text-pretty text-muted">{brainUi.emptyStateHint}</p>
           </div>
         ) : (
           messages.map((message, i) => {
@@ -184,10 +184,17 @@ export function PeptideChat() {
                       ? 'max-w-md rounded-card bg-gradient-to-b from-brand-500 to-brand-600 px-4 py-3 text-white'
                       : message.error
                         ? 'max-w-2xl rounded-card bg-red-50 px-4 py-3 text-red-800'
-                        : 'max-w-2xl whitespace-pre-wrap px-1 py-2 leading-relaxed text-ink'
+                        : 'max-w-2xl px-1 py-2'
                   }
                 >
-                  {message.content || (pending && i === messages.length - 1 ? 'Thinking…' : '')}
+                  {message.role === 'assistant' && message.content && !message.error ? (
+                    // Answers are markdown (bold, lists, occasional tables).
+                    <AnswerMarkdown>{message.content}</AnswerMarkdown>
+                  ) : (
+                    <span className="whitespace-pre-wrap leading-relaxed">
+                      {message.content || (pending && i === messages.length - 1 ? 'Thinking…' : '')}
+                    </span>
+                  )}
                 </div>
 
                 {message.role === 'assistant' && message.content && !message.error ? (
@@ -208,7 +215,7 @@ export function PeptideChat() {
                   </div>
                 ) : null}
 
-                {message.citations && message.citations.length > 0 ? (
+                {brainUi.showCitations && message.citations && message.citations.length > 0 ? (
                   <ul className="mt-2 flex flex-wrap gap-2 px-1">
                     {message.citations.map((citation) => (
                       <li
@@ -260,9 +267,7 @@ export function PeptideChat() {
             }}
             rows={2}
             maxLength={2000}
-            placeholder={
-              transcribing ? 'Transcribing…' : 'e.g. What does the clinical team say about BPC-157 dosing?'
-            }
+            placeholder={transcribing ? 'Transcribing…' : brainUi.inputPlaceholder}
             disabled={transcribing}
             className="min-h-11 flex-1 resize-none rounded-card bg-canvas px-4 py-3 text-ink outline-none placeholder:text-muted focus-visible:ring-2 focus-visible:ring-brand-400 disabled:opacity-60"
           />
@@ -288,7 +293,7 @@ export function PeptideChat() {
       </form>
 
       <p className="px-6 pb-4 text-center font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
-        Educational information from our clinical notes — not medical advice
+        {brainUi.disclaimer}
       </p>
     </div>
   );
