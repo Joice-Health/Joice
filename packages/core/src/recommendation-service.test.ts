@@ -1,7 +1,9 @@
 import { describe, expect, test } from 'bun:test';
 import type { Database } from '@joice/db';
+import { DEFAULT_BRAIN_SETTINGS, type ResolvedBrainConfig } from './admin/schemas';
 import type { EmbeddingClient, GenerationClient, GenerationRequest } from './bedrock';
 import {
+  condenseQuestion,
   createRecommendationService,
   parseCitations,
   type RetrievedChunk,
@@ -38,6 +40,17 @@ function stubGeneration(answer: string, calls: GenerationRequest[] = []): Genera
   };
 }
 
+const baseConfig: ResolvedBrainConfig = {
+  ...DEFAULT_BRAIN_SETTINGS,
+  model: 'test-model',
+  pollyVoiceId: 'Ruth',
+  // Most tests exercise retrieval/generation directly; rewriting has its own suite.
+  queryRewriting: false,
+};
+
+const configOf = (over: Partial<ResolvedBrainConfig> = {}) =>
+  async (): Promise<ResolvedBrainConfig> => ({ ...baseConfig, ...over });
+
 const chunk = (over: Partial<RetrievedChunk> = {}): RetrievedChunk => ({
   sourcePath: 'peptides/bpc-157.md',
   headingPath: 'BPC-157 > Dosing',
@@ -47,28 +60,39 @@ const chunk = (over: Partial<RetrievedChunk> = {}): RetrievedChunk => ({
 });
 
 describe('recommend', () => {
-  test('returns the not-covered answer without calling the model when nothing clears the floor', async () => {
+  test('uses the configured not-covered message without calling the model below the floor', async () => {
     const calls: GenerationRequest[] = [];
     const service = createRecommendationService(stubDb([chunk({ similarity: 0.1 })]), {
       embeddings: stubEmbeddings,
-      generation: stubGeneration('should never be used', calls),
-      model: 'test-model',
+      generation: stubGeneration('never used', calls),
+      getConfig: configOf({ notCoveredMessage: 'Custom fallback copy.' }),
     });
 
     const result = await service.recommend([{ role: 'user', content: 'What about kittens?' }]);
-    expect(result.citations).toEqual([]);
-    expect(result.answer).toContain("don't have information");
+    expect(result).toEqual({ answer: 'Custom fallback copy.', citations: [] });
     expect(calls).toHaveLength(0);
   });
 
-  test('numbers retrieved chunks into the prompt and keeps prior turns', async () => {
+  test('config drives the similarity floor', async () => {
+    const calls: GenerationRequest[] = [];
+    const service = createRecommendationService(stubDb([chunk({ similarity: 0.3 })]), {
+      embeddings: stubEmbeddings,
+      generation: stubGeneration('Answer.', calls),
+      getConfig: configOf({ similarityFloor: 0.2 }),
+    });
+
+    await service.recommend([{ role: 'user', content: 'Dosing?' }]);
+    expect(calls).toHaveLength(1); // 0.3 clears the lowered floor
+  });
+
+  test('numbers chunks into the prompt and applies config model/tokens/prompt', async () => {
     const calls: GenerationRequest[] = [];
     const service = createRecommendationService(
       stubDb([chunk(), chunk({ sourcePath: 'peptides/tb-500.md', headingPath: 'TB-500' })]),
       {
         embeddings: stubEmbeddings,
         generation: stubGeneration('Answer.', calls),
-        model: 'test-model',
+        getConfig: configOf({ maxAnswerTokens: 512, personaName: 'Dot' }),
       },
     );
 
@@ -79,24 +103,22 @@ describe('recommend', () => {
     ];
     await service.recommend(messages);
 
-    expect(calls).toHaveLength(1);
     expect(calls[0]!.model).toBe('test-model');
-    expect(calls[0]!.turns).toHaveLength(3);
-    expect(calls[0]!.turns.slice(0, 2)).toEqual(messages.slice(0, 2));
-
+    expect(calls[0]!.maxTokens).toBe(512);
+    expect(calls[0]!.system).toContain('You are Dot');
     const finalTurn = calls[0]!.turns[2]!;
-    expect(finalTurn.role).toBe('user');
     expect(finalTurn.content).toContain('[1] peptides/bpc-157.md — BPC-157 > Dosing');
     expect(finalTurn.content).toContain('[2] peptides/tb-500.md — TB-500');
-    expect(finalTurn.content).toContain('Typical protocols use 250-500mcg daily.');
-    expect(finalTurn.content.endsWith('How is it dosed?')).toBe(true);
+    expect(finalTurn.content).toContain('How is it dosed?');
+    // Citation reminder rides at the end of the turn (highest salience).
+    expect(finalTurn.content).toContain('square brackets');
   });
 
   test('maps [n] markers in the answer back to citations', async () => {
     const service = createRecommendationService(stubDb([chunk()]), {
       embeddings: stubEmbeddings,
       generation: stubGeneration('Protocols use 250-500mcg daily [1].'),
-      model: 'test-model',
+      getConfig: configOf(),
     });
 
     const result = await service.recommend([{ role: 'user', content: 'How is BPC dosed?' }]);
@@ -110,6 +132,18 @@ describe('recommend', () => {
       },
     ]);
   });
+
+  test('showCitations=false strips stray markers and returns no citations', async () => {
+    const service = createRecommendationService(stubDb([chunk()]), {
+      embeddings: stubEmbeddings,
+      generation: stubGeneration('Protocols use 250-500mcg daily [1]. Take with food [1].'),
+      getConfig: configOf({ showCitations: false }),
+    });
+
+    const result = await service.recommend([{ role: 'user', content: 'Dosing?' }]);
+    expect(result.answer).toBe('Protocols use 250-500mcg daily . Take with food .');
+    expect(result.citations).toEqual([]);
+  });
 });
 
 describe('recommendStream', () => {
@@ -117,7 +151,7 @@ describe('recommendStream', () => {
     const service = createRecommendationService(stubDb([chunk()]), {
       embeddings: stubEmbeddings,
       generation: stubGeneration('Streamed answer [1].'),
-      model: 'test-model',
+      getConfig: configOf(),
     });
 
     const events = [];
@@ -132,6 +166,122 @@ describe('recommendStream', () => {
       expect(complete.recommendation.answer).toBe('Streamed answer [1].');
       expect(complete.recommendation.citations).toHaveLength(1);
     }
+  });
+});
+
+describe('condenseQuestion', () => {
+  const history = [
+    { role: 'user' as const, content: 'Tell me about tirzepatide' },
+    { role: 'assistant' as const, content: 'Tirzepatide is a dual GIP/GLP-1 agonist…' },
+    { role: 'user' as const, content: 'is there a protocol for that?' },
+  ];
+
+  test('first questions pass through without an LLM call', async () => {
+    const calls: GenerationRequest[] = [];
+    const result = await condenseQuestion(stubGeneration('never', calls), 'rw-model', [
+      { role: 'user', content: 'Tell me about tirzepatide' },
+    ]);
+    expect(result).toBe('Tell me about tirzepatide');
+    expect(calls).toHaveLength(0);
+  });
+
+  test('follow-ups are rewritten with the rewrite model and full context', async () => {
+    const calls: GenerationRequest[] = [];
+    const result = await condenseQuestion(
+      stubGeneration('tirzepatide dosing protocol', calls),
+      'rw-model',
+      history,
+    );
+    expect(result).toBe('tirzepatide dosing protocol');
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.model).toBe('rw-model');
+    expect(calls[0]!.turns[0]!.content).toContain('Tell me about tirzepatide');
+    expect(calls[0]!.turns[0]!.content).toContain('is there a protocol for that?');
+  });
+
+  test('falls back to the raw question on failure or junk output', async () => {
+    const throwing: GenerationClient = {
+      generate: async () => {
+        throw new Error('boom');
+      },
+      generateStream: async function* () {
+        yield { type: 'done' as const, text: '' };
+      },
+    };
+    expect(await condenseQuestion(throwing, 'rw', history)).toBe('is there a protocol for that?');
+    expect(await condenseQuestion(stubGeneration(''), 'rw', history)).toBe(
+      'is there a protocol for that?',
+    );
+    expect(await condenseQuestion(stubGeneration('x'.repeat(400)), 'rw', history)).toBe(
+      'is there a protocol for that?',
+    );
+  });
+});
+
+describe('query rewriting in recommend', () => {
+  test('the rewritten query is what gets embedded; generation still sees original turns', async () => {
+    const embedded: string[] = [];
+    const spyEmbeddings: EmbeddingClient = {
+      embed: async (text) => {
+        embedded.push(text);
+        return [0.1, 0.2, 0.3];
+      },
+      embedBatch: async (texts) => texts.map(() => [0.1, 0.2, 0.3]),
+    };
+    // First generate() call is the rewrite; second is the answer.
+    const calls: GenerationRequest[] = [];
+    let generateCount = 0;
+    const generation: GenerationClient = {
+      generate: async (request) => {
+        calls.push(request);
+        return ++generateCount === 1 ? 'tirzepatide protocol' : 'Answer [1].';
+      },
+      generateStream: async function* () {
+        yield { type: 'done' as const, text: '' };
+      },
+    };
+
+    const service = createRecommendationService(stubDb([chunk()]), {
+      embeddings: spyEmbeddings,
+      generation,
+      getConfig: configOf({ queryRewriting: true, rewriteModel: 'rw-model' }),
+    });
+
+    const messages = [
+      { role: 'user' as const, content: 'Tell me about tirzepatide' },
+      { role: 'assistant' as const, content: 'It is a dual agonist.' },
+      { role: 'user' as const, content: 'is there a protocol for that?' },
+    ];
+    const result = await service.recommend(messages);
+
+    expect(embedded).toEqual(['tirzepatide protocol']); // rewritten, not the raw follow-up
+    expect(calls[0]!.model).toBe('rw-model');
+    expect(calls[1]!.model).toBe('test-model');
+    expect(calls[1]!.turns[0]).toEqual(messages[0]); // original conversation preserved
+    expect(result.answer).toBe('Answer [1].');
+  });
+
+  test('queryRewriting=false embeds the raw follow-up', async () => {
+    const embedded: string[] = [];
+    const spyEmbeddings: EmbeddingClient = {
+      embed: async (text) => {
+        embedded.push(text);
+        return [0.1, 0.2, 0.3];
+      },
+      embedBatch: async (texts) => texts.map(() => [0.1, 0.2, 0.3]),
+    };
+    const service = createRecommendationService(stubDb([chunk()]), {
+      embeddings: spyEmbeddings,
+      generation: stubGeneration('Answer.'),
+      getConfig: configOf({ queryRewriting: false }),
+    });
+
+    await service.recommend([
+      { role: 'user', content: 'Tell me about tirzepatide' },
+      { role: 'assistant', content: 'It is a dual agonist.' },
+      { role: 'user', content: 'is there a protocol for that?' },
+    ]);
+    expect(embedded).toEqual(['is there a protocol for that?']);
   });
 });
 

@@ -2,6 +2,7 @@ import { getDatabase } from '@joice/db';
 import {
   createAdminWaitlistService,
   createAuditService,
+  createBrainConfigService,
   createEmbeddingClient,
   createFeatureFlagService,
   createGenerationClient,
@@ -24,14 +25,19 @@ export const userService = createUserService(db, audit);
 export const featureFlags = createFeatureFlagService(db, audit);
 export const settings = createSettingsService(db, audit);
 
+/** Admin-managed chatbot behavior; env values are the fallback defaults. */
+export const brainConfig = createBrainConfigService(db, audit, {
+  envDefaults: { model: env.RAG_MODEL, pollyVoiceId: env.POLLY_VOICE_ID },
+});
+
 export const recommendations = createRecommendationService(db, {
   embeddings: createEmbeddingClient({ region: env.BEDROCK_REGION }),
   generation: createGenerationClient({ region: env.BEDROCK_REGION }),
-  model: env.RAG_MODEL,
+  getConfig: brainConfig.get,
 });
 
 export const transcriber = createTranscribeClient({ region: env.BEDROCK_REGION });
 export const speech = createSpeechClient({
   region: env.BEDROCK_REGION,
-  voiceId: env.POLLY_VOICE_ID,
+  getVoiceId: async () => (await brainConfig.get()).pollyVoiceId,
 });

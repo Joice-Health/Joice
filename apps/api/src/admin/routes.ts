@@ -6,7 +6,10 @@ import {
   adminUserQuerySchema,
   adminWaitlistQuerySchema,
   auditLogQuerySchema,
+  brainSettingsPatchSchema,
   createFeatureFlagSchema,
+  DEFAULT_BRAIN_SETTINGS,
+  SAFETY_FLOOR,
   setAdminRoleSchema,
   settingKeySchema,
   updateFeatureFlagSchema,
@@ -19,7 +22,7 @@ import {
 import { z } from 'zod';
 import { rateLimit } from '../middleware/rate-limit';
 import { requireAdmin, type AdminEnv } from './auth';
-import { adminWaitlist, audit, featureFlags, settings, userService } from '../services';
+import { adminWaitlist, audit, brainConfig, featureFlags, settings, userService } from '../services';
 import { clerkClient } from './clerk';
 import { env } from '../env';
 
@@ -191,6 +194,26 @@ export const adminRoutes = new Hono<AdminEnv>()
     const { key } = c.req.valid('param');
     const removed = await settings.remove(key, actorOf(c));
     if (!removed) return c.json({ error: 'Setting not found' }, 404);
+    return c.json({ ok: true as const });
+  })
+
+  // --- Brain (chatbot behavior) ---
+  .get('/brain', async (c) => {
+    return c.json({
+      /** Stored overrides only — what the form edits. */
+      settings: await brainConfig.getStored(),
+      /** Fully resolved (stored ?? defaults ?? env) — what chat is using now. */
+      resolved: await brainConfig.get(),
+      defaults: DEFAULT_BRAIN_SETTINGS,
+      /** Code-level rules that cannot be changed from the admin. */
+      safetyFloor: SAFETY_FLOOR,
+    });
+  })
+  .put('/brain', zValidator('json', brainSettingsPatchSchema), async (c) => {
+    return c.json(await brainConfig.update(c.req.valid('json'), actorOf(c)));
+  })
+  .delete('/brain', async (c) => {
+    await brainConfig.reset(actorOf(c));
     return c.json({ ok: true as const });
   })
 

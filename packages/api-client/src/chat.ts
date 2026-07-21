@@ -1,8 +1,11 @@
 'use client';
 
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import type { ChatMessage, PeptideRecommendation } from '@joice/core';
+// Value import must use the browser-safe subpath (the barrel pulls in the pg driver).
+import { BRAIN_UI_DEFAULTS, type BrainUi } from '@joice/core/schemas';
 import { useApiClient } from './provider';
+import { publicBrainKeys } from './admin/hooks';
 import type { ApiClient } from './client';
 
 /**
@@ -18,6 +21,20 @@ async function unwrap<T>(res: Response): Promise<T> {
     throw new Error(body.error ?? `Request failed (${res.status})`);
   }
   return res.json() as Promise<T>;
+}
+
+/**
+ * Public-safe brain config for the /ask page (copy + citation visibility).
+ * Falls back to code defaults while loading; admin changes land within ~30s.
+ */
+export function useBrainUi(): BrainUi {
+  const client = useApiClient();
+  const { data } = useQuery({
+    queryKey: publicBrainKeys.all,
+    staleTime: 30_000,
+    queryFn: async (): Promise<BrainUi> => unwrap(await client.api.brain.$get()),
+  });
+  return data ?? BRAIN_UI_DEFAULTS;
 }
 
 /** One-shot (non-streaming) answer — for non-chat surfaces. */

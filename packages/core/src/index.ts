@@ -2,6 +2,8 @@ export * from './schemas';
 export * from './waitlist-service';
 export * from './admin';
 export * from './bedrock';
+export * from './brain-config';
 export * from './chunker';
+export * from './prompt';
 export * from './recommendation-service';
 export * from './voice';

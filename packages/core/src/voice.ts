@@ -62,7 +62,11 @@ export interface SpeechClient {
   synthesize(text: string): Promise<Uint8Array>;
 }
 
-export function createSpeechClient(opts: { region: string; voiceId: string }): SpeechClient {
+export function createSpeechClient(opts: {
+  region: string;
+  /** Resolved per call so the admin can switch voices at runtime. */
+  getVoiceId: () => Promise<string>;
+}): SpeechClient {
   const client = new PollyClient({ region: opts.region });
 
   return {
@@ -70,7 +74,7 @@ export function createSpeechClient(opts: { region: string; voiceId: string }): S
       const response = await client.send(
         new SynthesizeSpeechCommand({
           Engine: 'neural',
-          VoiceId: opts.voiceId as VoiceId,
+          VoiceId: (await opts.getVoiceId()) as VoiceId,
           OutputFormat: 'mp3',
           Text: text,
         }),

@@ -27,6 +27,8 @@ export type SettingsList = InferResponseType<AdminApi['settings']['$get'], 200>;
 export type AuditLogQuery = InferRequestType<AdminApi['audit-logs']['$get']>['query'];
 export type AuditLogPage = InferResponseType<AdminApi['audit-logs']['$get'], 200>;
 export type PublicFlags = InferResponseType<ApiClient['api']['flags']['$get'], 200>;
+export type AdminBrain = InferResponseType<AdminApi['brain']['$get'], 200>;
+export type BrainSettingsPatchInput = InferRequestType<AdminApi['brain']['$put']>['json'];
 
 export const adminKeys = {
   all: ['admin'] as const,
@@ -35,11 +37,16 @@ export const adminKeys = {
   admins: () => ['admin', 'admins'] as const,
   flags: () => ['admin', 'flags'] as const,
   settings: () => ['admin', 'settings'] as const,
+  brain: () => ['admin', 'brain'] as const,
   auditLogs: (query: AuditLogQuery) => ['admin', 'audit-logs', query] as const,
 };
 
 export const publicFlagKeys = {
   all: ['flags'] as const,
+};
+
+export const publicBrainKeys = {
+  all: ['brain-ui'] as const,
 };
 
 async function unwrap<T>(res: Response): Promise<T> {
@@ -205,6 +212,41 @@ export function useDeleteSetting() {
     mutationFn: async (key: string) =>
       unwrap(await client.api.admin.settings[':key'].$delete({ param: { key } })),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.settings() }),
+  });
+}
+
+// --- Brain (chatbot behavior) ---
+
+export function useBrainSettings() {
+  const client = useApiClient();
+  return useQuery({
+    queryKey: adminKeys.brain(),
+    queryFn: async (): Promise<AdminBrain> => unwrap(await client.api.admin.brain.$get()),
+  });
+}
+
+export function useUpdateBrainSettings() {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (patch: BrainSettingsPatchInput) =>
+      unwrap(await client.api.admin.brain.$put({ json: patch })),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.brain() });
+      queryClient.invalidateQueries({ queryKey: publicBrainKeys.all });
+    },
+  });
+}
+
+export function useResetBrainSettings() {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => unwrap(await client.api.admin.brain.$delete()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.brain() });
+      queryClient.invalidateQueries({ queryKey: publicBrainKeys.all });
+    },
   });
 }
 

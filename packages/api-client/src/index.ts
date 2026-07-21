@@ -8,6 +8,7 @@ export {
   waitlistKeys,
 } from './hooks';
 export {
+  useBrainUi,
   usePeptideRecommendation,
   streamPeptideRecommendation,
   type ChatStreamEvent,

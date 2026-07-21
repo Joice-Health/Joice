@@ -9,6 +9,7 @@ const LINKS = [
   { href: '/admin/waitlist', label: 'Waitlist' },
   { href: '/admin/users', label: 'Users' },
   { href: '/admin/admins', label: 'Admins' },
+  { href: '/admin/brain', label: 'Brain' },
   { href: '/admin/flags', label: 'Feature flags' },
   { href: '/admin/settings', label: 'Settings' },
   { href: '/admin/audit', label: 'Audit log' },

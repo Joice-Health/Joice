@@ -104,3 +104,26 @@ export const speakRequestSchema = z.object({
 });
 
 export type SpeakRequest = z.infer<typeof speakRequestSchema>;
+
+/**
+ * Public-safe slice of the admin-managed brain config, served by GET /api/brain
+ * and consumed by the /ask page (copy + citation-chip visibility). Never
+ * includes the system prompt or guardrail internals.
+ */
+export const brainUiSchema = z.object({
+  emptyStateHint: z.string(),
+  inputPlaceholder: z.string(),
+  disclaimer: z.string(),
+  showCitations: z.boolean(),
+});
+
+export type BrainUi = z.infer<typeof brainUiSchema>;
+
+/** Client-side fallbacks while GET /api/brain loads (mirror the code defaults). */
+export const BRAIN_UI_DEFAULTS: BrainUi = {
+  emptyStateHint:
+    'Ask anything about the peptides and protocols in our clinical notes — answers cite the exact source they came from. Tap the mic to ask out loud.',
+  inputPlaceholder: 'e.g. What does the clinical team say about BPC-157 dosing?',
+  disclaimer: 'Educational information from our clinical notes — not medical advice',
+  showCitations: true,
+};

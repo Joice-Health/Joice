@@ -17,6 +17,7 @@ clinical team's notes, served from the existing API with pgvector + AWS Bedrock.
 | [06 — Deployment Runbook](rag/06-deployment-runbook.md) | One-time AWS setup, Terraform, first ingestion, verification, rollback |
 | [07 — Compliance (HIPAA/BAA)](rag/07-compliance.md) | Why everything runs on Bedrock, the PHI review gate, pre-launch checklist |
 | [08 — Troubleshooting](rag/08-troubleshooting.md) | Symptom → cause → fix for every known failure mode |
+| [09 — Admin Brain Settings](rag/09-admin-brain.md) | The `/admin/brain` control panel: persona, tone, guardrails, retrieval, model, voice |
 
 **New here? Read 01, then 05 to get it running.**
 

@@ -14,7 +14,7 @@ import {
 import { allowedOrigins } from './env';
 import { rateLimit, clientIp } from './middleware/rate-limit';
 import { hashIp } from './hash';
-import { featureFlags, recommendations, speech, transcriber, waitlist } from './services';
+import { brainConfig, featureFlags, recommendations, speech, transcriber, waitlist } from './services';
 import { adminRoutes } from './admin/routes';
 
 const app = new Hono();
@@ -70,6 +70,17 @@ const routes = app
   // Runtime feature flags for both apps; served from a ~30s in-memory cache.
   .get('/api/flags', rateLimit({ windowMs: 60_000, max: 60 }), async (c) => {
     return c.json(await featureFlags.evaluateAll());
+  })
+  // Public-safe slice of the admin-managed brain config (/ask copy + citation
+  // visibility). Same ~30s cache; never exposes the system prompt or guardrails.
+  .get('/api/brain', rateLimit({ windowMs: 60_000, max: 60 }), async (c) => {
+    const config = await brainConfig.get();
+    return c.json({
+      emptyStateHint: config.emptyStateHint,
+      inputPlaceholder: config.inputPlaceholder,
+      disclaimer: config.disclaimer,
+      showCitations: config.showCitations,
+    });
   })
   // RAG chatbot. Public pre-launch but tightly rate-limited — every request
   // costs Bedrock tokens. Non-streaming JSON variant keeps the typed-client
