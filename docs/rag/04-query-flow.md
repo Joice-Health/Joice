@@ -12,7 +12,7 @@ sequenceDiagram
     participant PG as Postgres (pgvector)
     participant C as Bedrock chat model (Claude / Nova)
 
-    B->>CF: POST /api/peptide-recommendations/stream<br/>{ messages: [...] }
+    B->>CF: POST /api/brain/chat/stream<br/>{ messages: [...] }
     CF->>API: (origin-lock header verified, caching disabled)
     API->>API: rate limit (5/min/IP) · zValidator(chatRequestSchema)
     API->>T: InvokeModel — embed(last user message) → 1024-dim vector
@@ -67,7 +67,7 @@ failure falls back to the raw question, and **generation always receives the
 original conversation verbatim** — only the retrieval query is rewritten.
 Controlled from `/admin/brain` (`queryRewriting`, `rewriteModel`).
 
-### `POST /api/peptide-recommendations` — JSON (typed-client path)
+### `POST /api/brain/chat` — JSON (typed-client path)
 
 Waits for the full generation, returns:
 
@@ -89,7 +89,7 @@ Waits for the full generation, returns:
 Consumed via the typed hook `usePeptideRecommendation()` from
 `@joice/api-client` — full end-to-end types from the Hono AppType.
 
-### `POST /api/peptide-recommendations/stream` — SSE (chat-UI path)
+### `POST /api/brain/chat/stream` — SSE (chat-UI path)
 
 Same request, `text/event-stream` response:
 
@@ -229,13 +229,13 @@ sequenceDiagram
 
     B->>B: tap mic → getUserMedia → AudioWorklet captures PCM<br/>(live mic visualizer; VAD stops after ~1.5s silence)
     B->>B: downsample to 16kHz mono PCM16
-    B->>API: POST /api/voice/transcribe (raw bytes, ≤2MB)
+    B->>API: POST /api/brain/voice/transcribe (raw bytes, ≤2MB)
     API->>T: StartStreamTranscription (streamed chunks)
     T-->>API: transcript
     API-->>B: { transcript }
     B->>B: transcript auto-sends through the normal SSE chat flow
     Note over B,API: …text answer streams exactly as in the diagram above…
-    B->>API: POST /api/voice/speak { text } ([n] markers stripped server-side)
+    B->>API: POST /api/brain/voice/speak { text } ([n] markers stripped server-side)
     API->>P: SynthesizeSpeech (neural, POLLY_VOICE_ID)
     P-->>API: mp3
     API-->>B: audio/mpeg
@@ -246,7 +246,7 @@ sequenceDiagram
 
 | Endpoint | In | Out | Notes |
 |---|---|---|---|
-| `GET /api/voice/stream` (WebSocket) | binary frames of 16kHz mono PCM16 as it's captured, then `{"type":"end"}` | `{"type":"partial"\|"final","text":…}` as the member speaks, then `{"type":"done"}` | **The live path.** 20 upgrades/min/IP, plus the bounds below. Deliberately outside the typed route chain — never called through the RPC client |
+| `GET /api/brain/voice/stream` (WebSocket) | binary frames of 16kHz mono PCM16 as it's captured, then `{"type":"end"}` | `{"type":"partial"\|"final","text":…}` as the member speaks, then `{"type":"done"}` | **The live path.** 20 upgrades/min/IP, plus the bounds below. Deliberately outside the typed route chain — never called through the RPC client |
 
 The socket is the one endpoint CORS can't protect (the browser sends no preflight
 for a WebSocket upgrade), and every second of audio on it is billed to Transcribe.
@@ -261,8 +261,8 @@ Three bounds, all in `apps/api/src/app.ts`:
 Hitting either cap sends `{"type":"error","reason":"max-audio"\|"max-duration"}`
 and closes with code 1009. The `TranscribeStreamingClient` is released in
 `onClose` too, so a dropped connection can't leave a billed session running.
-| `POST /api/voice/transcribe` | raw 16kHz mono PCM16 body (`application/octet-stream`, ≤2MB ≈ 60s) | `{ "transcript": "..." }` (empty string = nothing recognized) | Fallback for when the socket can't open. 10 req/min/IP |
-| `POST /api/voice/speak` | `{ "text": "..." }` (≤3000 chars; `[n]` markers stripped server-side) | mp3 bytes (`audio/mpeg`) | 10 req/min/IP. `POLLY_VOICE_ID` env picks the neural voice (default **Ruth**) |
+| `POST /api/brain/voice/transcribe` | raw 16kHz mono PCM16 body (`application/octet-stream`, ≤2MB ≈ 60s) | `{ "transcript": "..." }` (empty string = nothing recognized) | Fallback for when the socket can't open. 10 req/min/IP |
+| `POST /api/brain/voice/speak` | `{ "text": "..." }` (≤3000 chars; `[n]` markers stripped server-side) | mp3 bytes (`audio/mpeg`) | 10 req/min/IP. `POLLY_VOICE_ID` env picks the neural voice (default **Ruth**) |
 
 ### Client behavior (`use-recorder.ts`, `use-speaker.ts`, `voice-visualizer.tsx`)
 

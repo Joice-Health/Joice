@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import type { Database } from '@joice/db';
-import type { AuditService } from './admin/audit-service';
-import { createBrainConfigService } from './brain-config';
+import type { AuditPort } from '../ports';
+import { createBrainConfigService } from './service';
 
 /**
  * Chainable stub for the brain-config queries: select().from().where().limit()
@@ -25,7 +25,7 @@ function stubDb(opts: { rows: () => unknown[]; onSelect?: () => void }) {
   return db as unknown as Database;
 }
 
-const stubAudit = { record: async () => {} } as unknown as AuditService;
+const stubAudit = { record: async () => {} } as unknown as AuditPort;
 const actor = { clerkUserId: 'user_admin', email: 'admin@joice.test' };
 const envDefaults = { model: 'env-model', pollyVoiceId: 'EnvVoice' };
 

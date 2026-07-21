@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { apiUrl } from '@/lib/env';
+import { brainUrl } from '@/lib/env';
 
 /**
  * Live transcription over a WebSocket: PCM goes up as it's captured and partial
@@ -10,10 +10,10 @@ import { apiUrl } from '@/lib/env';
  *
  * Everything degrades: if the socket never opens (blocked proxy, older browser)
  * `finish()` resolves to null and the caller falls back to the batch
- * POST /api/voice/transcribe with the full recording.
+ * POST /api/brain/voice/transcribe with the full recording.
  */
 
-const SOCKET_URL = `${apiUrl.replace(/^http/, 'ws')}/api/voice/stream`;
+const SOCKET_URL = `${brainUrl.replace(/^http/, 'ws')}/api/brain/voice/stream`;
 /** How long to wait after the last audio for Transcribe to flush its final result. */
 const DRAIN_TIMEOUT_MS = 4_000;
 

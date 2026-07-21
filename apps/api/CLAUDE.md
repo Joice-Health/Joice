@@ -17,6 +17,12 @@ web app end-to-end request/response types. Consequences:
 - Route order matters: `/api/waitlist/stats` is registered before `/api/waitlist/:code` so the
   param route doesn't swallow it.
 
+**The chatbot is not here.** It moved to `apps/brain` (port 4100, everything under
+`/api/brain/*`) — see `docs/rag/10-architecture.md`. What stays on this side is the admin
+console's *write* path for the brain's settings (`/api/admin/brain`), because that needs the
+Clerk actor and the audit trail. It writes one `app_settings` row and never touches the
+brain's own tables. This service has no Bedrock, Transcribe or Polly permissions at all.
+
 Business logic lives in `@joice/core` services (constructed in `src/services.ts` with the
 Drizzle client); route handlers stay thin — validate with `@hono/zod-validator` against
 schemas from `@joice/core`, call the service, return JSON.
@@ -39,17 +45,19 @@ schemas from `@joice/core`, call the service, return JSON.
   ignored entirely in favor of the socket address.
 - IPs are never stored raw — only salted SHA-256 (`src/hash.ts`, `IP_HASH_SALT`).
 - CORS is configured but moot in prod (same-origin through CloudFront).
-- `GET /api/voice/stream` is the one route CORS cannot cover — browsers don't preflight a
-  WebSocket upgrade. It carries its own `Origin` allowlist plus byte (3 MB) and wall-clock
-  (90s) ceilings, and releases its `TranscribeStreamingClient` in `onClose`. Keep all four
-  if you touch that handler; an unbounded socket is unbounded AWS spend.
+- This service serves no WebSockets. The voice socket and its origin/byte/duration bounds
+  live on the brain service — see `apps/brain/CLAUDE.md`.
 
 ## Env & lifecycle
 
 `src/env.ts` validates env with Zod at import time — add new variables there, not via bare
-`process.env` reads. The container CMD runs Drizzle migrations before serving (both the dev
-and release Dockerfile stages), so schema changes deploy themselves; a failed migration blocks
-startup by design. Health check is `GET /health` (used by the ALB target group and Docker).
+`process.env` reads. **Migrations no longer run at boot**: they raced between tasks, and with
+the brain as a second service against the same database they had to move out. Compose runs a
+one-shot `migrate` service both apps wait on; CI runs the `joice-migrate` ECS task to
+completion and checks its exit code before updating any service. Health check is `GET /health`
+(used by the ALB target group), which probes the database and reports the build SHA — it
+answers 503 when the pool is dead, which is what lets the ECS circuit breaker catch a broken
+release.
 
 Behavior contracts worth preserving: waitlist join is idempotent by email (re-submitting
 returns the same referral card, never a duplicate or error), referral attribution + counter

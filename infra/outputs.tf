@@ -57,7 +57,7 @@ output "notes_bucket" {
 
 output "ingest_run_task_command" {
   description = "Paste-ready command to run the one-off RAG ingestion task."
-  value       = "aws ecs run-task --cluster ${aws_ecs_cluster.main.name} --task-definition ${aws_ecs_task_definition.ingest.family} --launch-type FARGATE --network-configuration 'awsvpcConfiguration={subnets=[${join(",", aws_subnet.public[*].id)}],securityGroups=[${aws_security_group.api.id}],assignPublicIp=ENABLED}'"
+  value       = "aws ecs run-task --cluster ${aws_ecs_cluster.main.name} --task-definition ${aws_ecs_task_definition.ingest.family} --launch-type FARGATE --network-configuration 'awsvpcConfiguration={subnets=[${join(",", aws_subnet.public[*].id)}],securityGroups=[${aws_security_group.brain.id}],assignPublicIp=ENABLED}'"
 }
 
 output "github_repo_variables" {
@@ -68,9 +68,14 @@ output "github_repo_variables" {
     CLOUDFRONT_URL=${local.canonical_url}
     ECR_WEB=${aws_ecr_repository.app["web"].repository_url}
     ECR_API=${aws_ecr_repository.app["api"].repository_url}
+    ECR_BRAIN=${aws_ecr_repository.app["brain"].repository_url}
     ECS_CLUSTER=${aws_ecs_cluster.main.name}
     ECS_SERVICE_WEB=${aws_ecs_service.web.name}
     ECS_SERVICE_API=${aws_ecs_service.api.name}
+    ECS_SERVICE_BRAIN=${aws_ecs_service.brain.name}
+    ECS_TASK_MIGRATE=${aws_ecs_task_definition.migrate.family}
+    SUBNET_IDS=${join(",", aws_subnet.public[*].id)}
+    BRAIN_SG_ID=${aws_security_group.brain.id}
     CLERK_PUBLISHABLE_KEY=${var.clerk_publishable_key != "" ? var.clerk_publishable_key : "<set clerk_publishable_key and re-apply>"}
   EOT
 }

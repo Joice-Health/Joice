@@ -78,11 +78,11 @@ Key properties of this shape:
 | Core | `packages/core/src/chunker.ts` | Pure markdown → chunks: frontmatter, heading breadcrumbs, wikilinks, size caps |
 | Core | `packages/core/src/recommendation-service.ts` | The RAG brain: retrieve → floor-check → prompt → generate → citation annotation |
 | Core | `packages/core/src/schemas.ts` | Wire contracts: `chatRequestSchema`, `Citation`, `PeptideRecommendation` (browser-safe via `@joice/core/schemas`) |
-| API | `apps/api/src/app.ts` | `POST /api/peptide-recommendations` (JSON) + `/stream` (SSE), rate-limited, in the AppType chain |
+| API | `apps/api/src/app.ts` | `POST /api/brain/chat` (JSON) + `/stream` (SSE), rate-limited, in the AppType chain |
 | API | `apps/api/src/env.ts` | `RAG_MODEL`, `BEDROCK_REGION` (Zod-validated at boot) |
 | API | `apps/api/src/services.ts` | Wires the recommendation service over the shared DB client |
-| Scripts | `apps/api/scripts/prep-vault.ts` | **Local-only** vault prep: dedupe + optional Comprehend Medical PHI scan + review report |
-| Scripts | `apps/api/scripts/ingest.ts` | The ingestion entrypoint the ECS task runs: S3 → chunk → embed → upsert |
+| Scripts | `apps/brain/scripts/prep-vault.ts` | **Local-only** vault prep: dedupe + optional Comprehend Medical PHI scan + review report |
+| Scripts | `apps/brain/scripts/ingest.ts` | The ingestion entrypoint the ECS task runs: S3 → chunk → embed → upsert |
 | Client | `packages/api-client/src/chat.ts` | `usePeptideRecommendation` (typed JSON hook) + `streamPeptideRecommendation` (SSE reader) |
 | Web | `apps/web/app/(site)/ask/page.tsx` | The `/ask` page (team-gated pre-launch by the site middleware) |
 | Web | `apps/web/components/chat/peptide-chat.tsx` | Streaming chat UI: deltas → final annotated answer → citation chips; mic button + speak-back |
@@ -98,7 +98,7 @@ Key properties of this shape:
 ## Request lifecycle in one paragraph
 
 The browser posts `{ messages: [...] }` (the visible conversation, ≤ 20 turns)
-to `/api/peptide-recommendations/stream`. The API embeds the **last user
+to `/api/brain/chat/stream`. The API embeds the **last user
 message** with Titan (1024-dim vector), runs a cosine-similarity `ORDER BY …
 LIMIT 8` against `note_chunks`, and drops anything below a 0.4 similarity
 floor. Zero survivors → an honest "not covered in our notes" answer is returned

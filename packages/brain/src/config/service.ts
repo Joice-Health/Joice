@@ -1,12 +1,11 @@
 import { appSettings, eq, type Database } from '@joice/db';
-import type { AuditService } from './admin/audit-service';
 import {
   brainSettingsPatchSchema,
   DEFAULT_BRAIN_SETTINGS,
-  type AdminActor,
   type BrainSettingsPatch,
   type ResolvedBrainConfig,
-} from './admin/schemas';
+} from './schemas';
+import type { AuditPort, SettingsActor } from '../ports';
 
 const BRAIN_SETTINGS_KEY = 'brain';
 
@@ -28,7 +27,7 @@ export interface BrainConfigOptions {
  */
 export function createBrainConfigService(
   db: Database,
-  audit: AuditService,
+  audit: AuditPort,
   { envDefaults, cacheTtlMs = 30_000, now = () => Date.now() }: BrainConfigOptions,
 ) {
   let cache: { value: ResolvedBrainConfig; expiresAt: number } | undefined;
@@ -74,7 +73,7 @@ export function createBrainConfigService(
     },
 
     /** Merge a patch into the stored overrides (transactional + audited). */
-    async update(patch: BrainSettingsPatch, actor: AdminActor): Promise<ResolvedBrainConfig> {
+    async update(patch: BrainSettingsPatch, actor: SettingsActor): Promise<ResolvedBrainConfig> {
       const result = await db.transaction(async (tx) => {
         const [before] = await tx
           .select()
@@ -121,7 +120,7 @@ export function createBrainConfigService(
     },
 
     /** Delete all overrides — back to code/env defaults (audited). */
-    async reset(actor: AdminActor): Promise<void> {
+    async reset(actor: SettingsActor): Promise<void> {
       await db.transaction(async (tx) => {
         const [before] = await tx
           .select()

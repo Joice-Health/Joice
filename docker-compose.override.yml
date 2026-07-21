@@ -3,26 +3,44 @@
 #   - the repo is bind-mounted into each container, so edits on the host are live
 #   - every workspace node_modules (and .next) is shadowed by an anonymous volume,
 #     so the host's macOS-native modules never clobber the container's Linux ones
-#   - api runs `bun --hot`, web runs `next dev`
+#   - api and brain run `bun --hot`, web runs `next dev`
 #
 # For a PRODUCTION run instead, bypass this file:
 #   docker compose -f docker-compose.yml up --build
+x-workspace-modules: &workspace-modules
+  - .:/app
+  - /app/node_modules
+  - /app/apps/api/node_modules
+  - /app/apps/brain/node_modules
+  - /app/apps/web/node_modules
+  - /app/packages/api-client/node_modules
+  - /app/packages/brain/node_modules
+  - /app/packages/config/node_modules
+  - /app/packages/core/node_modules
+  - /app/packages/db/node_modules
+  - /app/packages/ui/node_modules
+
 services:
+  # Bind-mounted too, so a migration added on the host is picked up without a
+  # rebuild — it runs from the same tree the services do.
+  migrate:
+    build:
+      target: dev
+    volumes: *workspace-modules
+
   api:
     build:
       target: dev
     environment:
       NODE_ENV: development
-    volumes:
-      - .:/app
-      - /app/node_modules
-      - /app/apps/api/node_modules
-      - /app/apps/web/node_modules
-      - /app/packages/api-client/node_modules
-      - /app/packages/config/node_modules
-      - /app/packages/core/node_modules
-      - /app/packages/db/node_modules
-      - /app/packages/ui/node_modules
+    volumes: *workspace-modules
+
+  brain:
+    build:
+      target: dev
+    environment:
+      NODE_ENV: development
+    volumes: *workspace-modules
 
   web:
     build:
@@ -31,6 +49,7 @@ services:
       NODE_ENV: development
       # Runtime public config for `next dev` (prod inlines these at build time).
       NEXT_PUBLIC_API_URL: http://localhost:4000
+      NEXT_PUBLIC_BRAIN_URL: http://localhost:4100
       NEXT_PUBLIC_APP_URL: http://localhost:3000
       # File-watch polling — reliable change detection across the bind mount.
       WATCHPACK_POLLING: "true"
@@ -46,9 +65,11 @@ services:
       - .:/app
       - /app/node_modules
       - /app/apps/api/node_modules
+      - /app/apps/brain/node_modules
       - /app/apps/web/node_modules
       - /app/apps/web/.next
       - /app/packages/api-client/node_modules
+      - /app/packages/brain/node_modules
       - /app/packages/config/node_modules
       - /app/packages/core/node_modules
       - /app/packages/db/node_modules

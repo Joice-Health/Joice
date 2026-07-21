@@ -19,7 +19,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { z } from 'zod';
 import { createDatabase, eq, noteChunks, notInArray } from '@joice/db';
-import { chunkMarkdown, createEmbeddingClient } from '@joice/core';
+import { chunkMarkdown, createEmbeddingClient } from '@joice/brain';
 
 const env = z
   .object({

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { apiUrl } from '@/lib/env';
+import { brainUrl } from '@/lib/env';
 import { forSpeech, takeChunk } from './speech-text';
 
 // Re-exported so existing importers keep working; the implementations moved to
@@ -129,7 +129,7 @@ export function useSpeaker() {
       try {
         const context = contextRef.current;
         if (!context) return;
-        const res = await fetch(`${apiUrl}/api/voice/speak`, {
+        const res = await fetch(`${brainUrl}/api/brain/voice/speak`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ text }),

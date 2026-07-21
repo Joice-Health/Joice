@@ -87,7 +87,7 @@ aws s3 sync ./approved/ "s3://$(cd infra && terraform output -raw notes_bucket)/
 
 Normal flow — push/merge to `main`. `.github/workflows/deploy.yml` builds both
 images, pushes to ECR, forces new ECS deployments. **No workflow changes were
-needed**: the api image already contains `apps/api/scripts/`, and the ingest
+needed**: the api image already contains `apps/brain/scripts/`, and the ingest
 task pulls `:latest` at invocation time.
 
 Watch the api service roll: migration `0003` runs at boot (extension + table +
@@ -120,18 +120,18 @@ Failed mid-run? Just run it again — completed files are skipped by hash.
 # SELECT source_path, count(*) FROM note_chunks GROUP BY 1 ORDER BY 1;
 
 # Off-corpus question → honest fallback, no citations
-curl -s https://joicehealth.com/api/peptide-recommendations \
+curl -s https://joicehealth.com/api/brain/chat \
   -H 'content-type: application/json' \
   -d '{"messages":[{"role":"user","content":"What is the capital of France?"}]}' | jq
 
 # On-corpus question → answer with non-empty citations[]
-curl -s https://joicehealth.com/api/peptide-recommendations \
+curl -s https://joicehealth.com/api/brain/chat \
   -H 'content-type: application/json' \
   -d '{"messages":[{"role":"user","content":"<something the notes cover>"}]}' | jq '.citations'
 
 # Rate limit: 6 rapid requests → the 6th is 429
 for i in $(seq 6); do curl -s -o /dev/null -w "%{http_code}\n" \
-  https://joicehealth.com/api/peptide-recommendations \
+  https://joicehealth.com/api/brain/chat \
   -H 'content-type: application/json' \
   -d '{"messages":[{"role":"user","content":"test question about peptides"}]}'; done
 ```

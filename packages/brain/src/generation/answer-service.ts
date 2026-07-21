@@ -1,9 +1,9 @@
 import { asc, cosineDistance, noteChunks, sql, type Database } from '@joice/db';
-import type { EmbeddingClient, GenerationClient } from './bedrock';
-import type { ResolvedBrainConfig } from './admin/schemas';
+import type { EmbeddingClient, GenerationClient } from '../providers/bedrock';
+import type { ResolvedBrainConfig } from '../config/schemas';
 import { buildSystemPrompt } from './prompt';
-import { citedIndexes, stripCitationMarkers } from './citations';
-import type { ChatMessage, Citation, PeptideRecommendation } from './schemas';
+import { citedIndexes, stripCitationMarkers } from '../conversation/citations';
+import type { ChatMessage, Citation, PeptideRecommendation } from '../conversation/schemas';
 
 /**
  * The RAG "brain": embed the member's question, retrieve the closest chunks of

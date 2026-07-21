@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { DEFAULT_BRAIN_SETTINGS, type ResolvedBrainConfig } from './admin/schemas';
+import { DEFAULT_BRAIN_SETTINGS, type ResolvedBrainConfig } from '../config/schemas';
 import { buildSystemPrompt, SAFETY_FLOOR } from './prompt';
 
 const config = (over: Partial<ResolvedBrainConfig> = {}): ResolvedBrainConfig => ({

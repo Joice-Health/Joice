@@ -1,5 +1,11 @@
-export { createApiClient, type ApiClient, type ApiClientOptions } from './client';
-export { ApiClientProvider, useApiClient } from './provider';
+export {
+  createApiClient,
+  createBrainClient,
+  type ApiClient,
+  type ApiClientOptions,
+  type BrainClient,
+} from './client';
+export { ApiClientProvider, useApiClient, useBrainClient } from './provider';
 export * from './admin/hooks';
 export {
   useJoinWaitlist,
@@ -14,10 +20,8 @@ export {
   type ChatStreamEvent,
 } from './chat';
 export type {
-  ChatMessage,
-  Citation,
   JoinWaitlistInput,
-  PeptideRecommendation,
   WaitlistEntryView,
   WaitlistStats,
 } from '@joice/core';
+export type { ChatMessage, Citation, PeptideRecommendation } from '@joice/brain/schemas';

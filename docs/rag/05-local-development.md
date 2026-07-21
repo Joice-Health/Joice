@@ -27,16 +27,16 @@ docker compose up -d
 # 3 · Seed the knowledge base from the bundled fixtures — local folder, no S3
 DATABASE_URL=postgresql://joice:joice@localhost:5433/joice \
 NOTES_DIR=apps/api/fixtures/sample-notes \
-bun apps/api/scripts/ingest.ts
+bun apps/brain/scripts/ingest.ts
 # → "✅ Ingest complete: 4 files scanned, 0 unchanged, 4 (re)ingested, ..."
 
 # 4 · Ask (JSON endpoint)
-curl -s localhost:4000/api/peptide-recommendations \
+curl -s localhost:4100/api/brain/chat \
   -H 'content-type: application/json' \
   -d '{"messages":[{"role":"user","content":"How is BPC-157 dosed?"}]}' | jq
 
 # 5 · Ask (streaming, watch the deltas live)
-curl -sN localhost:4000/api/peptide-recommendations/stream \
+curl -sN localhost:4100/api/brain/chat/stream \
   -H 'content-type: application/json' \
   -d '{"messages":[{"role":"user","content":"What does the sleep protocol say?"}]}'
 
@@ -68,8 +68,8 @@ The rest of this page is the same flow with every knob explained.
 | `RAG_MODEL` | `apps/api/src/env.ts` | `us.anthropic.claude-sonnet-5` | Bedrock **cross-region inference profile** id (`us.` prefix). Any Bedrock chat model works (Converse API). **Until the account's Anthropic use-case form is approved, use `us.amazon.nova-pro-v1:0` locally** — Amazon models need no form |
 | `BEDROCK_REGION` | api + ingest script | `us-east-1` | Where Titan/Claude are invoked |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` | api container (compose passes them through) | empty | Local stand-in for the ECS task role. In prod these don't exist — the task role provides SigV4 |
-| `NOTES_BUCKET` | `apps/api/scripts/ingest.ts` only | empty | S3 source for ingestion (prod). The API never reads it |
-| `NOTES_DIR` | `apps/api/scripts/ingest.ts` only | empty | **Local-folder source for ingestion (dev)** — set exactly one of `NOTES_DIR` / `NOTES_BUCKET`. Fixtures live at `apps/api/fixtures/sample-notes` |
+| `NOTES_BUCKET` | `apps/brain/scripts/ingest.ts` only | empty | S3 source for ingestion (prod). The API never reads it |
+| `NOTES_DIR` | `apps/brain/scripts/ingest.ts` only | empty | **Local-folder source for ingestion (dev)** — set exactly one of `NOTES_DIR` / `NOTES_BUCKET`. Fixtures live at `apps/api/fixtures/sample-notes` |
 | `DATABASE_URL` | api, migrate, ingest | `postgresql://joice:joice@localhost:5432/joice` | **Careful with the port** — see below |
 | `POSTGRES_PORT` | docker-compose | `5432` | The *host* port Postgres is published on. On machines where 5432 is taken (this one: **5433**), set it and keep host-side `DATABASE_URL` in sync |
 
@@ -107,8 +107,9 @@ aws configure export-credentials --profile <your-profile> --format env
 # paste the three export lines' values into AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_SESSION_TOKEN in .env
 ```
 
-Compose passes them into the api container. **Skip this step entirely** if you
-only need the non-RAG parts of the app.
+Compose passes them into the **brain** container (the api service has no AWS
+dependencies at all). **Skip this step entirely** if you only need the
+waitlist/admin side of the app.
 
 ### 3. Start the stack
 
@@ -121,9 +122,12 @@ docker compose up
 - Postgres is now the **`pgvector/pgvector:pg17`** image (drop-in replacement
   for `postgres:17-alpine`; an existing `postgres_data` volume carries over —
   the data format is identical, the new image just ships the extension).
-- The api container runs migrations before serving. Watch for the line
-  `✅ Migrations applied` — migration `0003` creates the `vector` extension,
-  the `note_chunks` table, and the HNSW index.
+- Three app containers come up: **api** on `:4000` (waitlist + admin),
+  **brain** on `:4100` (chat + voice), **web** on `:3000`.
+- Migrations run **once**, in a one-shot `migrate` container that api and brain
+  both wait on (`service_completed_successfully`) — not at each service's boot,
+  which would race. Watch for `✅ Migrations applied`; migration `0003` creates
+  the `vector` extension, the `note_chunks` table and the HNSW index.
 
 Verify the DB side:
 
@@ -134,15 +138,19 @@ docker compose exec postgres psql -U joice -d joice -c '\dx vector' -c '\d note_
 ### 4. Sanity-check the API
 
 ```bash
-curl -s localhost:4000/health          # {"ok":true}
+curl -s localhost:4000/health   # api:   {"ok":true,"db":"up","sha":"dev",...}
+curl -s localhost:4100/health   # brain: same shape — 503 if it can't reach Postgres
 ```
+
+Chat, voice and the public chat config are all on the **brain** (`:4100`) under
+`/api/brain/*`. Hitting them on `:4000` returns 404 by design.
 
 Chat before seeding any data — you should get the honest fallback **without
 any Bedrock generation call** (it does make one Titan embed call, so this also
 proves your AWS creds work):
 
 ```bash
-curl -s localhost:4000/api/peptide-recommendations \
+curl -s localhost:4100/api/brain/chat \
   -H 'content-type: application/json' \
   -d '{"messages":[{"role":"user","content":"How should I think about BPC-157 dosing?"}]}' | jq
 # → { "answer": "I don't have information about that in our clinical reference notes...", "citations": [] }
@@ -161,7 +169,7 @@ folder — dev) or `NOTES_BUCKET` (S3 — prod). Three options, easiest first:
 ```bash
 DATABASE_URL=postgresql://joice:joice@localhost:5433/joice \
 NOTES_DIR=apps/api/fixtures/sample-notes \
-bun apps/api/scripts/ingest.ts
+bun apps/brain/scripts/ingest.ts
 ```
 
 The fixtures (`bpc-157.md`, `tb-500.md`, `protocols/sleep.md`) are fabricated
@@ -197,12 +205,12 @@ files the new source doesn't have.
 
 ```bash
 # JSON endpoint
-curl -s localhost:4000/api/peptide-recommendations \
+curl -s localhost:4100/api/brain/chat \
   -H 'content-type: application/json' \
   -d '{"messages":[{"role":"user","content":"How is BPC-157 dosed?"}]}' | jq
 
 # Streaming endpoint (-N disables curl buffering so you see deltas live)
-curl -sN localhost:4000/api/peptide-recommendations/stream \
+curl -sN localhost:4100/api/brain/chat/stream \
   -H 'content-type: application/json' \
   -d '{"messages":[{"role":"user","content":"How is BPC-157 dosed?"}]}'
 ```
@@ -214,14 +222,14 @@ The SSE output interleaves `event: delta` frames and ends with
 
 ```bash
 # Text → speech (Polly): expect "MPEG ADTS, layer III"
-curl -s localhost:4000/api/voice/speak -H 'content-type: application/json' \
+curl -s localhost:4100/api/brain/voice/speak -H 'content-type: application/json' \
   -d '{"text":"BPC-157 is dosed at 250 micrograms daily. [1]"}' \
   --output /tmp/speak.mp3 && file /tmp/speak.mp3
 
 # Round trip: decode that mp3 to 16kHz PCM and feed it to Transcribe —
 # expect ≈ the original sentence back
 ffmpeg -y -loglevel error -i /tmp/speak.mp3 -f s16le -ar 16000 -ac 1 /tmp/speak.pcm
-curl -s localhost:4000/api/voice/transcribe -H 'content-type: application/octet-stream' \
+curl -s localhost:4100/api/brain/voice/transcribe -H 'content-type: application/octet-stream' \
   --data-binary @/tmp/speak.pcm | jq
 ```
 
@@ -261,6 +269,6 @@ Hitting `429 Too Many Requests` while iterating? Restart the api container
 
 | Works | Doesn't |
 |---|---|
-| Everything non-RAG (waitlist, admin, site) | `POST /api/peptide-recommendations[/stream]` → 500 / SSE `error` (the Titan embed call fails first) |
+| Everything non-RAG (waitlist, admin, site) | `POST /api/brain/chat[/stream]` → 500 / SSE `error` (the Titan embed call fails first) |
 | Migrations, `note_chunks` table, psql poking | `ingest.ts` (needs Bedrock for embeddings, even with `NOTES_DIR`) |
 | `bun test` / `type-check` / `lint` (all RAG deps are stubbed) | `/ask` chat responses |

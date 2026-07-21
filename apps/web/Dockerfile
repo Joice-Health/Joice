@@ -3,7 +3,9 @@ FROM oven/bun:1.3.9-slim AS deps
 WORKDIR /app
 COPY package.json bun.lock ./
 COPY apps/api/package.json ./apps/api/
+COPY apps/brain/package.json ./apps/brain/
 COPY apps/web/package.json ./apps/web/
+COPY packages/brain/package.json ./packages/brain/
 COPY packages/core/package.json ./packages/core/
 COPY packages/db/package.json ./packages/db/
 COPY packages/api-client/package.json ./packages/api-client/
@@ -30,9 +32,13 @@ COPY --from=deps /app ./
 COPY . .
 # NEXT_PUBLIC_* are inlined at build time, so they must be present here.
 ARG NEXT_PUBLIC_API_URL
+# Empty in production: CloudFront serves one origin and the ALB routes
+# /api/brain/* to the brain service, so the browser calls a relative path.
+ARG NEXT_PUBLIC_BRAIN_URL
 ARG NEXT_PUBLIC_APP_URL
 ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_BRAIN_URL=$NEXT_PUBLIC_BRAIN_URL
 ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 ENV NEXT_TELEMETRY_DISABLED=1

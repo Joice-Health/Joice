@@ -6,10 +6,7 @@ import {
   adminUserQuerySchema,
   adminWaitlistQuerySchema,
   auditLogQuerySchema,
-  brainSettingsPatchSchema,
   createFeatureFlagSchema,
-  DEFAULT_BRAIN_SETTINGS,
-  SAFETY_FLOOR,
   setAdminRoleSchema,
   settingKeySchema,
   updateFeatureFlagSchema,
@@ -19,6 +16,9 @@ import {
   uuidParamSchema,
   type AdminActor,
 } from '@joice/core';
+// The admin console edits the brain's behavior, so it validates against the
+// brain's own schema rather than keeping a second copy in sync.
+import { brainSettingsPatchSchema, DEFAULT_BRAIN_SETTINGS, SAFETY_FLOOR } from '@joice/brain';
 import { z } from 'zod';
 import { rateLimit } from '../middleware/rate-limit';
 import { requireAdmin, type AdminEnv } from './auth';

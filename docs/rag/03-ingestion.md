@@ -25,7 +25,7 @@ flowchart LR
 
 ---
 
-## Stage 1 — Vault prep (`apps/api/scripts/prep-vault.ts`)
+## Stage 1 — Vault prep (`apps/brain/scripts/prep-vault.ts`)
 
 Local-only; never deployed. Run on the machine that has the raw vault:
 
@@ -34,13 +34,13 @@ Local-only; never deployed. Run on the machine that has the raw vault:
 # Every detected span becomes a readable token ([name], [date], [phone], …);
 # a local regex pass catches email/phone/SSN shapes as backup. Keep the output
 # dir OUTSIDE the repo so git can never commit it.
-bun apps/api/scripts/prep-vault.ts ~/ObsidianVaults/clinical ~/joice-notes-approved --redact
+bun apps/brain/scripts/prep-vault.ts ~/ObsidianVaults/clinical ~/joice-notes-approved --redact
 
 # Detect-only (report, files copied unchanged — you edit by hand)
-bun apps/api/scripts/prep-vault.ts ~/ObsidianVaults/clinical ~/joice-notes-approved --scan-phi
+bun apps/brain/scripts/prep-vault.ts ~/ObsidianVaults/clinical ~/joice-notes-approved --scan-phi
 
 # Dedupe-only (PHI review is then entirely manual)
-bun apps/api/scripts/prep-vault.ts ~/ObsidianVaults/clinical ~/joice-notes-approved
+bun apps/brain/scripts/prep-vault.ts ~/ObsidianVaults/clinical ~/joice-notes-approved
 ```
 
 With `--redact`, the human step becomes a **spot-check instead of an edit job**:
@@ -93,7 +93,7 @@ The bucket (`infra/s3.tf`) is versioned, fully private (public-access-block),
 and SSE-encrypted. Versioning means a bad upload can be rolled back
 object-by-object.
 
-## Stage 3 — Ingestion (`apps/api/scripts/ingest.ts`)
+## Stage 3 — Ingestion (`apps/brain/scripts/ingest.ts`)
 
 Runs as the **`joice-ingest`** one-off ECS task (`infra/ingest.tf`) — same
 Docker image as the API (the monorepo is already inside it), different
@@ -220,7 +220,7 @@ fixtures at `apps/api/fixtures/sample-notes/`):
 ```bash
 DATABASE_URL=postgresql://joice:joice@localhost:5433/joice \
 NOTES_DIR=apps/api/fixtures/sample-notes \
-bun apps/api/scripts/ingest.ts
+bun apps/brain/scripts/ingest.ts
 ```
 
 Full walkthrough: [05 — Running Locally § Seeding data](05-local-development.md#5-seed-the-knowledge-base).

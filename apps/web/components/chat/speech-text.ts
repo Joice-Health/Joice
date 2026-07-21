@@ -1,4 +1,4 @@
-import { stripCitationMarkers } from '@joice/core/schemas';
+import { stripCitationMarkers } from '@joice/brain/schemas';
 
 /**
  * Turning a streaming markdown answer into clips that can be read aloud.

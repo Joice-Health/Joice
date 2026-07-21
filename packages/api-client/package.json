@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "@joice/api": "*",
+    "@joice/brain": "*",
+    "@joice/brain-service": "*",
     "@joice/core": "*",
     "hono": "^4.12.23"
   },

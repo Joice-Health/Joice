@@ -4,7 +4,9 @@ WORKDIR /app
 # Copy all workspace manifests first for layer-cached installs.
 COPY package.json bun.lock ./
 COPY apps/api/package.json ./apps/api/
+COPY apps/brain/package.json ./apps/brain/
 COPY apps/web/package.json ./apps/web/
+COPY packages/brain/package.json ./packages/brain/
 COPY packages/core/package.json ./packages/core/
 COPY packages/db/package.json ./packages/db/
 COPY packages/api-client/package.json ./packages/api-client/
@@ -19,7 +21,9 @@ ENV NODE_ENV=development
 COPY --from=deps /app ./
 COPY . .
 EXPOSE 4000
-CMD ["sh", "-c", "bun packages/db/src/migrate.ts && bun run --cwd apps/api dev"]
+# No migrate step: compose runs the `migrate` service once, and both apps wait
+# for it. Two services racing the same migration is what that avoids.
+CMD ["bun", "run", "--cwd", "apps/api", "dev"]
 
 FROM oven/bun:1.3.9-slim AS release
 WORKDIR /app
@@ -33,5 +37,6 @@ COPY . .
 ARG BUILD_SHA=dev
 ENV BUILD_SHA=$BUILD_SHA
 EXPOSE 4000
-# Apply migrations, then start the API.
-CMD ["sh", "-c", "bun packages/db/src/migrate.ts && bun apps/api/src/index.ts"]
+# Migrations are a separate one-off task that CI runs to completion before
+# either service is updated — see packages/db/src/migrate.ts.
+CMD ["bun", "apps/api/src/index.ts"]

@@ -46,11 +46,25 @@ resource "aws_iam_role" "task" {
   assume_role_policy = data.aws_iam_policy_document.ecs_assume.json
 }
 
-# RAG: the API embeds member questions (Titan) and generates answers (Claude),
-# both via Bedrock so the whole AI path stays under the AWS BAA.
-resource "aws_iam_role_policy" "task_bedrock" {
+# ---- Brain task role ----
+#
+# Bedrock, Transcribe and Polly used to hang off the api task role, back when
+# the chatbot ran inside the api service. They are here now and NOT there, which
+# is the least-privilege win from splitting the services: a bug in the waitlist
+# or admin console can no longer reach a model, and the brain can't touch Clerk
+# secrets. Moving them is a deliberate removal, not an oversight — if a chat
+# call starts failing with AccessDenied after this applies, it is running on the
+# wrong task role.
+resource "aws_iam_role" "brain_task" {
+  name               = "${var.project}-brain-task"
+  assume_role_policy = data.aws_iam_policy_document.ecs_assume.json
+}
+
+# The brain embeds member questions (Titan) and generates answers, both via
+# Bedrock so the whole AI path stays under the AWS BAA.
+resource "aws_iam_role_policy" "brain_bedrock" {
   name = "invoke-bedrock-models"
-  role = aws_iam_role.task.id
+  role = aws_iam_role.brain_task.id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -65,7 +79,8 @@ resource "aws_iam_role_policy" "task_bedrock" {
           # Claude is invoked via cross-region inference profiles (us.anthropic.*),
           # which fan out to foundation models in sibling regions — hence bedrock:*.
           "arn:aws:bedrock:*::foundation-model/anthropic.*",
-          "arn:aws:bedrock:${var.region}:${data.aws_caller_identity.current.account_id}:inference-profile/*.anthropic.*",
+          "arn:aws:bedrock:*::foundation-model/amazon.nova-*",
+          "arn:aws:bedrock:${var.region}:${data.aws_caller_identity.current.account_id}:inference-profile/*",
           "arn:aws:bedrock:${var.region}::foundation-model/amazon.titan-embed-text-v2:0",
         ]
       }
@@ -73,12 +88,12 @@ resource "aws_iam_role_policy" "task_bedrock" {
   })
 }
 
-# Voice: the chatbot transcribes member questions (Transcribe streaming) and
+# Voice: the brain transcribes member questions (Transcribe streaming) and
 # speaks answers (Polly) — both HIPAA-eligible, audio processed in memory only.
 # Neither action supports useful resource-level scoping.
-resource "aws_iam_role_policy" "task_voice" {
+resource "aws_iam_role_policy" "brain_voice" {
   name = "voice-transcribe-polly"
-  role = aws_iam_role.task.id
+  role = aws_iam_role.brain_task.id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -208,7 +223,40 @@ resource "aws_iam_role_policy" "github_actions" {
         Resource = [
           aws_ecs_service.web.id,
           aws_ecs_service.api.id,
+          aws_ecs_service.brain.id,
         ]
+      },
+      # Migrations are now a one-off task CI runs and waits on before deploying,
+      # rather than a step in each container's CMD. RunTask is scoped to that
+      # task definition only; DescribeTasks can't be resource-scoped usefully.
+      {
+        Sid      = "EcsRunMigrations"
+        Effect   = "Allow"
+        Action   = ["ecs:RunTask"]
+        Resource = "${aws_ecs_task_definition.migrate.arn_without_revision}:*"
+        Condition = {
+          ArnEquals = { "ecs:cluster" = aws_ecs_cluster.main.arn }
+        }
+      },
+      {
+        Sid      = "EcsWatchTasks"
+        Effect   = "Allow"
+        Action   = ["ecs:DescribeTasks"]
+        Resource = "*"
+        Condition = {
+          ArnEquals = { "ecs:cluster" = aws_ecs_cluster.main.arn }
+        }
+      },
+      # RunTask launches a task that assumes the execution role to pull the
+      # image and read the DB secret — passing it is a separate permission.
+      {
+        Sid      = "PassExecutionRole"
+        Effect   = "Allow"
+        Action   = ["iam:PassRole"]
+        Resource = [aws_iam_role.task_execution.arn]
+        Condition = {
+          StringEquals = { "iam:PassedToService" = "ecs-tasks.amazonaws.com" }
+        }
       },
     ]
   })

@@ -1,8 +1,9 @@
 # One-off RAG ingestion task: reads the notes bucket, chunks + embeds (Bedrock
 # Titan) and writes note_chunks rows. No service, no schedule — run manually
 # with the paste-ready command in `terraform output ingest_run_task_command`
-# (reuses the api tasks SG so RDS admits it).
-# Reuses the api image — the monorepo is already in it; only the command differs.
+# (reuses the brain tasks SG so RDS admits it).
+# Reuses the BRAIN image — ingestion is the brain's own pipeline and the script
+# ships with it; only the command differs.
 # Idempotent: unchanged files are skipped, so re-running after a failure is safe.
 
 resource "aws_cloudwatch_log_group" "ingest" {
@@ -27,9 +28,9 @@ resource "aws_ecs_task_definition" "ingest" {
   container_definitions = jsonencode([
     {
       name      = "ingest"
-      image     = "${aws_ecr_repository.app["api"].repository_url}:${var.image_tag}"
+      image     = "${aws_ecr_repository.app["brain"].repository_url}:${var.image_tag}"
       essential = true
-      command   = ["sh", "-c", "bun apps/api/scripts/ingest.ts"]
+      command   = ["bun", "apps/brain/scripts/ingest.ts"]
       environment = [
         { name = "NODE_ENV", value = "production" },
         { name = "NOTES_BUCKET", value = aws_s3_bucket.notes.bucket },

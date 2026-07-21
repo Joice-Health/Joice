@@ -155,7 +155,9 @@ resource "aws_ecs_task_definition" "api" {
         # edge — rate limiting trusts only these trailing hops.
         { name = "TRUSTED_PROXY_HOPS", value = "2" },
         { name = "CLERK_PUBLISHABLE_KEY", value = var.clerk_publishable_key },
-        # RAG: Bedrock model + region (IAM-authenticated via the task role, no keys).
+        # The admin console edits the brain's settings, so it resolves them
+        # against the same defaults the brain does. This service has no Bedrock
+        # permissions and never calls a model — see iam.tf.
         { name = "RAG_MODEL", value = var.rag_model },
         { name = "BEDROCK_REGION", value = var.region },
         { name = "POLLY_VOICE_ID", value = var.polly_voice_id },
@@ -245,8 +247,9 @@ resource "aws_ecs_service" "api" {
 
 resource "aws_appautoscaling_target" "services" {
   for_each = {
-    web = aws_ecs_service.web.name
-    api = aws_ecs_service.api.name
+    web   = aws_ecs_service.web.name
+    api   = aws_ecs_service.api.name
+    brain = aws_ecs_service.brain.name
   }
 
   max_capacity       = var.max_count

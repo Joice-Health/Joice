@@ -54,6 +54,7 @@ jobs:
           platforms: linux/amd64
           build-args: |
             NEXT_PUBLIC_API_URL=
+            NEXT_PUBLIC_BRAIN_URL=
             NEXT_PUBLIC_APP_URL=${{ vars.CLOUDFRONT_URL }}
             NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ vars.CLERK_PUBLISHABLE_KEY }}
           tags: |
@@ -78,13 +79,55 @@ jobs:
           cache-from: type=gha,scope=api
           cache-to: type=gha,scope=api,mode=max
 
+      - name: Build and push brain image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/brain/Dockerfile
+          target: release
+          push: true
+          platforms: linux/amd64
+          build-args: |
+            BUILD_SHA=${{ github.sha }}
+          tags: |
+            ${{ vars.ECR_BRAIN }}:latest
+            ${{ vars.ECR_BRAIN }}:${{ github.sha }}
+          cache-from: type=gha,scope=brain
+          cache-to: type=gha,scope=brain,mode=max
+
+      # Exactly one process applies migrations, and it finishes before any
+      # service restarts. This used to run in every container's CMD, which raced
+      # between tasks and would race between services now that there are two.
+      # A failure here stops the deploy: better to keep serving the old code
+      # than to start new code against a schema that didn't migrate.
+      - name: Run database migrations
+        run: |
+          task_arn=$(aws ecs run-task \
+            --cluster "${{ vars.ECS_CLUSTER }}" \
+            --task-definition "${{ vars.ECS_TASK_MIGRATE }}" \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[${{ vars.SUBNET_IDS }}],securityGroups=[${{ vars.BRAIN_SG_ID }}],assignPublicIp=ENABLED}" \
+            --query 'tasks[0].taskArn' --output text)
+          echo "Migration task: $task_arn"
+
+          aws ecs wait tasks-stopped --cluster "${{ vars.ECS_CLUSTER }}" --tasks "$task_arn"
+
+          exit_code=$(aws ecs describe-tasks --cluster "${{ vars.ECS_CLUSTER }}" \
+            --tasks "$task_arn" --query 'tasks[0].containers[0].exitCode' --output text)
+          echo "Migration exit code: $exit_code"
+          if [ "$exit_code" != "0" ]; then
+            echo "::error::Migrations failed — not deploying. See /ecs/joice-migrate."
+            exit 1
+          fi
+
       - name: Deploy services
         run: |
-          aws ecs update-service --cluster "${{ vars.ECS_CLUSTER }}" \
-            --service "${{ vars.ECS_SERVICE_API }}" --force-new-deployment >/dev/null
-          aws ecs update-service --cluster "${{ vars.ECS_CLUSTER }}" \
-            --service "${{ vars.ECS_SERVICE_WEB }}" --force-new-deployment >/dev/null
+          for service in "${{ vars.ECS_SERVICE_API }}" "${{ vars.ECS_SERVICE_BRAIN }}" "${{ vars.ECS_SERVICE_WEB }}"; do
+            aws ecs update-service --cluster "${{ vars.ECS_CLUSTER }}" \
+              --service "$service" --force-new-deployment >/dev/null
+          done
           echo "Waiting for services to stabilize..."
           aws ecs wait services-stable --cluster "${{ vars.ECS_CLUSTER }}" \
-            --services "${{ vars.ECS_SERVICE_API }}" "${{ vars.ECS_SERVICE_WEB }}"
+            --services "${{ vars.ECS_SERVICE_API }}" "${{ vars.ECS_SERVICE_BRAIN }}" \
+                       "${{ vars.ECS_SERVICE_WEB }}"
           echo "✅ Deployed ${{ github.sha }}"

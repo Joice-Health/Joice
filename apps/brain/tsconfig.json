@@ -1,0 +1,10 @@
+{
+  "extends": "@joice/config/tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["bun"],
+    "noEmit": true,
+    "outDir": "dist"
+  },
+  "include": ["src/**/*.ts", "scripts/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

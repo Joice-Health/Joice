@@ -1,4 +1,4 @@
-import type { ResolvedBrainConfig } from './admin/schemas';
+import type { ResolvedBrainConfig } from '../config/schemas';
 
 /**
  * System-prompt assembly for the chatbot brain. Admin settings shape the

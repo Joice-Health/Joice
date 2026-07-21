@@ -1,18 +1,25 @@
 'use client';
 
 import { useMutation, useQuery } from '@tanstack/react-query';
-import type { ChatMessage, PeptideRecommendation } from '@joice/core';
-// Value import must use the browser-safe subpath (the barrel pulls in the pg driver).
-import { BRAIN_UI_DEFAULTS, type BrainUi } from '@joice/core/schemas';
-import { useApiClient } from './provider';
+// Value imports must use the browser-safe subpath (the barrel pulls in the pg
+// driver and the AWS SDK).
+import {
+  BRAIN_UI_DEFAULTS,
+  type BrainUi,
+  type ChatMessage,
+  type PeptideRecommendation,
+} from '@joice/brain/schemas';
+import { useBrainClient } from './provider';
 import { publicBrainKeys } from './admin/hooks';
-import type { ApiClient } from './client';
+import type { BrainClient } from './client';
 
 /**
- * Peptide chatbot client bindings. The JSON endpoint flows through the typed
- * hc client + TanStack like everything else; the SSE stream endpoint is also
+ * Brain-service client bindings. The JSON endpoint flows through the typed hc
+ * client + TanStack like everything else; the SSE stream endpoint is also
  * called through the typed client, but its Response body is read manually —
  * hooks can't consume server-sent events.
+ *
+ * These talk to the brain service (`useBrainClient`), not the api service.
  */
 
 async function unwrap<T>(res: Response): Promise<T> {
@@ -28,22 +35,22 @@ async function unwrap<T>(res: Response): Promise<T> {
  * Falls back to code defaults while loading; admin changes land within ~30s.
  */
 export function useBrainUi(): BrainUi {
-  const client = useApiClient();
+  const client = useBrainClient();
   const { data } = useQuery({
     queryKey: publicBrainKeys.all,
     staleTime: 30_000,
-    queryFn: async (): Promise<BrainUi> => unwrap(await client.api.brain.$get()),
+    queryFn: async (): Promise<BrainUi> => unwrap(await client.api.brain.config.$get()),
   });
   return data ?? BRAIN_UI_DEFAULTS;
 }
 
 /** One-shot (non-streaming) answer — for non-chat surfaces. */
 export function usePeptideRecommendation() {
-  const client = useApiClient();
+  const client = useBrainClient();
 
   return useMutation({
     mutationFn: async (messages: ChatMessage[]): Promise<PeptideRecommendation> => {
-      const res = await client.api['peptide-recommendations'].$post({ json: { messages } });
+      const res = await client.api.brain.chat.$post({ json: { messages } });
       return unwrap<PeptideRecommendation>(res);
     },
   });
@@ -60,7 +67,7 @@ export type ChatStreamEvent =
  * annotated answer (render that as the authoritative message).
  */
 export async function* streamPeptideRecommendation(
-  client: ApiClient,
+  client: BrainClient,
   messages: ChatMessage[],
   /**
    * Abort the request. Pass this whenever the answer can stop mattering — the
@@ -69,7 +76,7 @@ export async function* streamPeptideRecommendation(
    */
   signal?: AbortSignal,
 ): AsyncGenerator<ChatStreamEvent> {
-  const res = await client.api['peptide-recommendations'].stream.$post(
+  const res = await client.api.brain.chat.stream.$post(
     { json: { messages } },
     { init: { signal } },
   );

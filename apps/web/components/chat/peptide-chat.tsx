@@ -4,12 +4,12 @@ import { useEffect, useRef, useState } from 'react';
 import { cn } from '@joice/ui';
 import {
   streamPeptideRecommendation,
-  useApiClient,
+  useBrainClient,
   useBrainUi,
   type Citation,
 } from '@joice/api-client';
-import { buildChatHistory } from '@joice/core/schemas';
-import { apiUrl } from '@/lib/env';
+import { buildChatHistory } from '@joice/brain/schemas';
+import { brainUrl } from '@/lib/env';
 import { AnswerMarkdown } from './answer-markdown';
 import { useAudioLevel } from './use-audio-level';
 import { useLiveTranscript } from './use-live-transcript';
@@ -49,7 +49,7 @@ function StopIcon({ className }: { className?: string }) {
  * quiet second path underneath.
  */
 export function PeptideChat() {
-  const client = useApiClient();
+  const client = useBrainClient(); // chat and voice live on the brain service
   const brainUi = useBrainUi(); // admin-managed copy + citation visibility
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [input, setInput] = useState('');
@@ -120,7 +120,7 @@ export function PeptideChat() {
     setTranscribing(true);
     setVoiceHint(null);
     try {
-      const res = await fetch(`${apiUrl}/api/voice/transcribe`, {
+      const res = await fetch(`${brainUrl}/api/brain/voice/transcribe`, {
         method: 'POST',
         headers: { 'content-type': 'application/octet-stream' },
         body: pcm.slice().buffer,

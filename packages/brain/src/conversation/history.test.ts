@@ -4,7 +4,7 @@ import {
   buildChatHistory,
   MAX_HISTORY_TURNS,
   type HistoryMessage,
-} from './conversation';
+} from './history';
 
 /** A finished exchange, as the UI would hold it. */
 const exchange = (n: number): HistoryMessage[] => [

@@ -2,14 +2,14 @@ import { describe, expect, test } from 'bun:test';
 import type { SQL } from 'drizzle-orm';
 import { PgDialect } from 'drizzle-orm/pg-core';
 import type { Database } from '@joice/db';
-import { DEFAULT_BRAIN_SETTINGS, type ResolvedBrainConfig } from './admin/schemas';
-import type { EmbeddingClient, GenerationClient, GenerationRequest } from './bedrock';
+import { DEFAULT_BRAIN_SETTINGS, type ResolvedBrainConfig } from '../config/schemas';
+import type { EmbeddingClient, GenerationClient, GenerationRequest } from '../providers/bedrock';
 import {
   condenseQuestion,
   createRecommendationService,
   parseCitations,
   type RetrievedChunk,
-} from './recommendation-service';
+} from './answer-service';
 
 /**
  * Stub covering the single select().from().orderBy().limit() chain retrieve()

@@ -14,6 +14,7 @@
   "dependencies": {
     "@clerk/nextjs": "^7.5.17",
     "@joice/api-client": "*",
+    "@joice/brain": "*",
     "@joice/core": "*",
     "@joice/ui": "*",
     "@tanstack/react-query": "^5.101.0",

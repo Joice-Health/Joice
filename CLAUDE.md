@@ -12,7 +12,7 @@ behind access gates in the same app. Bun is the package manager and runtime ever
 
 ```bash
 bun install                 # install all workspaces
-bun run dev                 # all apps in dev via Turbo (api :4000, web :3000)
+bun run dev                 # all apps in dev via Turbo (api :4000, brain :4100, web :3000)
 bun run type-check          # tsc across all packages — run before claiming work done
 bun run lint                # eslint across all packages
 bun run test                # bun test (currently packages/core admin services)
@@ -20,7 +20,7 @@ bun run db:generate         # drizzle-kit: emit migration from schema changes
 bun run db:migrate          # apply migrations (needs DATABASE_URL)
 
 # Single test file:
-cd packages/core && bun test src/admin/feature-flag-service.test.ts
+cd packages/brain && bun test src/conversation/history.test.ts
 
 # Preferred dev environment — full stack in Docker with hot reload:
 docker compose up           # docker-compose.override.yml auto-merges: bind mounts + next dev/bun --hot
@@ -29,29 +29,45 @@ docker compose -f docker-compose.yml up --build   # production images (no hot re
 
 Local Postgres publishes on **5433** (5432 is taken on this machine; `POSTGRES_PORT` in `.env`).
 If a container stops seeing file edits (stale Docker Desktop mount cache — has happened):
-`docker compose up -d --force-recreate api web`.
+`docker compose up -d --force-recreate api brain web`. If that isn't enough (the container
+sees a *truncated* file and reports a syntax error at a line that looks fine on the host),
+give the file a fresh inode: `cp f /tmp/x && rm f && cp /tmp/x f`, then restart.
 
 ## Architecture
 
 Turborepo monorepo; the type flow is the core design — **no hand-written DTOs anywhere**:
 
 ```
-packages/db         Drizzle schema (single source of truth) + client + migrations
-  └► packages/core  domain services (waitlist, admin/*) + shared Zod schemas — runtime-agnostic
-       └► apps/api  Hono on Bun; routes chained so `export type AppType` carries full req/res types
-            └► packages/api-client  hc<AppType> typed client + TanStack Query hooks
-                 └► apps/web        Next.js App Router consumes the typed hooks
-packages/ui         Tailwind v4 theme tokens (theme.css) + primitives (Button, Input, cn)
-infra/              Terraform for all of AWS (see infra/README.md)
+packages/db          Drizzle schema, split by owner (schema/{waitlist,identity,platform,brain}.ts)
+  ├► packages/core   platform domain: waitlist + admin/* — runtime-agnostic
+  │    └► apps/api   Hono on Bun :4000 — `export type AppType`
+  └► packages/brain  THE BRAIN: retrieval, generation, voice, config, ports
+       └► apps/brain Hono on Bun :4100 — `export type BrainAppType`
+            └► packages/api-client   hc<AppType> + hc<BrainAppType> clients + TanStack hooks
+                 └► apps/web         Next.js App Router consumes the typed hooks
+packages/ui          Tailwind v4 theme tokens (theme.css) + primitives (Button, Input, cn)
+infra/               Terraform for all of AWS (see infra/README.md)
 ```
 
+**Two services, one database.** The brain is a separate deployable because it holds the
+AI permissions, scales differently, and is where the product is going. Everything it serves
+lives under `/api/brain/*`; the ALB routes that prefix to it at a *higher* rule priority than
+`/api/*`. Full rationale and the deploy steps: `docs/rag/10-architecture.md`.
+
 Rules that keep this working:
-- API routes must stay in the single `.get(...).post(...)` chain in `apps/api/src/app.ts`
-  (or a sub-router mounted with `.route()`), or `AppType` inference breaks for the web client.
-- Browser-safe imports from `@joice/core` must use the `@joice/core/schemas` subpath — the
-  barrel export pulls in the Postgres driver and breaks the web build.
-- DB schema changes: edit `packages/db/src/schema.ts` → `bun run db:generate` → commit the
-  migration. Both API containers run migrations at boot (local dev and prod).
+- Routes must stay in the single `.get(...).post(...)` chain — `apps/api/src/app.ts` for the
+  platform, `apps/brain/src/app.ts` for the brain (or a sub-router mounted with `.route()`),
+  or RPC type inference breaks for the web client.
+- Browser-safe imports must use the `/schemas` subpath (`@joice/core/schemas`,
+  `@joice/brain/schemas`) — the barrels pull in the Postgres driver and the AWS SDK.
+- **The brain never imports another domain's tables.** It declares interfaces in
+  `packages/brain/src/ports` and gets adapters injected. Adding orders/catalogue/cart later
+  should touch one adapter file, not the domain.
+- A service writes only the tables in its own `packages/db/src/schema/*.ts` file.
+- DB schema changes: edit the right file under `packages/db/src/schema/` → `bun run db:generate`
+  → commit the migration. **Migrations do NOT run at boot** — compose runs a one-shot `migrate`
+  service, and CI runs the `joice-migrate` ECS task to completion before deploying either
+  service. Two services booting migrations against one database would race.
 
 ## Access model (three tiers)
 

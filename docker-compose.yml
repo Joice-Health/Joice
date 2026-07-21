@@ -17,6 +17,21 @@ services:
       timeout: 5s
       retries: 10
 
+  # Runs once and exits. Both services wait for it to succeed, which is how two
+  # services sharing one database avoid racing each other's migrations — the
+  # same reason production runs this as a one-off ECS task before deploying.
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: 'no'
+    command: ['bun', 'packages/db/src/migrate.ts']
+    environment:
+      DATABASE_URL: postgresql://joice:joice@postgres:5432/joice
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   api:
     build:
       context: .
@@ -35,8 +50,34 @@ services:
       # Clerk (admin auth) — set real dev keys in .env
       CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY:-pk_test_placeholder}
       CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-sk_test_placeholder}
-      # RAG (Bedrock) — needs AWS creds with Bedrock access to answer for real;
-      # without them the endpoints return 502 and everything else still works.
+      # The admin console edits the brain's settings, so it needs the same
+      # model/voice defaults the brain resolves against.
+      RAG_MODEL: ${RAG_MODEL:-us.anthropic.claude-sonnet-5}
+      BEDROCK_REGION: ${BEDROCK_REGION:-us-east-1}
+      POLLY_VOICE_ID: ${POLLY_VOICE_ID:-Ruth}
+    ports:
+      - '4000:4000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  # The brain: chat, voice, and the notes it answers from. Separate service so
+  # it can scale and evolve on its own — see docs/rag/10-architecture.md.
+  brain:
+    build:
+      context: .
+      dockerfile: apps/brain/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://joice:joice@postgres:5432/joice
+      PORT: 4100
+      WEB_ORIGIN: http://localhost:3000,http://0.0.0.0:3000
+      TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-0}
+      NODE_ENV: production
+      # Bedrock/Transcribe/Polly — needs AWS creds to answer for real; without
+      # them these endpoints fail and the rest of the site still works.
       RAG_MODEL: ${RAG_MODEL:-us.anthropic.claude-sonnet-5}
       BEDROCK_REGION: ${BEDROCK_REGION:-us-east-1}
       POLLY_VOICE_ID: ${POLLY_VOICE_ID:-Ruth}
@@ -44,10 +85,12 @@ services:
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
     ports:
-      - '4000:4000'
+      - '4100:4100'
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
   web:
     build:
@@ -56,6 +99,10 @@ services:
       args:
         # Browser-reachable URLs (published host ports), inlined at build time.
         NEXT_PUBLIC_API_URL: http://localhost:4000
+        # Locally the two services are on different ports. In production this is
+        # left empty: CloudFront serves one origin and the ALB routes
+        # /api/brain/* to the brain service.
+        NEXT_PUBLIC_BRAIN_URL: http://localhost:4100
         NEXT_PUBLIC_APP_URL: http://localhost:3000
         NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-}
     restart: unless-stopped
@@ -71,6 +118,7 @@ services:
       - '3000:3000'
     depends_on:
       - api
+      - brain
 
 volumes:
   postgres_data:

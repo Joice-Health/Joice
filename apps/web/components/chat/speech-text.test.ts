@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { speakRequestSchema } from '@joice/core/schemas';
+import { speakRequestSchema } from '@joice/brain/schemas';
 import { forSpeech, SPEECH_CHUNK_MAX, takeChunk } from './speech-text';
 
 /** Drain the buffer the way useSpeaker's pump loop does. */
