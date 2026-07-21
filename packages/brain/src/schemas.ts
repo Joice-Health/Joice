@@ -31,6 +31,12 @@ export { citedIndexes, stripCitationMarkers } from './conversation/citations';
 export { speakRequestSchema, type SpeakRequest } from './voice/schemas';
 
 export {
+  conversationIdParamSchema,
+  storedConversationSchema,
+  type StoredConversationView,
+} from './conversation/wire';
+
+export {
   brainSettingsSchema,
   brainSettingsPatchSchema,
   brainUiSchema,

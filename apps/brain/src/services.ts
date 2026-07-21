@@ -1,6 +1,7 @@
 import { getDatabase } from '@joice/db';
 import {
   createBrainConfigService,
+  createConversationService,
   createEmbeddingClient,
   createGenerationClient,
   createRecommendationService,
@@ -35,6 +36,17 @@ export const speech = createSpeechClient({
   region: env.BEDROCK_REGION,
   getVoiceId: async () => (await brainConfig.get()).pollyVoiceId,
 });
+
+/**
+ * Chat-thread persistence. The service is always constructed — it's the
+ * `persistConversations` flag, not the presence of the service, that decides
+ * whether anything is written, so the read paths stay available for whatever
+ * history already exists.
+ */
+export const conversationService = createConversationService(db);
+
+/** Whether to record threads at all. Off unless explicitly enabled — see env.ts. */
+export const persistConversations = env.BRAIN_PERSIST_CONVERSATIONS;
 
 /**
  * Member context, catalogue and cart. Stubs today — no commerce or member

@@ -92,9 +92,14 @@ Already true today (inherited from the existing stack + this feature):
 
 - RDS storage encrypted, TLS forced (`rds.force_ssl=1`)
 - S3 notes bucket: private (full public-access block), versioned, SSE
-- Least-privilege IAM: the api task role can invoke Bedrock models and nothing
-  else; the ingestion role can read one bucket and invoke Titan only
+- Least-privilege IAM: **only the brain task role** can invoke Bedrock,
+  Transcribe and Polly — those permissions were removed from the api role when
+  the brain became its own service; the ingestion role can read one bucket and
+  invoke Titan only
 - No raw IPs stored; team gate keeps `/ask` non-public
+- **Chat threads are not persisted.** The tables exist and the code path is
+  built and tested, but `BRAIN_PERSIST_CONVERSATIONS` is `false` everywhere —
+  see the gate below
 
 **Required before real members use the chat** (the "Before PHI" checklist in
 `infra/README.md`, plus feature-specific items):
@@ -108,6 +113,39 @@ Already true today (inherited from the existing stack + this feature):
 | Member auth on the chat routes | Replace public+rate-limit with Clerk member sessions; enables per-member accountability |
 | Redis-backed rate limiting | The in-memory limiter is per-task and resets on deploy |
 | App-level audit logging for chat | Who asked what, when — required once questions are PHI |
+
+## The conversation-persistence gate
+
+`conversations` and `messages` (`packages/db/src/schema/brain.ts`) exist, and
+`createConversationService` writes to them, but **the flag that enables writing
+is off by default in every environment**. This is deliberate and is the single
+most important line in this document to not cross casually.
+
+**Why it's gated.** Phase 0's posture is "marketing data only — treated as not
+PHI". A stored chat thread breaks that in a way a waitlist email does not: "is
+tirzepatide safe with my thyroid condition?" is health information about an
+identifiable person the moment it's attached to a session, let alone a member
+id. Storing it makes this a system that holds PHI, with everything that follows.
+
+**What has to be settled before switching it on for real members:**
+
+| Question | Why it blocks |
+|---|---|
+| Retention period, and what deletes the data | Indefinite retention of health questions is not defensible; there is no deletion job today |
+| Member deletion / right-to-erasure path | `ON DELETE CASCADE` covers messages, but nothing yet erases a member's threads on request |
+| AWS AI-services opt-out policy applied at the org | Keeps prompts out of AWS service-improvement pipelines |
+| The Before-PHI checklist items below | Private subnets, KMS CMKs, CloudTrail, encrypted last hop — all of them become required, not recommended |
+| Member auth on the chat routes | An anonymous session cookie is not an accountability boundary |
+
+**What is safe about it as built:** reads are always scoped to the requester
+(a conversation id alone returns 404 to anyone else), question and answer are
+written in one transaction, and turning the flag off stops all writing while
+leaving existing history readable. Nothing is logged — the request logger
+records paths and status only, never bodies.
+
+Turning it on is a config change, not a project. That was the point of building
+it now: the decision stays a compliance decision rather than becoming an
+engineering one.
 
 ## If the vault turns out to contain irreducible PHI
 

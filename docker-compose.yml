@@ -81,6 +81,9 @@ services:
       RAG_MODEL: ${RAG_MODEL:-us.anthropic.claude-sonnet-5}
       BEDROCK_REGION: ${BEDROCK_REGION:-us-east-1}
       POLLY_VOICE_ID: ${POLLY_VOICE_ID:-Ruth}
+      # Chat-thread persistence. Off by default — storing member questions
+      # crosses the Phase-0 compliance line; see apps/brain/src/env.ts.
+      BRAIN_PERSIST_CONVERSATIONS: ${BRAIN_PERSIST_CONVERSATIONS:-false}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}

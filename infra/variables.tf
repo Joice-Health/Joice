@@ -142,3 +142,13 @@ variable "redirect_domains" {
   type        = list(string)
   default     = ["joice.health"]
 }
+
+variable "persist_conversations" {
+  description = <<-EOT
+    Store member chat threads in Postgres. Leave false until the
+    conversation-persistence gate in docs/rag/07-compliance.md is cleared —
+    retention policy, erasure path, AI-services opt-out and member auth.
+  EOT
+  type        = bool
+  default     = false
+}

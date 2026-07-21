@@ -70,3 +70,87 @@ export const noteChunks = pgTable(
 
 export type NoteChunk = typeof noteChunks.$inferSelect;
 export type NewNoteChunk = typeof noteChunks.$inferInsert;
+
+/**
+ * A chat thread.
+ *
+ * `member_id` is nullable and `anonymous_session_id` carries the thread until
+ * sign-in exists: history works today for someone who has never logged in, and
+ * the day member accounts ship, claiming a conversation is an UPDATE rather
+ * than a migration. Exactly one of the two is always set.
+ *
+ * ⚠️ Persisting member questions crosses the Phase-0 "marketing data only"
+ * line — a question about a symptom is health information tied to a person.
+ * Retention policy and the Before-PHI checklist must be settled before real
+ * members use this. See docs/rag/07-compliance.md.
+ */
+export const conversations = pgTable(
+  'conversations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+
+    /** Set once the member signs in; null for anonymous threads. */
+    memberId: uuid('member_id'),
+
+    /**
+     * Opaque per-browser-session id, so an anonymous thread hangs together.
+     * Never derived from an IP or anything else identifying.
+     */
+    anonymousSessionId: text('anonymous_session_id'),
+
+    /** First question, trimmed — enough to list threads without loading them. */
+    title: text('title'),
+
+    /** Open-ended room for things that shouldn't each become a column. */
+    metadata: jsonb('metadata').$type<Record<string, unknown>>(),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    // "This member's history", newest first — the query the UI will make.
+    index('conversations_member_idx').on(table.memberId, table.createdAt.desc()),
+    index('conversations_anon_idx').on(table.anonymousSessionId, table.createdAt.desc()),
+  ],
+);
+
+export type Conversation = typeof conversations.$inferSelect;
+export type NewConversation = typeof conversations.$inferInsert;
+
+/**
+ * One turn. Append-only: a message is never edited, so the thread is an honest
+ * record of what was actually said and answered.
+ *
+ * This is also the evaluation data — the only way to tell whether answers are
+ * getting better is to have the old ones, with the citations they were based on.
+ */
+export const messages = pgTable(
+  'messages',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+
+    conversationId: uuid('conversation_id')
+      .notNull()
+      .references(() => conversations.id, { onDelete: 'cascade' }),
+
+    role: text('role', { enum: ['user', 'assistant'] }).notNull(),
+    content: text('content').notNull(),
+
+    /** Which chunks the answer cited, as returned to the member. Null on user turns. */
+    citations: jsonb('citations').$type<unknown[]>(),
+
+    /** Which model produced this, so a quality change can be traced to a swap. */
+    model: text('model'),
+    inputTokens: integer('input_tokens'),
+    outputTokens: integer('output_tokens'),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    // Replaying a thread in order — the only read path that matters.
+    index('messages_conversation_idx').on(table.conversationId, table.createdAt),
+  ],
+);
+
+export type Message = typeof messages.$inferSelect;
+export type NewMessage = typeof messages.$inferInsert;

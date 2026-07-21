@@ -26,6 +26,20 @@ const envSchema = z.object({
   BEDROCK_REGION: z.string().default('us-east-1'),
   /** Polly neural voice for spoken answers. */
   POLLY_VOICE_ID: z.string().default('Ruth'),
+  /**
+   * Store chat threads in Postgres.
+   *
+   * OFF by default, deliberately. A stored question about a symptom is health
+   * information tied to a person, which crosses the Phase-0 "marketing data
+   * only" line — the retention policy and the Before-PHI checklist have to be
+   * settled before this is switched on for real members. The code path is
+   * built and tested so that turning it on is a config change, not a project.
+   * See docs/rag/07-compliance.md.
+   */
+  BRAIN_PERSIST_CONVERSATIONS: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
   /** Git SHA of the image, baked in at build time and reported by /health. */
   BUILD_SHA: z.string().default('dev'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),

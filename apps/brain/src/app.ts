@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { cors } from 'hono/cors';
 import { requestId, type RequestIdVariables } from 'hono/request-id';
 import { secureHeaders } from 'hono/secure-headers';
@@ -7,9 +7,12 @@ import { HTTPException } from 'hono/http-exception';
 import { zValidator } from '@hono/zod-validator';
 import {
   chatRequestSchema,
+  conversationIdParamSchema,
   createTranscribeSession,
   speakRequestSchema,
   stripCitationMarkers,
+  type ChatMessage,
+  type PeptideRecommendation,
   type TranscribeSession,
 } from '@joice/brain';
 import type { WSContext } from 'hono/ws';
@@ -17,10 +20,18 @@ import { allowedOrigins, env } from './env';
 import { upgradeWebSocket } from './ws';
 import { rateLimit } from './middleware/rate-limit';
 import { requestLog } from './middleware/request-log';
+import { identifyRequester, type RequesterVariables } from './middleware/requester';
 import { checkHealth } from './health';
-import { brainConfig, recommendations, speech, transcriber } from './services';
+import {
+  brainConfig,
+  conversationService,
+  persistConversations,
+  recommendations,
+  speech,
+  transcriber,
+} from './services';
 
-const app = new Hono<{ Variables: RequestIdVariables }>();
+const app = new Hono<{ Variables: RequestIdVariables & RequesterVariables }>();
 
 // requestId first — everything downstream, including the logger and the error
 // handler, reads the id it sets. It also echoes it as X-Request-Id, so the id
@@ -28,6 +39,9 @@ const app = new Hono<{ Variables: RequestIdVariables }>();
 app.use('*', requestId());
 app.use('*', requestLog);
 app.use('*', secureHeaders());
+// Who is asking. Anonymous today (an opaque session cookie); the seam where
+// member auth plugs in — see middleware/requester.ts.
+app.use('/api/brain/*', identifyRequester);
 app.use(
   '/api/*',
   cors({
@@ -169,6 +183,35 @@ app.get(
   }),
 );
 
+
+/**
+ * Record a completed exchange, if persistence is enabled.
+ *
+ * Never allowed to fail a request: the member already has their answer, and
+ * losing a history row is not worth turning a good answer into an error. The
+ * failure is logged with the request id so it's still findable.
+ */
+async function record(
+  c: Context<{ Variables: RequestIdVariables & RequesterVariables }>,
+  messages: ChatMessage[],
+  recommendation: PeptideRecommendation,
+): Promise<void> {
+  if (!persistConversations) return;
+  const question = messages[messages.length - 1]!.content;
+  try {
+    const requester = c.get('requester');
+    const conversationId = await conversationService.findOrCreate(requester, question);
+    await conversationService.recordExchange(conversationId, question, recommendation.answer, {
+      citations: recommendation.citations,
+      model: (await brainConfig.get()).model,
+    });
+  } catch (error) {
+    console.error(
+      JSON.stringify({ reqId: c.get('requestId'), error: `conversation persist failed: ${error}` }),
+    );
+  }
+}
+
 /**
  * Everything the brain serves lives under `/api/brain/*`, which is what lets
  * the ALB route to this service on a single listener rule rather than a list of
@@ -208,7 +251,9 @@ const routes = app
     zValidator('json', chatRequestSchema),
     async (c) => {
       const { messages } = c.req.valid('json');
-      return c.json(await recommendations.recommend(messages));
+      const recommendation = await recommendations.recommend(messages);
+      await record(c, messages, recommendation);
+      return c.json(recommendation);
     },
   )
   .post(
@@ -231,6 +276,7 @@ const routes = app
                 event: 'complete',
                 data: JSON.stringify(event.recommendation),
               });
+              await record(c, messages, event.recommendation);
             }
           }
         } catch (err) {
@@ -270,6 +316,28 @@ const routes = app
       const audio = await speech.synthesize(stripCitationMarkers(text));
       c.header('Content-Type', 'audio/mpeg');
       return c.body(audio.buffer as ArrayBuffer);
+    },
+  )
+  /**
+   * The requester's past threads. Scoped to whoever is asking — anonymous by
+   * session cookie today, by member id once sign-in exists — so a conversation
+   * id alone is never enough to read someone else's history.
+   *
+   * Reads stay available even with persistence off, so existing history is
+   * still reachable if the flag is turned back off.
+   */
+  .get('/api/brain/conversations', rateLimit({ windowMs: 60_000, max: 30 }), async (c) => {
+    return c.json(await conversationService.list(c.get('requester')));
+  })
+  .get(
+    '/api/brain/conversations/:id',
+    rateLimit({ windowMs: 60_000, max: 30 }),
+    zValidator('param', conversationIdParamSchema),
+    async (c) => {
+      const { id } = c.req.valid('param');
+      const conversation = await conversationService.get(id, c.get('requester'));
+      if (!conversation) return c.json({ error: 'Conversation not found' }, 404);
+      return c.json(conversation);
     },
   );
 

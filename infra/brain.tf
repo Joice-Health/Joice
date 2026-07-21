@@ -118,6 +118,10 @@ resource "aws_ecs_task_definition" "brain" {
         { name = "RAG_MODEL", value = var.rag_model },
         { name = "BEDROCK_REGION", value = var.region },
         { name = "POLLY_VOICE_ID", value = var.polly_voice_id },
+        # Storing member questions crosses the Phase-0 "marketing data only"
+        # line — see docs/rag/07-compliance.md § conversation-persistence gate.
+        # Do not flip this to "true" before that section's checklist is settled.
+        { name = "BRAIN_PERSIST_CONVERSATIONS", value = tostring(var.persist_conversations) },
       ]
       secrets = [
         { name = "DATABASE_URL", valueFrom = aws_secretsmanager_secret.database_url.arn },

@@ -36,6 +36,13 @@
       "when": 1784669886527,
       "tag": "0004_sticky_vapor",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1784674663150,
+      "tag": "0005_sweet_silver_surfer",
+      "breakpoints": true
     }
   ]
 }

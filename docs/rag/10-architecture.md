@@ -124,12 +124,52 @@ One Postgres, one migration stream. `packages/db/src/schema/` is split by owner:
 | `waitlist.ts` | `@joice/core` | `waitlist_entries` |
 | `identity.ts` | `@joice/core` | `users` |
 | `platform.ts` | `@joice/core` | `feature_flags`, `app_settings`, `audit_logs` |
-| `brain.ts` | `@joice/brain` | `note_chunks` |
+| `brain.ts` | `@joice/brain` | `note_chunks`, `conversations`, `messages` |
 
 The rule: a service writes only the tables in its own file. This is enforced by
 convention and review, not by separate credentials — both services connect with
 the same role. Worth revisiting if the brain ever handles data the api service
 must not see.
+
+## Conversation persistence
+
+`conversations` and `messages` are brain-owned. `member_id` is **nullable** and
+sits alongside `anonymous_session_id`, which is what makes this work before
+member accounts exist: a thread started by someone who has never signed in is
+kept against an opaque session cookie, and `conversationService.claim()` turns
+it into theirs on sign-up with an UPDATE rather than a migration.
+
+```
+identifyRequester middleware  →  Requester { memberId: null, sessionId }
+                                      │
+POST /api/brain/chat  ────────────────┤
+                                      ├─► findOrCreate(requester, question)
+                                      └─► recordExchange(id, q, a, {citations, model})
+                                              (one transaction — see below)
+
+GET /api/brain/conversations       list, scoped to the requester
+GET /api/brain/conversations/:id   replay, scoped to the requester
+```
+
+Two properties worth keeping:
+
+- **The exchange is written in one transaction.** A question stored without its
+  answer replays as history with two adjacent user turns — the exact shape
+  `buildChatHistory` exists to make unrepresentable, reintroduced through the
+  database.
+- **Reads are scoped to the requester, not just the id.** A conversation id is a
+  UUID in a URL; without the requester in the `WHERE`, knowing one would be
+  enough to read the thread. Verified: a different session gets `[]` and a 404.
+
+Recording never fails a request — the member already has their answer, and
+losing a history row isn't worth turning a good answer into an error. Failures
+are logged with the request id.
+
+⚠️ **Writing is off by default** (`BRAIN_PERSIST_CONVERSATIONS=false`,
+`persist_conversations = false` in Terraform). Storing member questions crosses
+the Phase-0 compliance line; read the gate in
+[07 — Compliance](07-compliance.md#the-conversation-persistence-gate) before
+enabling. Read paths stay available either way.
 
 ## Migrations no longer run at boot
 
