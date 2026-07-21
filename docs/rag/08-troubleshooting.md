@@ -35,6 +35,19 @@ Symptom → cause → fix, roughly in the order you'll hit them.
 | Duplicate-key error on `note_chunks_source_path_chunk_index_unique` | Two ingest tasks running concurrently against the same file | Don't run the task twice in parallel; re-run once — the transactional replace self-heals |
 | Everything re-ingests every run (nothing reports `unchanged`) | The files genuinely change between runs (e.g. sync tooling rewriting line endings/frontmatter) | The hash is over raw bytes — make the upload byte-stable |
 
+## Voice
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| Mic button shows "Microphone access was blocked" | Browser permission denied, or the page isn't `localhost`/HTTPS (getUserMedia requires a secure context) | Re-allow the mic in the browser's site settings; use `localhost:3000`, not a LAN IP |
+| Recording never auto-stops | Background noise keeps RMS above the silence threshold | Tap the stop button (always works); tune `SILENCE_RMS`/`SILENCE_MS` in `apps/web/components/chat/use-recorder.ts` for noisy rooms |
+| "Didn't catch that" every time | No speech crossed the `SPEECH_RMS` threshold (quiet mic / wrong input device) | Check the OS input device + level; lower `SPEECH_RMS` if the mic is genuinely quiet |
+| Transcript is wrong for peptide names ("BBC 157") | Transcribe lacks the jargon | Add an Amazon Transcribe **custom vocabulary** (BPC-157, TB-500, …) — tuning knob, not architecture |
+| `/api/voice/*` returns 500 | Same credential/IAM issues as Bedrock (`ExpiredTokenException` locally; missing `transcribe:StartStreamTranscription`/`polly:SynthesizeSpeech` on the task role in prod — `infra/iam.tf → task_voice`) | Locally: `./scripts/dev-aws-refresh.sh`. Prod: `terraform apply` |
+| Answer plays but no visualizer movement | `prefers-reduced-motion` is on (static bars are intentional), or the analyser wasn't connected | Reduced motion = working as designed |
+| Polly mispronounces a peptide name | Neural voices read unusual tokens phonetically | Add a Polly **lexicon** for clinical terms (v2 knob) |
+| No audio on iOS Safari until a second tap | AudioContext started outside a user gesture | Already handled (contexts resume inside the tap); if it regresses, keep `context.resume()` in the click handler |
+
 ## Answer quality
 
 | Symptom | Likely cause | Fix |

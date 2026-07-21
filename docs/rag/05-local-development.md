@@ -210,12 +210,34 @@ curl -sN localhost:4000/api/peptide-recommendations/stream \
 The SSE output interleaves `event: delta` frames and ends with
 `event: complete` carrying the annotated answer + citations.
 
+### 6b. Voice endpoints (no microphone needed)
+
+```bash
+# Text → speech (Polly): expect "MPEG ADTS, layer III"
+curl -s localhost:4000/api/voice/speak -H 'content-type: application/json' \
+  -d '{"text":"BPC-157 is dosed at 250 micrograms daily. [1]"}' \
+  --output /tmp/speak.mp3 && file /tmp/speak.mp3
+
+# Round trip: decode that mp3 to 16kHz PCM and feed it to Transcribe —
+# expect ≈ the original sentence back
+ffmpeg -y -loglevel error -i /tmp/speak.mp3 -f s16le -ar 16000 -ac 1 /tmp/speak.pcm
+curl -s localhost:4000/api/voice/transcribe -H 'content-type: application/octet-stream' \
+  --data-binary @/tmp/speak.pcm | jq
+```
+
 ### 7. The chat UI
 
 `/ask` lives behind the team gate: open <http://localhost:3000/team>, enter the
 team password (`joice-dev` unless you changed `TEAM_PASSWORD`), then go to
 <http://localhost:3000/ask>. You should see streamed answers with citation
 chips like `[1] BPC-157 > Dosing`.
+
+**Voice**: tap the mic (allow microphone access — works on `localhost` without
+HTTPS), say *"how is BPC-157 dosed?"*, and pause — the recording auto-stops
+after ~1.5s of silence, the transcript appears as your message, the answer
+streams as text, and then it's read aloud with the visualizer bars moving to
+the real audio. Typed questions stay silent; use the speaker button under any
+answer to hear it on demand.
 
 ### 8. Tests & checks
 

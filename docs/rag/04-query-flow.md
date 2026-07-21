@@ -206,6 +206,63 @@ under the answer (`[1] BPC-157 > Dosing`, hover shows the snippet).
   behind the team-password gate automatically; at launch it's public site
   chrome like every other page.
 
+## Voice mode
+
+Voice rides on the same pipeline — the mic produces a transcript that flows
+through the SSE chat flow above, and the finished answer is synthesized back.
+All audio stays on AWS (Transcribe + Polly, both HIPAA-eligible under the BAA)
+and is processed **in memory only** — never persisted, never logged. See
+[07 — Compliance](07-compliance.md#voice) for why the browser's Web Speech API
+was rejected.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant B as Browser (/ask)
+    participant API as Hono API
+    participant T as Amazon Transcribe
+    participant P as Amazon Polly
+
+    B->>B: tap mic → getUserMedia → AudioWorklet captures PCM<br/>(live mic visualizer; VAD stops after ~1.5s silence)
+    B->>B: downsample to 16kHz mono PCM16
+    B->>API: POST /api/voice/transcribe (raw bytes, ≤2MB)
+    API->>T: StartStreamTranscription (streamed chunks)
+    T-->>API: transcript
+    API-->>B: { transcript }
+    B->>B: transcript auto-sends through the normal SSE chat flow
+    Note over B,API: …text answer streams exactly as in the diagram above…
+    B->>API: POST /api/voice/speak { text } ([n] markers stripped server-side)
+    API->>P: SynthesizeSpeech (neural, POLLY_VOICE_ID)
+    P-->>API: mp3
+    API-->>B: audio/mpeg
+    B->>B: Web Audio decode → AnalyserNode → speakers<br/>visualizer bars animate from the real signal
+```
+
+### Voice endpoints
+
+| Endpoint | In | Out | Notes |
+|---|---|---|---|
+| `POST /api/voice/transcribe` | raw 16kHz mono PCM16 body (`application/octet-stream`, ≤2MB ≈ 60s) | `{ "transcript": "..." }` (empty string = nothing recognized) | 10 req/min/IP. Streams into Transcribe; nothing is stored |
+| `POST /api/voice/speak` | `{ "text": "..." }` (≤3000 chars; `[n]` markers stripped server-side) | mp3 bytes (`audio/mpeg`) | 10 req/min/IP. `POLLY_VOICE_ID` env picks the neural voice (default **Ruth**) |
+
+### Client behavior (`use-recorder.ts`, `use-speaker.ts`, `voice-visualizer.tsx`)
+
+- **Capture is raw PCM via AudioWorklet** (ScriptProcessor fallback), *not*
+  MediaRecorder — Safari's MediaRecorder emits AAC, which Transcribe rejects.
+  Recording is downsampled to 16kHz mono PCM16 in the browser before upload.
+- **VAD auto-stop**: after speech is first heard (RMS ≥ 0.02), ~1.5s below the
+  silence threshold ends the recording; tap-stop always works; 60s hard cap.
+  A recording with no detected speech never uploads ("didn't catch that").
+- **Speak-back policy**: voice-asked questions get a spoken answer
+  automatically; typed questions stay silent; every assistant message has a
+  play/stop button.
+- **The visualizer is real**: a canvas fed by `AnalyserNode.getByteFrequencyData`
+  on the actual audio graph — mic input while recording, Polly playback while
+  the AI talks. Color inherits `currentColor` (design tokens); honors
+  `prefers-reduced-motion` with a static render.
+- Failure degrades to text: mic denied / empty transcript / synth failure all
+  surface a small hint and leave typing fully functional.
+
 ## Error handling summary
 
 | Failure | Surface | Behavior |

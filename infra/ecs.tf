@@ -155,6 +155,7 @@ resource "aws_ecs_task_definition" "api" {
         # RAG: Bedrock model + region (IAM-authenticated via the task role, no keys).
         { name = "RAG_MODEL", value = var.rag_model },
         { name = "BEDROCK_REGION", value = var.region },
+        { name = "POLLY_VOICE_ID", value = var.polly_voice_id },
       ]
       secrets = [
         { name = "DATABASE_URL", valueFrom = aws_secretsmanager_secret.database_url.arn },

@@ -15,6 +15,7 @@
     "API_URL_INTERNAL",
     "RAG_MODEL",
     "BEDROCK_REGION",
+    "POLLY_VOICE_ID",
     "NOTES_BUCKET",
     "NOTES_DIR"
   ],

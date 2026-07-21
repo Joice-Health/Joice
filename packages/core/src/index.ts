@@ -4,3 +4,4 @@ export * from './admin';
 export * from './bedrock';
 export * from './chunker';
 export * from './recommendation-service';
+export * from './voice';

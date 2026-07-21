@@ -21,6 +21,8 @@ const envSchema = z.object({
    */
   RAG_MODEL: z.string().default('us.anthropic.claude-sonnet-5'),
   BEDROCK_REGION: z.string().default('us-east-1'),
+  /** Polly neural voice for spoken answers. */
+  POLLY_VOICE_ID: z.string().default('Ruth'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 });
 

@@ -123,6 +123,12 @@ variable "rag_model" {
   default     = "us.anthropic.claude-sonnet-5"
 }
 
+variable "polly_voice_id" {
+  description = "Polly neural voice for spoken chatbot answers."
+  type        = string
+  default     = "Ruth"
+}
+
 # ---- Domains ----
 
 variable "domain_name" {

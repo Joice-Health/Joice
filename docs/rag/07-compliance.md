@@ -65,6 +65,24 @@ flowchart LR
    and the UI disclaimer line follow the same counsel-review gate as the
    referral copy (root CLAUDE.md).
 
+## Voice
+
+Voice mode raises the stakes: **spoken questions are health information in the
+member's own voice** (biometric-adjacent). The same BAA logic applies, which is
+why:
+
+- **STT is Amazon Transcribe, TTS is Amazon Polly** — both HIPAA-eligible under
+  the AWS BAA, IAM-authenticated, no new vendors or secrets.
+- **The browser's Web Speech API was rejected**: Chrome's `SpeechRecognition`
+  sends the audio to Google's servers (no BAA). Third-party voice vendors
+  (ElevenLabs, OpenAI) were rejected for the same no-BAA reason as Voyage.
+- **Audio is ephemeral by design**: processed in memory only — never written to
+  disk or S3, never logged, no recordings stored anywhere. The transcript
+  becomes an ordinary chat message and follows the existing rules.
+- **Before real members**: add the AWS **AI-services opt-out policy**
+  (Organizations) so Transcribe/Polly content is excluded from AWS
+  service-improvement use — tracked with the Before-PHI checklist below.
+
 ## Current posture vs. launch posture
 
 Already true today (inherited from the existing stack + this feature):

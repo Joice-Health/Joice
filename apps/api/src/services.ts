@@ -7,6 +7,8 @@ import {
   createGenerationClient,
   createRecommendationService,
   createSettingsService,
+  createSpeechClient,
+  createTranscribeClient,
   createUserService,
   createWaitlistService,
 } from '@joice/core';
@@ -26,4 +28,10 @@ export const recommendations = createRecommendationService(db, {
   embeddings: createEmbeddingClient({ region: env.BEDROCK_REGION }),
   generation: createGenerationClient({ region: env.BEDROCK_REGION }),
   model: env.RAG_MODEL,
+});
+
+export const transcriber = createTranscribeClient({ region: env.BEDROCK_REGION });
+export const speech = createSpeechClient({
+  region: env.BEDROCK_REGION,
+  voiceId: env.POLLY_VOICE_ID,
 });

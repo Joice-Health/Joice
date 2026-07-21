@@ -5,11 +5,16 @@ import { secureHeaders } from 'hono/secure-headers';
 import { streamSSE } from 'hono/streaming';
 import { HTTPException } from 'hono/http-exception';
 import { zValidator } from '@hono/zod-validator';
-import { chatRequestSchema, joinWaitlistSchema, referralCodeParamSchema } from '@joice/core';
+import {
+  chatRequestSchema,
+  joinWaitlistSchema,
+  referralCodeParamSchema,
+  speakRequestSchema,
+} from '@joice/core';
 import { allowedOrigins } from './env';
 import { rateLimit, clientIp } from './middleware/rate-limit';
 import { hashIp } from './hash';
-import { featureFlags, recommendations, waitlist } from './services';
+import { featureFlags, recommendations, speech, transcriber, waitlist } from './services';
 import { adminRoutes } from './admin/routes';
 
 const app = new Hono();
@@ -101,6 +106,29 @@ const routes = app
           });
         }
       });
+    },
+  )
+  // Voice: speech→text and text→speech via Transcribe/Polly (AWS BAA — audio is
+  // processed in memory only, never persisted or logged). Rate-limited: both
+  // endpoints cost per invocation.
+  .post('/api/voice/transcribe', rateLimit({ windowMs: 60_000, max: 10 }), async (c) => {
+    // Raw 16kHz mono PCM16 from the browser recorder — ~2MB ≈ 60s hard cap.
+    const audio = await c.req.arrayBuffer();
+    if (audio.byteLength === 0) return c.json({ error: 'Empty audio' }, 400);
+    if (audio.byteLength > 2 * 1024 * 1024) return c.json({ error: 'Recording too long' }, 413);
+    const transcript = await transcriber.transcribe(new Uint8Array(audio));
+    return c.json({ transcript });
+  })
+  .post(
+    '/api/voice/speak',
+    rateLimit({ windowMs: 60_000, max: 10 }),
+    zValidator('json', speakRequestSchema),
+    async (c) => {
+      const { text } = c.req.valid('json');
+      const spoken = text.replace(/\[\d+\]/g, '').replace(/\s{2,}/g, ' ').trim();
+      const audio = await speech.synthesize(spoken);
+      c.header('Content-Type', 'audio/mpeg');
+      return c.body(audio.buffer as ArrayBuffer);
     },
   )
   .route('/api/admin', adminRoutes);

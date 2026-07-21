@@ -73,6 +73,28 @@ resource "aws_iam_role_policy" "task_bedrock" {
   })
 }
 
+# Voice: the chatbot transcribes member questions (Transcribe streaming) and
+# speaks answers (Polly) — both HIPAA-eligible, audio processed in memory only.
+# Neither action supports useful resource-level scoping.
+resource "aws_iam_role_policy" "task_voice" {
+  name = "voice-transcribe-polly"
+  role = aws_iam_role.task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "transcribe:StartStreamTranscription",
+          "polly:SynthesizeSpeech",
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
 # Ingestion task role: reads the notes bucket, embeds chunks via Titan. No Claude.
 resource "aws_iam_role" "ingestion_task" {
   name               = "${var.project}-ingestion-task"

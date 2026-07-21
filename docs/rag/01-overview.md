@@ -85,7 +85,11 @@ Key properties of this shape:
 | Scripts | `apps/api/scripts/ingest.ts` | The ingestion entrypoint the ECS task runs: S3 → chunk → embed → upsert |
 | Client | `packages/api-client/src/chat.ts` | `usePeptideRecommendation` (typed JSON hook) + `streamPeptideRecommendation` (SSE reader) |
 | Web | `apps/web/app/(site)/ask/page.tsx` | The `/ask` page (team-gated pre-launch by the site middleware) |
-| Web | `apps/web/components/chat/peptide-chat.tsx` | Streaming chat UI: deltas → final annotated answer → citation chips |
+| Web | `apps/web/components/chat/peptide-chat.tsx` | Streaming chat UI: deltas → final annotated answer → citation chips; mic button + speak-back |
+| Voice | `packages/core/src/voice.ts` | `createTranscribeClient` (Transcribe streaming) + `createSpeechClient` (Polly neural) — same BAA/IAM story as Bedrock |
+| Voice | `apps/web/components/chat/use-recorder.ts` | Mic capture: AudioWorklet → PCM16 16kHz, VAD auto-stop on ~1.5s silence |
+| Voice | `apps/web/components/chat/use-speaker.ts` | Polly playback through an AnalyserNode (drives the visualizer) |
+| Voice | `apps/web/components/chat/voice-visualizer.tsx` | Canvas bars animated from the real audio signal (mic or playback) |
 | Infra | `infra/s3.tf` | Notes bucket (versioned, private, encrypted) |
 | Infra | `infra/iam.tf` | Bedrock invoke policy on the api task role; `joice-ingestion-task` role (S3 read + Titan only) |
 | Infra | `infra/ingest.tf` | The `joice-ingest` task definition + `/ecs/joice-ingest` log group |
