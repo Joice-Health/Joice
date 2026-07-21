@@ -17,16 +17,20 @@
  *    emails/phones/SSN shapes. Files that are mostly PHI (case files, not
  *    reference notes) are flagged to exclude rather than swiss-cheese.
  * 4. Writes the (redacted) set to <output-dir> (folder structure preserved —
- *    the S3 key becomes the citation source path) and phi-report.md next to it.
+ *    the S3 key becomes the citation source path).
+ *
+ * The review report is deliberately written OUTSIDE <output-dir>, as a sibling
+ * file. It quotes the ORIGINAL un-redacted text (that is what makes review
+ * possible), and <output-dir> is exactly what gets `s3 sync`'d and ingested —
+ * so a report inside it would be embedded and could be quoted back to a member
+ * with a citation. It must never leave the workstation.
  *
  * The human step doesn't disappear — it changes from "edit PII out by hand" to
- * "spot-check the redactions in the report + skim high-density files". The
- * report contains the ORIGINAL flagged text (that's what review needs), so it
- * must never leave the workstation — don't upload or ingest phi-report.md.
+ * "spot-check the redactions in the report + skim high-density files".
  */
 import { createHash } from 'node:crypto';
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative } from 'node:path';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { basename, dirname, join, relative, resolve } from 'node:path';
 import {
   ComprehendMedicalClient,
   DetectPHICommand,
@@ -228,7 +232,24 @@ const report = [
     : '> Do not upload until flagged files are fixed or removed.',
 ].filter(Boolean).join('\n\n');
 
-writeFileSync(join(outputDir, 'phi-report.md'), report);
+// Sibling of the output dir, never inside it — see the header comment.
+const resolvedOut = resolve(outputDir);
+const reportPath = join(dirname(resolvedOut), `${basename(resolvedOut)}-phi-report.md`);
+writeFileSync(reportPath, report);
+
+// Earlier versions of this script wrote the report INTO the output dir, where
+// it would be uploaded and ingested. Clear any leftover so a stale one can't be
+// synced by a later run.
+const legacyReport = join(outputDir, 'phi-report.md');
+if (existsSync(legacyReport)) {
+  rmSync(legacyReport);
+  console.warn(
+    `⚠ Removed ${legacyReport} — an older run left the PHI report inside the upload folder.\n` +
+      '  If that folder was already synced, delete the object from S3 and re-run ingestion.',
+  );
+}
+
 console.log(
-  `✅ ${kept.length} files written to ${outputDir}${redact ? ' (auto-redacted)' : ''}; review ${join(outputDir, 'phi-report.md')} before ingesting`,
+  `✅ ${kept.length} files written to ${outputDir}${redact ? ' (auto-redacted)' : ''}`,
 );
+console.log(`📋 Review ${reportPath} before ingesting — it is NOT in the upload folder by design.`);

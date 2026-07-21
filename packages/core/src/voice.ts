@@ -66,7 +66,11 @@ export interface TranscriptEvent {
 export interface TranscribeSession {
   /** Push 16kHz mono PCM16 as it is captured. */
   write(pcm: Uint8Array): void;
-  /** Signal end of audio; the results iterator finishes once Transcribe drains. */
+  /**
+   * Signal end of audio; the results iterator finishes once Transcribe drains,
+   * and the underlying client is released at that point. Always call this —
+   * including on an aborted connection — or the session's connection leaks.
+   */
   end(): void;
   /** Partial results arrive while the member is still speaking. */
   results: AsyncIterable<TranscriptEvent>;
@@ -104,20 +108,29 @@ export function createTranscribeSession(opts: { region: string }): TranscribeSes
   };
 
   async function* results(): AsyncGenerator<TranscriptEvent> {
-    const response = await client.send(
-      new StartStreamTranscriptionCommand({
-        LanguageCode: 'en-US',
-        MediaEncoding: 'pcm',
-        MediaSampleRateHertz: VOICE_SAMPLE_RATE,
-        AudioStream: audioStream,
-      }),
-    );
+    try {
+      const response = await client.send(
+        new StartStreamTranscriptionCommand({
+          LanguageCode: 'en-US',
+          MediaEncoding: 'pcm',
+          MediaSampleRateHertz: VOICE_SAMPLE_RATE,
+          AudioStream: audioStream,
+        }),
+      );
 
-    for await (const event of response.TranscriptResultStream ?? []) {
-      for (const result of event.TranscriptEvent?.Transcript?.Results ?? []) {
-        const text = result.Alternatives?.[0]?.Transcript;
-        if (text) yield { text, isPartial: Boolean(result.IsPartial) };
+      for await (const event of response.TranscriptResultStream ?? []) {
+        for (const result of event.TranscriptEvent?.Transcript?.Results ?? []) {
+          const text = result.Alternatives?.[0]?.Transcript;
+          if (text) yield { text, isPartial: Boolean(result.IsPartial) };
+        }
       }
+    } finally {
+      // One client per session, each holding an HTTP/2 connection pool. Without
+      // this every voice interaction leaks one for the life of the process.
+      // `finally` covers all three exits: drained, threw, or abandoned by the
+      // consumer (an abandoned generator is closed when it is garbage collected
+      // or returned, and the socket handler drops its reference on close).
+      client.destroy();
     }
   }
 

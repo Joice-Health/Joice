@@ -1,5 +1,7 @@
 import type { MiddlewareHandler } from 'hono';
 import { getConnInfo } from 'hono/bun';
+import { env } from '../env';
+import { clientFromForwardedFor } from './client-ip';
 
 interface Bucket {
   count: number;
@@ -8,7 +10,8 @@ interface Bucket {
 
 /**
  * Minimal in-memory fixed-window rate limiter. Sufficient for a single-instance
- * Phase 0 deployment; swap for a Redis-backed limiter when the API scales out.
+ * Phase 0 deployment; swap for a Redis-backed limiter when the API scales out
+ * (with >1 task the effective limit multiplies by the task count).
  */
 export function rateLimit(opts: { windowMs: number; max: number }): MiddlewareHandler {
   const buckets = new Map<string, Bucket>();
@@ -37,8 +40,25 @@ export function rateLimit(opts: { windowMs: number; max: number }): MiddlewareHa
   };
 }
 
+/**
+ * The caller's address, counted from the RIGHT of `X-Forwarded-For`.
+ *
+ * This matters: a client can put anything at the *left* of that header, and
+ * CloudFront forwards it (the AllViewer origin request policy) rather than
+ * replacing it. Reading the leftmost hop therefore let anyone reset every rate
+ * limit at will — `-H "X-Forwarded-For: <random>"` in a loop bought unlimited
+ * Bedrock, Polly and Transcribe spend on unauthenticated endpoints.
+ *
+ * Each proxy *appends* the address it received the connection from, so the
+ * rightmost entries are written by infrastructure we control and can trust:
+ * CloudFront appends the viewer, then the ALB appends CloudFront's edge. The
+ * real client is `TRUSTED_PROXY_HOPS` from the end; everything further left is
+ * attacker-controlled and ignored.
+ */
 export function clientIp(c: Parameters<MiddlewareHandler>[0]): string {
-  const forwarded = c.req.header('x-forwarded-for');
-  if (forwarded) return forwarded.split(',')[0]!.trim();
-  return getConnInfo(c).remote.address ?? 'unknown';
+  return (
+    clientFromForwardedFor(c.req.header('x-forwarded-for'), env.TRUSTED_PROXY_HOPS) ??
+    getConnInfo(c).remote.address ??
+    'unknown'
+  );
 }

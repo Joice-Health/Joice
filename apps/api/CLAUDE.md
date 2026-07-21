@@ -28,11 +28,21 @@ schemas from `@joice/core`, call the service, return JSON.
   403 non-admin) and exposes `adminUserId`/`adminEmail` context vars for audit logging.
   Locally without real Clerk keys, `env.ts` placeholder defaults keep the API booting; admin
   calls just 401.
-- Public waitlist join is rate-limited per IP (`src/middleware/rate-limit.ts` — in-memory
-  fixed window, 10/min; per-task once ECS scales out, which is accepted). Client IP comes from
-  the first `x-forwarded-for` hop (correct through CloudFront + ALB).
+- Public endpoints are rate-limited per IP (`src/middleware/rate-limit.ts` — in-memory
+  fixed window; per-task once ECS scales out, which is accepted). This is the *only*
+  protection on the unauthenticated brain endpoints, each of which costs metered AWS spend.
+- **Client IP comes from the `TRUSTED_PROXY_HOPS`-th hop from the right** of `x-forwarded-for`
+  (`src/middleware/client-ip.ts`, unit-tested). Never take the leftmost hop: CloudFront's
+  `AllViewer` policy *appends* to a client-supplied header, so the left end is attacker-
+  controlled and `curl -H "X-Forwarded-For: $RANDOM"` would buy unlimited Bedrock calls.
+  `TRUSTED_PROXY_HOPS` is 2 in prod (CloudFront + ALB) and 0 locally, where the header is
+  ignored entirely in favor of the socket address.
 - IPs are never stored raw — only salted SHA-256 (`src/hash.ts`, `IP_HASH_SALT`).
 - CORS is configured but moot in prod (same-origin through CloudFront).
+- `GET /api/voice/stream` is the one route CORS cannot cover — browsers don't preflight a
+  WebSocket upgrade. It carries its own `Origin` allowlist plus byte (3 MB) and wall-clock
+  (90s) ceilings, and releases its `TranscribeStreamingClient` in `onClose`. Keep all four
+  if you touch that handler; an unbounded socket is unbounded AWS spend.
 
 ## Env & lifecycle
 

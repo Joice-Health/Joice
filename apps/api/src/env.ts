@@ -8,6 +8,13 @@ const envSchema = z.object({
   /** Salt mixed into IP hashes so we never persist raw addresses. */
   IP_HASH_SALT: z.string().default('joice-dev-salt'),
   /**
+   * How many trailing `X-Forwarded-For` hops our own infrastructure appends —
+   * CloudFront (viewer) then the ALB (CloudFront's edge) = 2 in production.
+   * Rate limiting counts from the right using this; see middleware/rate-limit.ts.
+   * 0 locally, where there is no proxy and the socket address is the truth.
+   */
+  TRUSTED_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
+  /**
    * Clerk keys — verify admin session tokens on /api/admin/*. Placeholder
    * defaults keep the API bootable before Clerk is configured; every admin
    * request just fails verification (401) until real keys are set.

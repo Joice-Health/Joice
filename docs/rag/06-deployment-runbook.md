@@ -71,7 +71,9 @@ on its next deployment (step 5 forces one).
 ## 4. Content prep + upload
 
 Follow [03 — Ingestion, stages 1–2](03-ingestion.md) end to end:
-`prep-vault.ts` → doctor reviews `phi-report.md` → fix/remove flagged files →
+`prep-vault.ts` → doctor reviews `<output-dir>-phi-report.md` (written beside
+the upload folder, never in it — keep it on the workstation) → fix/remove
+flagged files →
 
 ```bash
 aws s3 sync ./approved/ "s3://$(cd infra && terraform output -raw notes_bucket)/" \

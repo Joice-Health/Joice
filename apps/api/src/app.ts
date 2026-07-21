@@ -13,6 +13,7 @@ import {
   speakRequestSchema,
   type TranscribeSession,
 } from '@joice/core';
+import type { WSContext } from 'hono/ws';
 import { allowedOrigins, env } from './env';
 import { upgradeWebSocket } from './ws';
 import { rateLimit, clientIp } from './middleware/rate-limit';
@@ -40,6 +41,15 @@ app.onError((err, c) => {
 });
 
 /**
+ * Ceilings for a single voice socket. The recorder stops itself at 60s, so
+ * these only bind on a client that ignores the UI — which is exactly the case
+ * worth bounding, since every second of audio is billed.
+ */
+const VOICE_STREAM_MAX_MS = 90_000;
+/** 16kHz mono PCM16 = 32,000 bytes/second, so ~90s of audio. */
+const VOICE_STREAM_MAX_BYTES = 3_000_000;
+
+/**
  * Live voice transcription. Audio streams up as it is spoken and partial
  * transcripts stream back, so the text appears while the member is still
  * talking — the batch POST /api/voice/transcribe below stays as the fallback
@@ -52,50 +62,107 @@ app.onError((err, c) => {
  * `{"type":"end"}`. Server → client: `{"type":"partial"|"final","text":…}`
  * and finally `{"type":"done"}`.
  */
-app.get('/api/voice/stream', rateLimit({ windowMs: 60_000, max: 20 }), upgradeWebSocket(() => {
-  let session: TranscribeSession | null = null;
-  let pump: Promise<void> | null = null;
+app.get(
+  '/api/voice/stream',
+  rateLimit({ windowMs: 60_000, max: 20 }),
+  // CORS does not apply to WebSockets, so without this any third-party page
+  // could open sockets and bill Transcribe against their visitors' addresses.
+  async (c, next) => {
+    const origin = c.req.header('origin');
+    if (origin && !allowedOrigins.includes(origin)) {
+      return c.json({ error: 'Origin not allowed' }, 403);
+    }
+    return next();
+  },
+  upgradeWebSocket(() => {
+    let session: TranscribeSession | null = null;
+    let bytes = 0;
+    let deadline: ReturnType<typeof setTimeout> | null = null;
+    let closed = false;
 
-  return {
-    onOpen(_event, ws) {
-      session = createTranscribeSession({ region: env.BEDROCK_REGION });
-      pump = (async () => {
-        try {
-          for await (const result of session!.results) {
-            ws.send(
-              JSON.stringify({ type: result.isPartial ? 'partial' : 'final', text: result.text }),
-            );
-          }
-          ws.send(JSON.stringify({ type: 'done' }));
-        } catch (error) {
-          console.error('voice stream error:', error);
-          ws.send(JSON.stringify({ type: 'error' }));
-        }
-      })();
-    },
-
-    onMessage(event, ws) {
-      const data = event.data;
-      if (typeof data === 'string') {
-        // Only control messages arrive as text.
-        if (data.includes('"end"')) session?.end();
-        return;
-      }
-      if (data instanceof ArrayBuffer) {
-        session?.write(new Uint8Array(data));
-      } else if (ArrayBuffer.isView(data)) {
-        session?.write(new Uint8Array(data.buffer, data.byteOffset, data.byteLength));
-      }
-      void ws;
-    },
-
-    onClose() {
+    /** Release the Transcribe session (and the billing it implies) exactly once. */
+    const finish = () => {
+      if (deadline) clearTimeout(deadline);
+      deadline = null;
       session?.end();
       session = null;
-      void pump;
-    },
-  };
-}));
+    };
+
+    /**
+     * Transcribe keeps emitting for a moment after `end()`, so the result loop
+     * can outlive a socket we closed on a cap. Writing to a closed socket is
+     * noise at best — drop it.
+     */
+    const send = (ws: WSContext, payload: unknown) => {
+      if (closed) return;
+      ws.send(JSON.stringify(payload));
+    };
+
+    /** Refuse the session and tell the client why, once. */
+    const reject = (ws: WSContext, reason: string) => {
+      finish();
+      send(ws, { type: 'error', reason });
+      closed = true;
+      ws.close(1009, reason);
+    };
+
+    return {
+      onOpen(_event, ws) {
+        session = createTranscribeSession({ region: env.BEDROCK_REGION });
+
+        // A socket held open bills Transcribe for as long as it lives, and a
+        // client trickling audio keeps it non-idle so no idle timeout fires.
+        // Cap the wall clock independently of the byte ceiling.
+        deadline = setTimeout(() => reject(ws, 'max-duration'), VOICE_STREAM_MAX_MS);
+
+        void (async () => {
+          try {
+            for await (const result of session!.results) {
+              send(ws, { type: result.isPartial ? 'partial' : 'final', text: result.text });
+            }
+            send(ws, { type: 'done' });
+          } catch (error) {
+            console.error('voice stream error:', error);
+            send(ws, { type: 'error', reason: 'transcribe-failed' });
+          }
+        })();
+      },
+
+      onMessage(event, ws) {
+        const data = event.data;
+        if (typeof data === 'string') {
+          // Only control messages arrive as text.
+          try {
+            if ((JSON.parse(data) as { type?: string }).type === 'end') finish();
+          } catch {
+            // Not a control frame we understand — ignore rather than act on it.
+          }
+          return;
+        }
+
+        const chunk =
+          data instanceof ArrayBuffer
+            ? new Uint8Array(data)
+            : ArrayBuffer.isView(data)
+              ? new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
+              : null;
+        if (!chunk || !session) return;
+
+        bytes += chunk.byteLength;
+        if (bytes > VOICE_STREAM_MAX_BYTES) {
+          reject(ws, 'max-audio');
+          return;
+        }
+        session.write(chunk);
+      },
+
+      onClose() {
+        closed = true;
+        finish();
+      },
+    };
+  }),
+);
 
 /**
  * Routes are defined in a single chain so `typeof routes` carries the full

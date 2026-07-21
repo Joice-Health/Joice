@@ -54,9 +54,12 @@ flowchart LR
    Anthropic/OpenAI/Voyage client without a BAA in hand. Those two factories
    are the deliberate seam — the check happens there.
 2. **Nothing leaves the workstation before PHI review.** `aws s3 sync` *is*
-   transmission. `prep-vault.ts` + the doctor's review of `phi-report.md` are
-   the blocking gate — and the automated Comprehend Medical scan is a helper,
-   not a sign-off; a human decides.
+   transmission. `prep-vault.ts` + the doctor's review of the report it writes
+   (`<output-dir>-phi-report.md`, a sibling of the upload folder — never inside
+   it, because it quotes the original un-redacted text) are the blocking gate —
+   and the automated Comprehend Medical scan is a helper, not a sign-off; a
+   human decides. The report stays on the workstation: never uploaded, never
+   ingested (`ingest.ts` refuses to run if it finds one in the source).
 3. **Never store or log raw member identifiers with questions.** The existing
    house rules apply (salted IP hashes only). Note that `logger()` logs
    request paths, not bodies — keep it that way; don't add body logging to

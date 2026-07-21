@@ -7,7 +7,7 @@ The pipeline that turns the doctor's Obsidian vault into queryable
 flowchart LR
     subgraph Stage1["1 · Prep (workstation — BLOCKING gate)"]
         vault["Raw vault"] --> prep["prep-vault.ts"]
-        prep --> report["phi-report.md"]
+        prep --> report["review report<br/>(written OUTSIDE the upload folder)"]
         prep --> approved["approved/ folder"]
         report -->|"doctor reviews,<br/>fixes/removes flagged files"| approved
     end
@@ -48,7 +48,7 @@ the report lists every redaction as `token ← original text` (restore false
 positives like a peptide name read as a person), and files with **high PHI
 density** (>8 spans per 1,000 chars — patient case files rather than reference
 notes) are flagged for deletion, since redaction just guts them. The report
-contains the original PII, so `phi-report.md` must never be uploaded or
+contains the original PII, so the report must never be uploaded or
 ingested — it exists only for the local review.
 
 What it does, in order:
@@ -67,14 +67,19 @@ What it does, in order:
    or exported keys, region defaults to `us-east-1`).
 5. **Write** the deduped set to the output dir (folder structure preserved —
    the relative path becomes the S3 key becomes the citation source), plus
-   `phi-report.md` summarizing everything.
+   the review report as a SIBLING of the output dir (never inside it).
 
-**The human gate:** the doctor reads `phi-report.md`, rewrites or removes any
-file with patient-identifying content (the scan is a helper, not an authority —
-review near-misses manually too), and only then does anyone run stage 2. Delete
-`phi-report.md` from the output folder before syncing if you sync the whole
-directory (the sync command below only includes `*.md`, so it would go up —
-it's harmless but noisy; simplest is to keep the report outside or remove it).
+**The human gate:** the doctor reads the report, rewrites or removes any file
+with patient-identifying content (the scan is a helper, not an authority —
+review near-misses manually too), and only then does anyone run stage 2.
+
+> ⚠️ The report is written **outside** the output folder, as a sibling
+> (`<output-dir>-phi-report.md`). It quotes the **original, un-redacted** text,
+> and the output folder is exactly what gets `s3 sync`'d and ingested — a report
+> inside it would be embedded and could be quoted back to a member *with a
+> citation*. It stays on the workstation: never upload it, never ingest it.
+> `ingest.ts` refuses to run if it finds one in the source, and `prep-vault`
+> deletes any copy left inside the output folder by an older run.
 
 ## Stage 2 — Upload
 

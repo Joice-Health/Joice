@@ -95,7 +95,25 @@ async function sha256(text: string): Promise<string> {
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-const keys = await source.list();
+const listed = await source.list();
+
+/**
+ * A PHI review report quotes un-redacted source text. It is never supposed to
+ * reach the corpus — embedding it would let the chatbot quote a real patient
+ * back to a member, with a citation. Refuse loudly rather than skip quietly, so
+ * a stale copy gets deleted at the source instead of lingering in the bucket.
+ */
+const reports = listed.filter((key) => /(^|\/)[^/]*phi-report[^/]*\.md$/i.test(key));
+if (reports.length > 0) {
+  console.error(
+    `🛑 Refusing to ingest — PHI review report(s) present in ${source.label}:\n` +
+      reports.map((r) => `   - ${r}`).join('\n') +
+      '\n   These contain un-redacted source text. Delete them from the source and re-run.',
+  );
+  process.exit(1);
+}
+
+const keys = listed;
 console.log(`Found ${keys.length} markdown files in ${source.label}`);
 
 let skipped = 0;

@@ -246,7 +246,21 @@ sequenceDiagram
 
 | Endpoint | In | Out | Notes |
 |---|---|---|---|
-| `GET /api/voice/stream` (WebSocket) | binary frames of 16kHz mono PCM16 as it's captured, then `{"type":"end"}` | `{"type":"partial"\|"final","text":…}` as the member speaks, then `{"type":"done"}` | **The live path.** 20 upgrades/min/IP. Deliberately outside the typed route chain — never called through the RPC client |
+| `GET /api/voice/stream` (WebSocket) | binary frames of 16kHz mono PCM16 as it's captured, then `{"type":"end"}` | `{"type":"partial"\|"final","text":…}` as the member speaks, then `{"type":"done"}` | **The live path.** 20 upgrades/min/IP, plus the bounds below. Deliberately outside the typed route chain — never called through the RPC client |
+
+The socket is the one endpoint CORS can't protect (the browser sends no preflight
+for a WebSocket upgrade), and every second of audio on it is billed to Transcribe.
+Three bounds, all in `apps/api/src/app.ts`:
+
+| Bound | Value | Why |
+|---|---|---|
+| `Origin` allowlist | `WEB_ORIGIN` | Without it any third-party page could open sockets and bill this account against *their* visitors. A request with no `Origin` at all is allowed — that's a native client, not a browser, and the rate limit still applies |
+| Byte ceiling | 3 MB (~90s of 16kHz PCM16) | A client that ignores the UI's 60s stop |
+| Wall clock | 90s | Audio keeps the socket non-idle, so no idle timeout would ever fire on a slow trickle |
+
+Hitting either cap sends `{"type":"error","reason":"max-audio"\|"max-duration"}`
+and closes with code 1009. The `TranscribeStreamingClient` is released in
+`onClose` too, so a dropped connection can't leave a billed session running.
 | `POST /api/voice/transcribe` | raw 16kHz mono PCM16 body (`application/octet-stream`, ≤2MB ≈ 60s) | `{ "transcript": "..." }` (empty string = nothing recognized) | Fallback for when the socket can't open. 10 req/min/IP |
 | `POST /api/voice/speak` | `{ "text": "..." }` (≤3000 chars; `[n]` markers stripped server-side) | mp3 bytes (`audio/mpeg`) | 10 req/min/IP. `POLLY_VOICE_ID` env picks the neural voice (default **Ruth**) |
 

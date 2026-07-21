@@ -10,6 +10,7 @@
     "dev": "bun run --hot src/index.ts",
     "start": "bun run src/index.ts",
     "migrate": "bun run --cwd ../../packages/db src/migrate.ts",
+    "test": "bun test",
     "type-check": "tsc --noEmit",
     "lint": "eslint ."
   },

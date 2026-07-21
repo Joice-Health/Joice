@@ -151,6 +151,9 @@ resource "aws_ecs_task_definition" "api" {
         # set it anyway so any cross-origin caller is scoped to the real site.
         { name = "WEB_ORIGIN", value = local.canonical_url },
         { name = "IP_HASH_SALT", value = random_password.ip_hash_salt.result },
+        # CloudFront appends the viewer address, then the ALB appends CloudFront's
+        # edge — rate limiting trusts only these trailing hops.
+        { name = "TRUSTED_PROXY_HOPS", value = "2" },
         { name = "CLERK_PUBLISHABLE_KEY", value = var.clerk_publishable_key },
         # RAG: Bedrock model + region (IAM-authenticated via the task role, no keys).
         { name = "RAG_MODEL", value = var.rag_model },

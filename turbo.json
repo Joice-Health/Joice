@@ -17,6 +17,7 @@
     "BEDROCK_REGION",
     "POLLY_VOICE_ID",
     "NOTES_BUCKET",
+    "TRUSTED_PROXY_HOPS",
     "NOTES_DIR"
   ],
   "tasks": {

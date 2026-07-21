@@ -29,6 +29,8 @@ services:
       # (and occasionally linked) via either host.
       WEB_ORIGIN: http://localhost:3000,http://0.0.0.0:3000
       IP_HASH_SALT: change-me-in-production
+      # 0 locally (no proxy in front); production sets 2 for CloudFront + ALB.
+      TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-0}
       NODE_ENV: production
       # Clerk (admin auth) — set real dev keys in .env
       CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY:-pk_test_placeholder}
