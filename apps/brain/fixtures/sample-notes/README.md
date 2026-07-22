@@ -1,7 +1,7 @@
 # Sample notes — DEV FIXTURES ONLY
 
 Fabricated placeholder content for exercising the RAG pipeline locally
-(`NOTES_DIR=apps/api/fixtures/sample-notes bun apps/api/scripts/ingest.ts`).
+(`NOTES_DIR=apps/brain/fixtures/sample-notes bun apps/brain/scripts/ingest.ts`).
 
 **This is not clinical guidance** and must never be uploaded to the production
 notes bucket. The real corpus is the clinical team's PHI-reviewed vault —

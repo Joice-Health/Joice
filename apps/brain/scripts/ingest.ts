@@ -4,7 +4,7 @@
  * Source is either S3 (NOTES_BUCKET — prod, the one-off `joice-ingest` ECS
  * task; see infra/ingest.tf) or a local folder (NOTES_DIR — dev, no S3 needed):
  *
- *   NOTES_DIR=apps/api/fixtures/sample-notes bun apps/api/scripts/ingest.ts
+ *   NOTES_DIR=apps/brain/fixtures/sample-notes bun apps/brain/scripts/ingest.ts
  *
  * Idempotent: a file whose sha256 matches its existing rows is skipped, so
  * re-running after a failure (or after a notes re-upload) only pays for what

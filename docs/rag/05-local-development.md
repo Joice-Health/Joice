@@ -8,25 +8,28 @@ other part of the app (waitlist, admin, site) works untouched.
 ## TL;DR — test it on localhost in 6 commands
 
 No S3 needed: the repo ships sample notes
-(`apps/api/fixtures/sample-notes/`) and the ingest script reads a local folder
+(`apps/brain/fixtures/sample-notes/`) and the ingest script reads a local folder
 via `NOTES_DIR`. You only need AWS credentials that can call **Bedrock** (and
 one-time [model access](#2-aws-credentials-for-real-answers) enabled on the
 account).
 
 ```bash
-# 1 · Fresh AWS session → .env → api container, in one step (browser approval).
-#     Re-run whenever the api logs show ExpiredTokenException — SSO sessions on
-#     this account last ~1 hour. First time only, also set in .env:
+# 1 · Fresh AWS session → .env → brain container, in one step (browser approval).
+#     Credentials belong to the BRAIN — Bedrock/Transcribe/Polly live there, and
+#     the api has no AWS dependencies. Re-run whenever the brain logs show
+#     ExpiredTokenException; SSO sessions on this account last ~1 hour.
+#     First time only, also set in .env:
 #       RAG_MODEL=us.amazon.nova-pro-v1:0     # until the Anthropic use-case form is approved
 ./scripts/dev-aws-refresh.sh
 
-# 2 · Start the rest of the stack (postgres is the pgvector image; api runs
-#     migrations at boot — the refresh script already started it)
+# 2 · Start the rest of the stack. Postgres is the pgvector image; a one-shot
+#     `migrate` service runs migrations once and both apps wait for it (they no
+#     longer migrate at boot — two services doing that would race).
 docker compose up -d
 
 # 3 · Seed the knowledge base from the bundled fixtures — local folder, no S3
 DATABASE_URL=postgresql://joice:joice@localhost:5433/joice \
-NOTES_DIR=apps/api/fixtures/sample-notes \
+NOTES_DIR=apps/brain/fixtures/sample-notes \
 bun apps/brain/scripts/ingest.ts
 # → "✅ Ingest complete: 4 files scanned, 0 unchanged, 4 (re)ingested, ..."
 
@@ -69,7 +72,7 @@ The rest of this page is the same flow with every knob explained.
 | `BEDROCK_REGION` | api + ingest script | `us-east-1` | Where Titan/Claude are invoked |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` | api container (compose passes them through) | empty | Local stand-in for the ECS task role. In prod these don't exist — the task role provides SigV4 |
 | `NOTES_BUCKET` | `apps/brain/scripts/ingest.ts` only | empty | S3 source for ingestion (prod). The API never reads it |
-| `NOTES_DIR` | `apps/brain/scripts/ingest.ts` only | empty | **Local-folder source for ingestion (dev)** — set exactly one of `NOTES_DIR` / `NOTES_BUCKET`. Fixtures live at `apps/api/fixtures/sample-notes` |
+| `NOTES_DIR` | `apps/brain/scripts/ingest.ts` only | empty | **Local-folder source for ingestion (dev)** — set exactly one of `NOTES_DIR` / `NOTES_BUCKET`. Fixtures live at `apps/brain/fixtures/sample-notes` |
 | `DATABASE_URL` | api, migrate, ingest | `postgresql://joice:joice@localhost:5432/joice` | **Careful with the port** — see below |
 | `POSTGRES_PORT` | docker-compose | `5432` | The *host* port Postgres is published on. On machines where 5432 is taken (this one: **5433**), set it and keep host-side `DATABASE_URL` in sync |
 
@@ -168,7 +171,7 @@ folder — dev) or `NOTES_BUCKET` (S3 — prod). Three options, easiest first:
 
 ```bash
 DATABASE_URL=postgresql://joice:joice@localhost:5433/joice \
-NOTES_DIR=apps/api/fixtures/sample-notes \
+NOTES_DIR=apps/brain/fixtures/sample-notes \
 bun apps/brain/scripts/ingest.ts
 ```
 
@@ -188,7 +191,7 @@ enough.
 Expected output (option A):
 
 ```
-Found 4 markdown files in apps/api/fixtures/sample-notes
+Found 4 markdown files in apps/brain/fixtures/sample-notes
 ✓ README.md: 1 chunks
 ✓ peptides/bpc-157.md: 5 chunks
 ✓ peptides/tb-500.md: 5 chunks

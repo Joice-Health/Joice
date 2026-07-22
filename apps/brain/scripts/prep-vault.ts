@@ -5,7 +5,7 @@
  * Medical (HIPAA-eligible under the AWS BAA — make sure the BAA is accepted in
  * AWS Artifact before running them on real clinical notes).
  *
- *   bun apps/api/scripts/prep-vault.ts <vault-dir> <output-dir> [--scan-phi | --redact]
+ *   bun apps/brain/scripts/prep-vault.ts <vault-dir> <output-dir> [--scan-phi | --redact]
  *
  * 1. Collects every .md file, skipping Obsidian internals (.obsidian/, .trash/).
  * 2. Dedupes exact duplicates (sha256) and flags near-duplicates (hash of
@@ -42,7 +42,7 @@ const redact = process.argv.includes('--redact');
 const scanPhi = redact || process.argv.includes('--scan-phi');
 if (!vaultDir || !outputDir) {
   console.error(
-    'Usage: bun apps/api/scripts/prep-vault.ts <vault-dir> <output-dir> [--scan-phi | --redact]',
+    'Usage: bun apps/brain/scripts/prep-vault.ts <vault-dir> <output-dir> [--scan-phi | --redact]',
   );
   process.exit(1);
 }

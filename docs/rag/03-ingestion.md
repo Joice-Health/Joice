@@ -215,11 +215,11 @@ breadcrumb prefix is what lets a "how do I dose BPC?" query land on it.
 
 The same script runs from the host against the compose Postgres, with **no S3
 required** — `NOTES_DIR` points it at any local folder (the repo ships
-fixtures at `apps/api/fixtures/sample-notes/`):
+fixtures at `apps/brain/fixtures/sample-notes/`):
 
 ```bash
 DATABASE_URL=postgresql://joice:joice@localhost:5433/joice \
-NOTES_DIR=apps/api/fixtures/sample-notes \
+NOTES_DIR=apps/brain/fixtures/sample-notes \
 bun apps/brain/scripts/ingest.ts
 ```
 
