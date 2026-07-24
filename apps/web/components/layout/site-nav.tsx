@@ -4,6 +4,7 @@ import { CtaLink } from '@/components/ui/cta-link';
 
 const NAV_LINKS = [
   { label: 'Explore', href: '/explore' },
+  { label: 'Ask Joice', href: '/ask' },
   { label: 'How It Works', href: '/how-it-works' },
   { label: 'Learn', href: '/learn' },
   { label: 'Our Story', href: '/story' },
