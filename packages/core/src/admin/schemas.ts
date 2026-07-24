@@ -39,6 +39,33 @@ export type UpdateWaitlistEntryInput = z.infer<typeof updateWaitlistEntrySchema>
 export const userStatusSchema = z.enum(['active', 'suspended', 'deleted']);
 export type UserStatus = z.infer<typeof userStatusSchema>;
 
+/**
+ * Pre-onboarding leads captured by the companion. Read-only on the admin side.
+ * The table is brain-owned; the api service reads it here as a documented
+ * boundary exception (leads are marketing-grade data — see docs/rag/10).
+ */
+export const leadStatusSchema = z.enum(['capturing', 'exploring', 'ready', 'converted']);
+export type LeadStatus = z.infer<typeof leadStatusSchema>;
+
+export const adminLeadsQuerySchema = paginationQuerySchema.extend({
+  status: leadStatusSchema.optional(),
+  /** Only leads that chose to start their journey. */
+  readyOnly: z.coerce.boolean().optional(),
+});
+export type AdminLeadsQuery = z.infer<typeof adminLeadsQuerySchema>;
+
+/** The lead as the admin table shows it — no session ids or internal fields. */
+export interface LeadView {
+  id: string;
+  name: string | null;
+  email: string | null;
+  goal: string | null;
+  readyForOnboarding: boolean;
+  status: LeadStatus;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export const adminUserQuerySchema = paginationQuerySchema.extend({
   search: z.string().trim().max(254).optional(),
   status: userStatusSchema.optional(),

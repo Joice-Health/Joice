@@ -3,6 +3,7 @@ import {
   createAdminWaitlistService,
   createAuditService,
   createFeatureFlagService,
+  createLeadsService,
   createSettingsService,
   createUserService,
   createWaitlistService,
@@ -19,6 +20,12 @@ export const adminWaitlist = createAdminWaitlistService(db, audit);
 export const userService = createUserService(db, audit);
 export const featureFlags = createFeatureFlagService(db, audit);
 export const settings = createSettingsService(db, audit);
+
+/**
+ * Read-only view of the companion's pre-onboarding leads. Reads the brain-owned
+ * `brain_profiles` table — a documented boundary exception, see the service.
+ */
+export const leads = createLeadsService(db);
 
 /**
  * The admin console owns *writes* to the brain settings; the brain service

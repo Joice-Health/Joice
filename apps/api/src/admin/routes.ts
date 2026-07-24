@@ -3,6 +3,7 @@ import { stream } from 'hono/streaming';
 import { clerkMiddleware } from '@hono/clerk-auth';
 import { zValidator } from '@hono/zod-validator';
 import {
+  adminLeadsQuerySchema,
   adminUserQuerySchema,
   adminWaitlistQuerySchema,
   auditLogQuerySchema,
@@ -22,7 +23,7 @@ import { brainSettingsPatchSchema, DEFAULT_BRAIN_SETTINGS, SAFETY_FLOOR } from '
 import { z } from 'zod';
 import { rateLimit } from '../middleware/rate-limit';
 import { requireAdmin, type AdminEnv } from './auth';
-import { adminWaitlist, audit, brainConfig, featureFlags, settings, userService } from '../services';
+import { adminWaitlist, audit, brainConfig, featureFlags, leads, settings, userService } from '../services';
 import { clerkClient } from './clerk';
 import { env } from '../env';
 
@@ -106,6 +107,11 @@ export const adminRoutes = new Hono<AdminEnv>()
       return c.json(user);
     },
   )
+
+  // --- Pre-onboarding leads (companion capture; brain-owned table, read-only) ---
+  .get('/leads', zValidator('query', adminLeadsQuerySchema), async (c) => {
+    return c.json(await leads.list(c.req.valid('query')));
+  })
 
   // --- Admin accounts (Clerk-backed) ---
   .get('/admins', async (c) => {

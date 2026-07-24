@@ -24,6 +24,7 @@ export * from './schemas';
 
 export * from './config/service';
 export * from './conversation/service';
+export * from './profile/service';
 export * from './knowledge/chunker';
 export * from './generation/prompt';
 export * from './generation/answer-service';

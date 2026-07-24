@@ -35,10 +35,12 @@ export const identifyRequester: MiddlewareHandler<{ Variables: RequesterVariable
     sessionId = crypto.randomUUID();
     setCookie(c, COOKIE, sessionId, {
       httpOnly: true,
-      // Lax rather than Strict: the site is reached through CloudFront on one
-      // origin, and Strict would drop the cookie on inbound links.
-      sameSite: 'Lax',
-      secure: env.NODE_ENV === 'production',
+      // Production: web and brain share one CloudFront origin, so Lax is correct
+      // and safest. Dev: they're different origins (:3000 → :4100), which needs
+      // SameSite=None to send the cookie on cross-origin fetches — and None
+      // requires Secure, which browsers honour on localhost even over http.
+      sameSite: env.NODE_ENV === 'production' ? 'Lax' : 'None',
+      secure: true,
       path: '/',
       maxAge: MAX_AGE_SECONDS,
     });

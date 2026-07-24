@@ -19,6 +19,20 @@ export {
   streamPeptideRecommendation,
   type ChatStreamEvent,
 } from './chat';
+export {
+  useCompanionProfile,
+  useSubmitProfileField,
+  companionKeys,
+  FieldError,
+} from './companion';
+export type {
+  CaptureField,
+  CaptureStep,
+  CompanionProfile,
+  CompanionState,
+  CompanionAction,
+  CompanionActionResult,
+} from '@joice/brain/schemas';
 export type {
   JoinWaitlistInput,
   WaitlistEntryView,

@@ -4,6 +4,7 @@ import {
   createConversationService,
   createEmbeddingClient,
   createGenerationClient,
+  createProfileService,
   createRecommendationService,
   createSpeechClient,
   createTranscribeClient,
@@ -47,6 +48,14 @@ export const conversationService = createConversationService(db);
 
 /** Whether to record threads at all. Off unless explicitly enabled — see env.ts. */
 export const persistConversations = env.BRAIN_PERSIST_CONVERSATIONS;
+
+/**
+ * The pre-onboarding companion's lead capture. Always on: a name + email + goal
+ * lead is marketing-grade data, the same class as the waitlist, and is stored
+ * unconditionally — it is deliberately NOT gated by the conversation-persistence
+ * flag, which governs health-question content only.
+ */
+export const profileService = createProfileService(db);
 
 /**
  * Member context, catalogue and cart. Stubs today — no commerce or member

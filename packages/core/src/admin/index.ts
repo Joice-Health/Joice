@@ -8,3 +8,4 @@ export * from './waitlist-service';
 export * from './user-service';
 export * from './feature-flag-service';
 export * from './settings-service';
+export * from './leads-service';

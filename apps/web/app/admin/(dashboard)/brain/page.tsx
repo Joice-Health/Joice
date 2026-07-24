@@ -280,6 +280,69 @@ export default function AdminBrainPage() {
           </div>
         </Card>
 
+        {/* --- Companion (pre-onboarding capture) --- */}
+        <Card>
+          <h2 className="mb-1 text-lg font-semibold text-ink">Companion (pre-onboarding)</h2>
+          <p className="mb-4 text-sm text-muted">
+            The words the capture flow says on first contact. The fields it collects and their
+            validation are fixed in code; only this copy is editable.
+          </p>
+          <div className="flex flex-col gap-4">
+            <Field label="Greeting" hint="The opening line before the first question.">
+              <textarea
+                value={form.companionGreeting}
+                onChange={(e) => set('companionGreeting', e.target.value)}
+                rows={2}
+                maxLength={400}
+                className={textareaClass}
+              />
+            </Field>
+            <div className="flex flex-wrap gap-4">
+              <Field label="Ask for name">
+                <Input
+                  value={form.companionNamePrompt}
+                  onChange={(e) => set('companionNamePrompt', e.target.value)}
+                  maxLength={200}
+                  className="h-11 w-96 max-w-full"
+                />
+              </Field>
+              <Field label="Ask for email">
+                <Input
+                  value={form.companionEmailPrompt}
+                  onChange={(e) => set('companionEmailPrompt', e.target.value)}
+                  maxLength={200}
+                  className="h-11 w-96 max-w-full"
+                />
+              </Field>
+              <Field label="Ask for goal">
+                <Input
+                  value={form.companionGoalPrompt}
+                  onChange={(e) => set('companionGoalPrompt', e.target.value)}
+                  maxLength={200}
+                  className="h-11 w-96 max-w-full"
+                />
+              </Field>
+            </div>
+            <Field label="Conversion prompt" hint="Offered once capture is complete.">
+              <textarea
+                value={form.companionConversionPrompt}
+                onChange={(e) => set('companionConversionPrompt', e.target.value)}
+                rows={2}
+                maxLength={400}
+                className={textareaClass}
+              />
+            </Field>
+            <Field label="Conversion button label">
+              <Input
+                value={form.companionConversionCtaLabel}
+                onChange={(e) => set('companionConversionCtaLabel', e.target.value)}
+                maxLength={60}
+                className="h-11 w-72 max-w-full"
+              />
+            </Field>
+          </div>
+        </Card>
+
         {/* --- Guardrails --- */}
         <Card>
           <h2 className="mb-4 text-lg font-semibold text-ink">Guardrails</h2>

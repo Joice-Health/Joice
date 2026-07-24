@@ -1,16 +1,21 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { cn } from '@joice/ui';
+import { useRouter } from 'next/navigation';
+import { Button, cn } from '@joice/ui';
 import {
+  FieldError,
   streamPeptideRecommendation,
   useBrainClient,
   useBrainUi,
+  useCompanionProfile,
+  useSubmitProfileField,
   type Citation,
 } from '@joice/api-client';
-import { buildChatHistory } from '@joice/brain/schemas';
+import { buildChatHistory, type CaptureStep } from '@joice/brain/schemas';
 import { brainUrl } from '@/lib/env';
 import { AnswerMarkdown } from './answer-markdown';
+import { CaptureWidget } from './capture-widgets';
 import { useAudioLevel } from './use-audio-level';
 import { useLiveTranscript } from './use-live-transcript';
 import { useRecorder } from './use-recorder';
@@ -18,12 +23,23 @@ import { useSpeaker } from './use-speaker';
 import { VoiceSun } from './voice-sun';
 import { VoiceVisualizer } from './voice-visualizer';
 
-interface DisplayMessage {
-  role: 'user' | 'assistant';
-  content: string;
-  citations?: Citation[];
-  error?: boolean;
-}
+/**
+ * A turn in the transcript. Knowledge Q&A and the companion's own prompts share
+ * one surface, so a turn is a discriminated union: prose (`text`), an inline
+ * capture control (`capture`), or the conversion offer (`cta`).
+ */
+export type DisplayMessage =
+  | {
+      kind: 'text';
+      role: 'user' | 'assistant';
+      content: string;
+      citations?: Citation[];
+      error?: boolean;
+    }
+  | { kind: 'capture'; role: 'assistant'; step: CaptureStep }
+  | { kind: 'cta'; role: 'assistant'; content: string; ctaLabel: string };
+
+type TextMessage = Extract<DisplayMessage, { kind: 'text' }>;
 
 
 function SpeakerIcon({ className }: { className?: string }) {
@@ -51,6 +67,7 @@ function StopIcon({ className }: { className?: string }) {
 export function PeptideChat() {
   const client = useBrainClient(); // chat and voice live on the brain service
   const brainUi = useBrainUi(); // admin-managed copy + citation visibility
+  const router = useRouter();
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [input, setInput] = useState('');
   const [pending, setPending] = useState(false);
@@ -60,6 +77,15 @@ export function PeptideChat() {
   const scrollRef = useRef<HTMLDivElement>(null);
   /** Cancels the in-flight answer; see the note in send(). */
   const askAbortRef = useRef<AbortController | null>(null);
+
+  // The pre-onboarding companion: capture state (which field to ask next) lives
+  // server-side, keyed to the session cookie, so it resumes across reloads.
+  const { data: companion } = useCompanionProfile();
+  const submitField = useSubmitProfileField();
+  const [captureError, setCaptureError] = useState<string | null>(null);
+  /** Guards one-time transcript seeding and one-time CTA insertion. */
+  const seededRef = useRef(false);
+  const ctaShownRef = useRef(false);
 
   // Leaving the page must stop the generation, not just stop rendering it.
   useEffect(() => () => askAbortRef.current?.abort(), []);
@@ -149,9 +175,11 @@ export function PeptideChat() {
     const abort = new AbortController();
     askAbortRef.current = abort;
 
-    // Built from completed exchanges, not by trimming the visible thread —
-    // see buildChatHistory for the two shapes that broke Bedrock.
-    const history = buildChatHistory(messages, question);
+    // Built from completed exchanges, not by trimming the visible thread — and
+    // only from text turns: capture/cta turns aren't part of the LLM history,
+    // and buildChatHistory reads `.content`, which they don't carry.
+    const textTurns = messages.filter((m): m is TextMessage => m.kind === 'text');
+    const history = buildChatHistory(textTurns, question);
 
     setInput('');
     setVoiceHint(null);
@@ -163,17 +191,19 @@ export function PeptideChat() {
     const assistantIndex = messages.length + 1;
     setMessages((prev) => [
       ...prev,
-      { role: 'user', content: question },
-      { role: 'assistant', content: '' },
+      { kind: 'text', role: 'user', content: question },
+      { kind: 'text', role: 'assistant', content: '' },
     ]);
     scrollToEnd();
 
     const updateAssistant = (
-      patch: Partial<DisplayMessage> | ((m: DisplayMessage) => DisplayMessage),
+      patch: Partial<TextMessage> | ((m: TextMessage) => TextMessage),
     ) => {
       setMessages((prev) => {
         const next = [...prev];
-        const last = next[next.length - 1]!;
+        const last = next[next.length - 1];
+        // The tail is always the assistant text turn we just pushed.
+        if (!last || last.kind !== 'text') return prev;
         next[next.length - 1] = typeof patch === 'function' ? patch(last) : { ...last, ...patch };
         return next;
       });
@@ -212,8 +242,155 @@ export function PeptideChat() {
       if (askAbortRef.current === abort) askAbortRef.current = null;
       if (opts.viaVoice) speaker.endStream(); // no-op if already ended
       setPending(false);
+      // Knowledge is never withheld to force capture — but once the answer
+      // lands, re-offer the pending field so an up-front step the visitor
+      // stepped around isn't lost.
+      reofferCapture();
     }
   }
+
+  /* ---- Companion capture (deterministic, no model) ---------------------- */
+
+  /** Push a live capture turn for the current step, unless one is already the tail. */
+  function reofferCapture() {
+    const step = companion?.nextStep;
+    if (!step) return;
+    setMessages((prev) => {
+      const last = prev[prev.length - 1];
+      if (last?.kind === 'capture' && last.step.field === step.field) return prev;
+      return [...prev, { kind: 'capture', role: 'assistant', step }];
+    });
+    scrollToEnd();
+  }
+
+  /** A friendly transcript label for what the visitor just answered. */
+  function answerLabel(step: CaptureStep, value: string): string {
+    if (step.input.type === 'choice') {
+      return step.input.choices?.find((c) => c.value === value)?.label ?? value;
+    }
+    return value;
+  }
+
+  async function submitCapture(step: CaptureStep, value: string, note?: string) {
+    setCaptureError(null);
+    try {
+      const result = await submitField.mutateAsync({
+        kind: 'field',
+        field: step.field,
+        value,
+        note,
+      });
+      // Only record the answer once the server accepted it.
+      setMessages((prev) => [
+        ...prev,
+        { kind: 'text', role: 'user', content: answerLabel(step, value) },
+      ]);
+      advanceCapture(result.nextStep?.field ? result.nextStep : null, result.copy);
+    } catch (error) {
+      if (error instanceof FieldError) {
+        setCaptureError(error.message);
+      } else {
+        console.warn('capture: submit failed', error);
+        setCaptureError('Something went wrong — try again.');
+      }
+    }
+  }
+
+  async function skipCapture(step: CaptureStep) {
+    setCaptureError(null);
+    try {
+      const result = await submitField.mutateAsync({ kind: 'skip', field: step.field });
+      advanceCapture(result.nextStep?.field ? result.nextStep : null, result.copy);
+    } catch (error) {
+      console.warn('capture: skip failed', error);
+    }
+  }
+
+  /** Show the next prompt+widget, or — when capture is done — the conversion CTA. */
+  function advanceCapture(
+    nextStep: CaptureStep | null,
+    copy: { conversionPrompt: string; conversionCtaLabel: string },
+  ) {
+    if (nextStep) {
+      setMessages((prev) => [
+        ...prev,
+        { kind: 'text', role: 'assistant', content: nextStep.prompt },
+        { kind: 'capture', role: 'assistant', step: nextStep },
+      ]);
+      scrollToEnd();
+      return;
+    }
+
+    // Capture complete. Decide CTA inclusion OUTSIDE the updater — mutating a
+    // ref inside it is impure, and React's strict-mode double-invocation would
+    // drop the CTA on the second (kept) run.
+    const showCta = !ctaShownRef.current;
+    ctaShownRef.current = true;
+    setMessages((prev) => {
+      const next: DisplayMessage[] = [
+        ...prev,
+        {
+          kind: 'text',
+          role: 'assistant',
+          content: "Perfect — that's all I need. Ask me anything about peptides or protocols.",
+        },
+      ];
+      if (showCta) {
+        next.push({
+          kind: 'cta',
+          role: 'assistant',
+          content: copy.conversionPrompt,
+          ctaLabel: copy.conversionCtaLabel,
+        });
+      }
+      return next;
+    });
+    scrollToEnd();
+  }
+
+  async function startJourney() {
+    try {
+      const result = await submitField.mutateAsync({ kind: 'ready' });
+      router.push(result.handoff?.href ?? '/get-started');
+    } catch (error) {
+      console.warn('capture: start journey failed', error);
+    }
+  }
+
+  // Opener: seed the transcript once from the server-side profile. A visitor
+  // mid-capture resumes at the right step; one who finished but hasn't converted
+  // gets a welcome-back nudge; a converted visitor sees the plain hero.
+  useEffect(() => {
+    if (seededRef.current || !companion) return;
+    seededRef.current = true;
+    const { nextStep, copy, profile } = companion;
+
+    if (nextStep) {
+      setMessages([
+        { kind: 'text', role: 'assistant', content: copy.greeting },
+        { kind: 'text', role: 'assistant', content: nextStep.prompt },
+        { kind: 'capture', role: 'assistant', step: nextStep },
+      ]);
+    } else if (profile.status === 'exploring') {
+      ctaShownRef.current = true;
+      setMessages([
+        {
+          kind: 'text',
+          role: 'assistant',
+          content: profile.name
+            ? `Welcome back, ${profile.name}. Ask me anything, or pick up where you left off.`
+            : 'Welcome back. Ask me anything, or pick up where you left off.',
+        },
+        {
+          kind: 'cta',
+          role: 'assistant',
+          content: copy.conversionPrompt,
+          ctaLabel: copy.conversionCtaLabel,
+        },
+      ]);
+    }
+    // Otherwise (ready/converted) leave the transcript empty → the voice hero.
+  }, [companion]);
 
   const started = messages.length > 0;
   const busy = pending || transcribing;
@@ -368,21 +545,61 @@ export function PeptideChat() {
           >
             {messages.map((message, i) => {
               const messageId = `msg-${i}`;
-              const isSpeaking = speaker.speakingId === messageId;
-              return (
-                <div key={i} className={message.role === 'user' ? 'self-end' : 'self-start'}>
-                  {message.role === 'user' ? (
-                    <div className="max-w-md rounded-card rounded-br-lg bg-ink px-4 py-3 text-canvas">
-                      {message.content}
+              const align = message.role === 'user' ? 'self-end' : 'self-start';
+
+              // A capture turn: render its widget live only while it's the tail
+              // and the field is still pending; otherwise show the prompt text.
+              if (message.kind === 'capture') {
+                const isActive =
+                  i === messages.length - 1 && companion?.nextStep?.field === message.step.field;
+                return (
+                  <div key={i} className={align}>
+                    {isActive ? (
+                      <CaptureWidget
+                        step={message.step}
+                        handlers={{
+                          onSubmit: (value, note) => void submitCapture(message.step, value, note),
+                          onSkip: () => void skipCapture(message.step),
+                          busy: submitField.isPending,
+                          error: captureError ?? undefined,
+                        }}
+                      />
+                    ) : null}
+                  </div>
+                );
+              }
+
+              // The conversion offer: a warm card with the CTA button.
+              if (message.kind === 'cta') {
+                return (
+                  <div key={i} className={align}>
+                    <div className="max-w-md rounded-card bg-linear-to-br from-card-from to-card-to p-5 shadow-[0_20px_50px_-30px_rgba(60,45,25,0.6)]">
+                      <p className="text-pretty leading-relaxed text-ink">{message.content}</p>
+                      <Button size="lg" className="mt-4" onClick={() => void startJourney()}>
+                        {message.ctaLabel}
+                      </Button>
                     </div>
-                  ) : message.error ? (
+                  </div>
+                );
+              }
+
+              // A text turn — the existing knowledge/user rendering.
+              const isSpeaking = speaker.speakingId === messageId;
+              const text = message;
+              return (
+                <div key={i} className={align}>
+                  {text.role === 'user' ? (
+                    <div className="max-w-md rounded-card rounded-br-lg bg-ink px-4 py-3 text-canvas">
+                      {text.content}
+                    </div>
+                  ) : text.error ? (
                     <div className="max-w-2xl rounded-card bg-red-50 px-4 py-3 text-red-800">
-                      {message.content}
+                      {text.content}
                     </div>
                   ) : (
                     <div className="max-w-2xl">
-                      {message.content ? (
-                        <AnswerMarkdown>{message.content}</AnswerMarkdown>
+                      {text.content ? (
+                        <AnswerMarkdown>{text.content}</AnswerMarkdown>
                       ) : (
                         <p className="font-mono text-[10px] tracking-[0.22em] text-muted uppercase">
                           Looking through the research…
@@ -391,14 +608,12 @@ export function PeptideChat() {
                     </div>
                   )}
 
-                  {message.role === 'assistant' && message.content && !message.error ? (
+                  {text.role === 'assistant' && text.content && !text.error ? (
                     <div className="mt-2 flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() =>
-                          isSpeaking
-                            ? speaker.stop()
-                            : void speaker.speak(message.content, messageId)
+                          isSpeaking ? speaker.stop() : void speaker.speak(text.content, messageId)
                         }
                         aria-label={isSpeaking ? 'Stop reading answer' : 'Read answer aloud'}
                         className="rounded-full p-1.5 text-muted transition-colors hover:bg-brand-400/15 hover:text-[var(--dawn-ember-deep)] focus-visible:ring-2 focus-visible:ring-brand-500 outline-none"
@@ -414,9 +629,9 @@ export function PeptideChat() {
                     </div>
                   ) : null}
 
-                  {brainUi.showCitations && message.citations && message.citations.length > 0 ? (
+                  {brainUi.showCitations && text.citations && text.citations.length > 0 ? (
                     <ul className="mt-3 flex flex-wrap gap-2">
-                      {message.citations.map((citation) => (
+                      {text.citations.map((citation) => (
                         <li
                           key={citation.index}
                           title={citation.citedText}

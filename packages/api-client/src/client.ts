@@ -26,7 +26,19 @@ export function createApiClient(baseUrl: string, options?: ApiClientOptions): Ap
 
 export type BrainClient = ReturnType<typeof hc<BrainAppType>>;
 
-/** Build a fully-typed Hono RPC client bound to the brain service. */
+/**
+ * Build a fully-typed Hono RPC client bound to the brain service.
+ *
+ * `credentials: 'include'` is required: the brain identifies a visitor by an
+ * opaque session cookie (companion capture, conversation grouping), and in
+ * local dev the web app (:3000) and the brain (:4100) are different origins, so
+ * without this the cookie is never sent and every request looks like a brand-new
+ * visitor. In production they share one CloudFront origin, where it's a no-op.
+ * The brain's CORS allows credentials for exactly this.
+ */
 export function createBrainClient(baseUrl: string, options?: ApiClientOptions): BrainClient {
-  return hc<BrainAppType>(baseUrl, options?.headers ? { headers: options.headers } : undefined);
+  return hc<BrainAppType>(baseUrl, {
+    init: { credentials: 'include' },
+    ...(options?.headers ? { headers: options.headers } : {}),
+  });
 }

@@ -21,6 +21,8 @@ export type AdminWaitlistQuery = InferRequestType<AdminApi['waitlist']['$get']>[
 export type AdminWaitlistPage = InferResponseType<AdminApi['waitlist']['$get'], 200>;
 export type AdminUsersQuery = InferRequestType<AdminApi['users']['$get']>['query'];
 export type AdminUsersPage = InferResponseType<AdminApi['users']['$get'], 200>;
+export type AdminLeadsQuery = InferRequestType<AdminApi['leads']['$get']>['query'];
+export type AdminLeadsPage = InferResponseType<AdminApi['leads']['$get'], 200>;
 export type AdminList = InferResponseType<AdminApi['admins']['$get'], 200>;
 export type FeatureFlagList = InferResponseType<AdminApi['flags']['$get'], 200>;
 export type SettingsList = InferResponseType<AdminApi['settings']['$get'], 200>;
@@ -34,6 +36,7 @@ export const adminKeys = {
   all: ['admin'] as const,
   waitlist: (query: AdminWaitlistQuery) => ['admin', 'waitlist', query] as const,
   users: (query: AdminUsersQuery) => ['admin', 'users', query] as const,
+  leads: (query: AdminLeadsQuery) => ['admin', 'leads', query] as const,
   admins: () => ['admin', 'admins'] as const,
   flags: () => ['admin', 'flags'] as const,
   settings: () => ['admin', 'settings'] as const,
@@ -93,6 +96,18 @@ export function useAdminUsers(query: AdminUsersQuery) {
     placeholderData: keepPreviousData,
     queryFn: async (): Promise<AdminUsersPage> =>
       unwrap(await client.api.admin.users.$get({ query })),
+  });
+}
+
+// --- Pre-onboarding leads (companion capture; read-only) ---
+
+export function useAdminLeads(query: AdminLeadsQuery) {
+  const client = useApiClient();
+  return useQuery({
+    queryKey: adminKeys.leads(query),
+    placeholderData: keepPreviousData,
+    queryFn: async (): Promise<AdminLeadsPage> =>
+      unwrap(await client.api.admin.leads.$get({ query })),
   });
 }
 

@@ -62,6 +62,10 @@ const badgeTones: Record<string, string> = {
   admin: 'bg-brand-400/20 text-brand-800',
   on: 'bg-emerald-100 text-emerald-800',
   off: 'bg-ink/10 text-muted',
+  // Companion lead lifecycle.
+  capturing: 'bg-ink/10 text-muted',
+  exploring: 'bg-sky-100 text-sky-800',
+  ready: 'bg-brand-400/20 text-brand-800',
 };
 
 export function Badge({ tone, children }: { tone: string; children: ReactNode }) {

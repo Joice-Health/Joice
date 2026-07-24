@@ -4,6 +4,7 @@
  * one migration stream — the split is about ownership, not deployment.
  */
 import {
+  boolean,
   index,
   integer,
   jsonb,
@@ -154,3 +155,63 @@ export const messages = pgTable(
 
 export type Message = typeof messages.$inferSelect;
 export type NewMessage = typeof messages.$inferInsert;
+
+/**
+ * A pre-onboarding lead: what the companion learned about a visitor before they
+ * became a member. Name, email, and the care area they're here for, captured
+ * conversationally and handed to the onboarding flow.
+ *
+ * Same dual-key pattern as `conversations`: keyed on `anonymous_session_id`
+ * today, so a lead captured before sign-up attaches to the member the day
+ * accounts ship (see `claim`). Exactly one of the two keys is always set.
+ *
+ * NOT health information. This is name + email + a goal slug — the same
+ * marketing-grade class as `waitlist_entries`, stored unconditionally and
+ * deliberately kept separate from `messages` (the health questions), which
+ * remain behind the persistence flag. DOB is intentionally absent: it belongs
+ * at onboarding, behind consent.
+ */
+export const brainProfiles = pgTable(
+  'brain_profiles',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+
+    /** Set once the member signs in; null while anonymous. */
+    memberId: uuid('member_id'),
+
+    /** Opaque per-browser-session id — the key while anonymous. */
+    anonymousSessionId: text('anonymous_session_id'),
+
+    name: text('name'),
+    email: text('email'),
+
+    /** A care-area slug from the canonical list (weight-metabolic, etc.). */
+    goal: text('goal'),
+    /** Free text when the goal is "not sure" or needs elaboration. */
+    goalNote: text('goal_note'),
+
+    /** Fields the visitor declined, so the companion never re-asks them. */
+    skipped: jsonb('skipped').$type<string[]>().notNull().default([]),
+
+    /** Set when the visitor chooses to start their journey — the lead signal. */
+    readyForOnboarding: boolean('ready_for_onboarding').notNull().default(false),
+
+    /** capturing → exploring → ready → converted. */
+    status: text('status').notNull().default('capturing'),
+
+    metadata: jsonb('metadata').$type<Record<string, unknown>>(),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    // One profile per anonymous session — findOrCreate upserts against this.
+    uniqueIndex('brain_profiles_anon_session_unique').on(table.anonymousSessionId),
+    index('brain_profiles_member_idx').on(table.memberId),
+    // The admin leads list: newest ready/updated leads first.
+    index('brain_profiles_updated_idx').on(table.updatedAt.desc()),
+  ],
+);
+
+export type BrainProfile = typeof brainProfiles.$inferSelect;
+export type NewBrainProfile = typeof brainProfiles.$inferInsert;

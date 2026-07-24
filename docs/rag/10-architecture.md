@@ -124,12 +124,20 @@ One Postgres, one migration stream. `packages/db/src/schema/` is split by owner:
 | `waitlist.ts` | `@joice/core` | `waitlist_entries` |
 | `identity.ts` | `@joice/core` | `users` |
 | `platform.ts` | `@joice/core` | `feature_flags`, `app_settings`, `audit_logs` |
-| `brain.ts` | `@joice/brain` | `note_chunks`, `conversations`, `messages` |
+| `brain.ts` | `@joice/brain` | `note_chunks`, `conversations`, `messages`, `brain_profiles` |
 
 The rule: a service writes only the tables in its own file. This is enforced by
 convention and review, not by separate credentials — both services connect with
 the same role. Worth revisiting if the brain ever handles data the api service
 must not see.
+
+**One documented read exception.** The admin console's leads view
+(`GET /api/admin/leads`) is served by the **api** service reading
+`brain_profiles` directly. Leads are marketing-grade data (name/email/goal), the
+api already owns every other admin surface and has Clerk, and serving the read
+there avoids standing up Clerk on the brain for one list. When the brain grows
+its own admin surface (conversation review, per-stage config), it moves. This is
+the only place the api reaches into a brain-owned table, and it is read-only.
 
 ## Conversation persistence
 

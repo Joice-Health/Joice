@@ -38,6 +38,19 @@ export const brainSettingsSchema = z.object({
   restrictedTopics: z.array(z.string().trim().min(1).max(200)).max(20),
   customInstructions: z.string().trim().max(4000),
 
+  /**
+   * Pre-onboarding companion copy — the words the capture flow says. Flat
+   * fields (not a nested object) because `resolve()` is a shallow merge; a
+   * nested object would be replaced wholesale by any partial write. Detection
+   * and validation are code; only the copy is admin-editable.
+   */
+  companionGreeting: z.string().trim().min(1).max(400),
+  companionNamePrompt: z.string().trim().min(1).max(200),
+  companionEmailPrompt: z.string().trim().min(1).max(200),
+  companionGoalPrompt: z.string().trim().min(1).max(200),
+  companionConversionPrompt: z.string().trim().min(1).max(400),
+  companionConversionCtaLabel: z.string().trim().min(1).max(60),
+
   /** Retrieval & generation. */
   topK: z.number().int().min(1).max(20),
   similarityFloor: z.number().min(0).max(1),
@@ -80,6 +93,16 @@ export const DEFAULT_BRAIN_SETTINGS: Omit<BrainSettings, 'model' | 'pollyVoiceId
   disclaimer: 'Educational information from our clinical notes — not medical advice',
   restrictedTopics: [],
   customInstructions: '',
+  companionGreeting:
+    "Hi — I'm Joice. I can answer anything about peptides and protocols, and help you " +
+    'figure out where to start. First, a couple of quick things so I can tailor this to you.',
+  companionNamePrompt: 'What should I call you?',
+  companionEmailPrompt: "What's the best email to reach you? I'll use it to save your progress.",
+  companionGoalPrompt: 'What brings you here today?',
+  companionConversionPrompt:
+    "Whenever you're ready, I can help you start your journey — a few quick questions and " +
+    'our clinical team takes it from there.',
+  companionConversionCtaLabel: 'Start my journey',
   topK: 8,
   similarityFloor: 0.4,
   maxAnswerTokens: 1024,

@@ -37,6 +37,29 @@ export {
 } from './conversation/wire';
 
 export {
+  CARE_AREAS,
+  CAPTURE_FIELDS,
+  GOAL_UNSURE,
+  GOAL_VALUES,
+  captureInputSchema,
+  captureStepSchema,
+  companionProfileSchema,
+  companionCopySchema,
+  companionStateSchema,
+  companionActionSchema,
+  companionActionResultSchema,
+  isValidEmail,
+  type CaptureField,
+  type CaptureInput,
+  type CaptureStep,
+  type CompanionProfile,
+  type CompanionCopy,
+  type CompanionState,
+  type CompanionAction,
+  type CompanionActionResult,
+} from './profile/schemas';
+
+export {
   brainSettingsSchema,
   brainSettingsPatchSchema,
   brainUiSchema,

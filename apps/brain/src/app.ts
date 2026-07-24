@@ -6,13 +6,20 @@ import { streamSSE } from 'hono/streaming';
 import { HTTPException } from 'hono/http-exception';
 import { zValidator } from '@hono/zod-validator';
 import {
+  captureStepFor,
   chatRequestSchema,
+  companionActionSchema,
   conversationIdParamSchema,
   createTranscribeSession,
+  ProfileValidationError,
   speakRequestSchema,
   stripCitationMarkers,
   type ChatMessage,
+  type CompanionActionResult,
+  type CompanionState,
   type PeptideRecommendation,
+  type ResolvedBrainConfig,
+  type Requester,
   type TranscribeSession,
 } from '@joice/brain';
 import type { WSContext } from 'hono/ws';
@@ -26,6 +33,7 @@ import {
   brainConfig,
   conversationService,
   persistConversations,
+  profileService,
   recommendations,
   speech,
   transcriber,
@@ -48,6 +56,10 @@ app.use(
     origin: allowedOrigins,
     allowMethods: ['GET', 'POST', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
+    // The session cookie must survive cross-origin requests in local dev (web
+    // :3000 → brain :4100). Requires a specific origin allowlist above, never
+    // `*` — which this is.
+    credentials: true,
   }),
 );
 
@@ -213,6 +225,33 @@ async function record(
 }
 
 /**
+ * Assemble the companion state the UI drives the next turn from: the lead as a
+ * view, the next field to ask (or null when capture is done), and the
+ * admin-managed copy. One shape for both GET and POST responses.
+ */
+function companionState(
+  row: Awaited<ReturnType<typeof profileService.get>>,
+  config: ResolvedBrainConfig,
+): CompanionState {
+  const field = profileService.nextField(row);
+  return {
+    profile: profileService.toView(row),
+    nextStep: field
+      ? captureStepFor(field, {
+          name: config.companionNamePrompt,
+          email: config.companionEmailPrompt,
+          goal: config.companionGoalPrompt,
+        })
+      : null,
+    copy: {
+      greeting: config.companionGreeting,
+      conversionPrompt: config.companionConversionPrompt,
+      conversionCtaLabel: config.companionConversionCtaLabel,
+    },
+  };
+}
+
+/**
  * Everything the brain serves lives under `/api/brain/*`, which is what lets
  * the ALB route to this service on a single listener rule rather than a list of
  * paths that has to be edited every time an endpoint is added.
@@ -338,6 +377,59 @@ const routes = app
       const conversation = await conversationService.get(id, c.get('requester'));
       if (!conversation) return c.json({ error: 'Conversation not found' }, 404);
       return c.json(conversation);
+    },
+  )
+  /**
+   * The pre-onboarding companion's lead capture. Deterministic, no model — the
+   * UI reads the current state (which field to ask next, the copy to say) and
+   * submits answers here. Marketing-grade data (name/email/goal); stored
+   * unconditionally, separate from health-question content. Scoped to the
+   * session by `identifyRequester`, so a lead is only ever the requester's own.
+   */
+  .get('/api/brain/profile', rateLimit({ windowMs: 60_000, max: 60 }), async (c) => {
+    const [row, config] = await Promise.all([
+      profileService.get(c.get('requester')),
+      brainConfig.get(),
+    ]);
+    return c.json(companionState(row, config));
+  })
+  .post(
+    '/api/brain/profile',
+    rateLimit({ windowMs: 60_000, max: 30 }),
+    zValidator('json', companionActionSchema),
+    async (c) => {
+      const requester: Requester = c.get('requester');
+      const action = c.req.valid('json');
+      const config = await brainConfig.get();
+
+      try {
+        if (action.kind === 'field') {
+          const row = await profileService.applyField(
+            requester,
+            action.field,
+            action.value,
+            action.note,
+          );
+          return c.json<CompanionActionResult>(companionState(row, config));
+        }
+        if (action.kind === 'skip') {
+          const row = await profileService.skip(requester, action.field);
+          return c.json<CompanionActionResult>(companionState(row, config));
+        }
+        // ready — the lead signal. Hand off to the onboarding flow.
+        const row = await profileService.markReady(requester);
+        return c.json<CompanionActionResult>({
+          ...companionState(row, config),
+          handoff: { href: '/get-started' },
+        });
+      } catch (error) {
+        // A rejected field value is a 400 the widget shows inline; anything else
+        // is a real error and rethrows to the shared handler.
+        if (error instanceof ProfileValidationError) {
+          return c.json({ error: error.message, field: error.field }, 400);
+        }
+        throw error;
+      }
     },
   );
 

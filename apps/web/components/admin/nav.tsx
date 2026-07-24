@@ -7,6 +7,7 @@ import { cn } from '@joice/ui';
 const LINKS = [
   { href: '/admin', label: 'Dashboard' },
   { href: '/admin/waitlist', label: 'Waitlist' },
+  { href: '/admin/leads', label: 'Leads' },
   { href: '/admin/users', label: 'Users' },
   { href: '/admin/admins', label: 'Admins' },
   { href: '/admin/brain', label: 'Brain' },
