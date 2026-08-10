@@ -288,7 +288,10 @@ export default function AdminBrainPage() {
             validation are fixed in code; only this copy is editable.
           </p>
           <div className="flex flex-col gap-4">
-            <Field label="Greeting" hint="The opening line before the first question.">
+            <Field
+              label="Capture intro"
+              hint="Woven in after the visitor's first answer, just before the name question."
+            >
               <textarea
                 value={form.companionGreeting}
                 onChange={(e) => set('companionGreeting', e.target.value)}

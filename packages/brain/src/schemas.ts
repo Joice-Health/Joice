@@ -49,6 +49,7 @@ export {
   companionActionSchema,
   companionActionResultSchema,
   isValidEmail,
+  matchCareArea,
   type CaptureField,
   type CaptureInput,
   type CaptureStep,

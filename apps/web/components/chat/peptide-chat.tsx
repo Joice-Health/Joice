@@ -12,10 +12,15 @@ import {
   useSubmitProfileField,
   type Citation,
 } from '@joice/api-client';
-import { buildChatHistory, type CaptureStep } from '@joice/brain/schemas';
+import {
+  buildChatHistory,
+  matchCareArea,
+  type CaptureStep,
+  type CompanionActionResult,
+} from '@joice/brain/schemas';
 import { brainUrl } from '@/lib/env';
 import { AnswerMarkdown } from './answer-markdown';
-import { CaptureWidget } from './capture-widgets';
+import { GoalChips } from './capture-widgets';
 import { useAudioLevel } from './use-audio-level';
 import { useLiveTranscript } from './use-live-transcript';
 import { useRecorder } from './use-recorder';
@@ -24,9 +29,10 @@ import { VoiceSun } from './voice-sun';
 import { VoiceVisualizer } from './voice-visualizer';
 
 /**
- * A turn in the transcript. Knowledge Q&A and the companion's own prompts share
- * one surface, so a turn is a discriminated union: prose (`text`), an inline
- * capture control (`capture`), or the conversion offer (`cta`).
+ * A turn in the transcript. Knowledge Q&A and the companion's own lines share
+ * one surface, so a turn is either prose (`text`) or the conversion offer
+ * (`cta`). Capture happens through the composer and the goal chips, not as a
+ * transcript widget — so there's no `capture` turn.
  */
 export type DisplayMessage =
   | {
@@ -36,10 +42,36 @@ export type DisplayMessage =
       citations?: Citation[];
       error?: boolean;
     }
-  | { kind: 'capture'; role: 'assistant'; step: CaptureStep }
   | { kind: 'cta'; role: 'assistant'; content: string; ctaLabel: string };
 
 type TextMessage = Extract<DisplayMessage, { kind: 'text' }>;
+
+/** Is this the visitor asking a question rather than answering the companion? */
+function looksLikeQuestion(text: string): boolean {
+  const t = text.trim();
+  if (t.endsWith('?')) return true;
+  return /^(what|how|why|is|are|can|could|does|do|should|which|when|where|who|tell me|explain)\b/i.test(
+    t,
+  );
+}
+
+/** Typed "skip"-style answers that step past the current capture question. */
+function isSkip(text: string): boolean {
+  return /^(skip|no thanks?|not now|pass|later|maybe later)\.?$/i.test(text.trim());
+}
+
+/**
+ * Deterministic buying-signal detector — no model call. Kept narrow so an
+ * ordinary "how do I dose BPC" doesn't read as intent to purchase.
+ */
+function isBuyingSignal(text: string): boolean {
+  return /\b(sign ?up|get started|getting started|start my|begin my|how do i (start|begin|sign ?up|join|get started)|ready to (start|begin|sign ?up|join)|how much|cost|price|pricing|order|purchase|consult|appointment|book a)\b/i.test(
+    text,
+  );
+}
+
+/** How many total exchanges before the journey is offered regardless of capture. */
+const CONVERSION_EXCHANGE_THRESHOLD = 4;
 
 
 function SpeakerIcon({ className }: { className?: string }) {
@@ -82,9 +114,18 @@ export function PeptideChat() {
   // server-side, keyed to the session cookie, so it resumes across reloads.
   const { data: companion } = useCompanionProfile();
   const submitField = useSubmitProfileField();
-  const [captureError, setCaptureError] = useState<string | null>(null);
-  /** Guards one-time transcript seeding and one-time CTA insertion. */
-  const seededRef = useRef(false);
+  /** True once the companion has begun asking its questions (after the 1st answer). */
+  const captureStartedRef = useRef(false);
+  /** The field we last put a prompt on screen for — avoids re-nagging. */
+  const promptedFieldRef = useRef<string | null>(null);
+  /** Completed knowledge exchanges this session — drives the conversion timing. */
+  const exchangeCountRef = useRef(0);
+  /** exchangeCount at the moment capture finished, or null until it does. */
+  const exchangesAtCaptureDoneRef = useRef<number | null>(null);
+  /** Set once the visitor says something intent-heavy. */
+  const buyingSignalRef = useRef(false);
+  /** One-time guards. */
+  const initRef = useRef(false);
   const ctaShownRef = useRef(false);
 
   // Leaving the page must stop the generation, not just stop rendering it.
@@ -214,12 +255,17 @@ export function PeptideChat() {
     // almost immediately instead of after the whole answer is written.
     if (opts.viaVoice) await speaker.startStream(`msg-${assistantIndex}`);
 
+    // Only a real answer advances the companion — a failed turn shouldn't be
+    // followed by "Love that you're digging in!".
+    let answeredOk = false;
+
     try {
       for await (const event of streamPeptideRecommendation(client, history, abort.signal)) {
         if (event.type === 'delta') {
           updateAssistant((m) => ({ ...m, content: m.content + event.text }));
           if (opts.viaVoice) speaker.pushText(event.text);
         } else if (event.type === 'complete') {
+          answeredOk = true;
           updateAssistant({
             content: event.recommendation.answer,
             citations: event.recommendation.citations,
@@ -242,26 +288,31 @@ export function PeptideChat() {
       if (askAbortRef.current === abort) askAbortRef.current = null;
       if (opts.viaVoice) speaker.endStream(); // no-op if already ended
       setPending(false);
-      // Knowledge is never withheld to force capture — but once the answer
-      // lands, re-offer the pending field so an up-front step the visitor
-      // stepped around isn't lost.
-      reofferCapture();
+
+      // A failed turn doesn't count — no capture, no conversion off the back of
+      // an error message. (An early `return` here trips no-unsafe-finally.)
+      if (answeredOk) {
+        exchangeCountRef.current += 1;
+        if (isBuyingSignal(question)) buyingSignalRef.current = true;
+
+        // Value first: only after the visitor has had a real answer does the
+        // companion start asking its questions. On later answers, gently
+        // re-anchor the pending field. Then consider offering the journey.
+        if (!captureStartedRef.current && companion?.nextStep) {
+          beginCapture();
+        } else {
+          reofferCapture();
+        }
+        maybeOfferConversion();
+      }
     }
   }
 
-  /* ---- Companion capture (deterministic, no model) ---------------------- */
-
-  /** Push a live capture turn for the current step, unless one is already the tail. */
-  function reofferCapture() {
-    const step = companion?.nextStep;
-    if (!step) return;
-    setMessages((prev) => {
-      const last = prev[prev.length - 1];
-      if (last?.kind === 'capture' && last.step.field === step.field) return prev;
-      return [...prev, { kind: 'capture', role: 'assistant', step }];
-    });
-    scrollToEnd();
-  }
+  /* ---- Companion capture: woven into the chat, driven by the composer ----- *
+   * Capture is a deterministic state machine on the server (validation,
+   * next-field). The client's job is to make it feel like conversation: ask one
+   * field at a time as ordinary assistant lines, read the answer from the same
+   * composer the visitor asks questions in, and acknowledge each one.          */
 
   /** A friendly transcript label for what the visitor just answered. */
   function answerLabel(step: CaptureStep, value: string): string {
@@ -271,80 +322,178 @@ export function PeptideChat() {
     return value;
   }
 
+  /** Put a field's question on screen (goal chips render near the composer). */
+  function promptForStep(step: CaptureStep) {
+    promptedFieldRef.current = step.field;
+    setMessages((prev) => [...prev, { kind: 'text', role: 'assistant', content: step.prompt }]);
+    scrollToEnd();
+  }
+
+  /** After the first real answer, the companion starts asking — woven, not gated. */
+  function beginCapture() {
+    const step = companion?.nextStep;
+    if (!step || captureStartedRef.current) return;
+    captureStartedRef.current = true;
+    const intro = companion?.copy.greeting;
+    setMessages((prev) =>
+      intro ? [...prev, { kind: 'text', role: 'assistant', content: intro }] : prev,
+    );
+    promptForStep(step);
+  }
+
+  /**
+   * After a knowledge answer while a field is still pending, re-anchor it — but
+   * only if we haven't just asked it (the composer placeholder already guides,
+   * so re-asking every turn would nag).
+   */
+  function reofferCapture() {
+    const step = companion?.nextStep;
+    if (!step || !captureStartedRef.current) return;
+    if (promptedFieldRef.current === step.field) return;
+    promptForStep(step);
+  }
+
+  /** A warm line acknowledging what the visitor just gave. */
+  function ackFor(step: CaptureStep, value: string, result: CompanionActionResult): string {
+    if (step.field === 'name') return `Nice to meet you, ${result.profile.name ?? value}.`;
+    if (step.field === 'email') return "Thanks — that's saved.";
+    const label = result.profile.goalLabel ?? answerLabel(step, value);
+    return `Great — ${label.toLowerCase()}. I'll keep that front of mind.`;
+  }
+
   async function submitCapture(step: CaptureStep, value: string, note?: string) {
-    setCaptureError(null);
+    setInput('');
     try {
-      const result = await submitField.mutateAsync({
-        kind: 'field',
-        field: step.field,
-        value,
-        note,
-      });
-      // Only record the answer once the server accepted it.
+      const result = await submitField.mutateAsync({ kind: 'field', field: step.field, value, note });
       setMessages((prev) => [
         ...prev,
         { kind: 'text', role: 'user', content: answerLabel(step, value) },
+        { kind: 'text', role: 'assistant', content: ackFor(step, value, result) },
       ]);
-      advanceCapture(result.nextStep?.field ? result.nextStep : null, result.copy);
+      const next = result.nextStep?.field ? result.nextStep : null;
+      if (next) {
+        promptForStep(next);
+      } else {
+        // Capture complete — remember when, so "one more chat" can be measured.
+        exchangesAtCaptureDoneRef.current = exchangeCountRef.current;
+        promptedFieldRef.current = null;
+        scrollToEnd();
+      }
     } catch (error) {
       if (error instanceof FieldError) {
-        setCaptureError(error.message);
+        // Keep it conversational: show what they typed, then a gentle re-ask.
+        setMessages((prev) => [
+          ...prev,
+          { kind: 'text', role: 'user', content: value },
+          { kind: 'text', role: 'assistant', content: `${error.message} Mind trying again?` },
+        ]);
       } else {
         console.warn('capture: submit failed', error);
-        setCaptureError('Something went wrong — try again.');
       }
     }
   }
 
   async function skipCapture(step: CaptureStep) {
-    setCaptureError(null);
+    setInput('');
     try {
       const result = await submitField.mutateAsync({ kind: 'skip', field: step.field });
-      advanceCapture(result.nextStep?.field ? result.nextStep : null, result.copy);
+      const next = result.nextStep?.field ? result.nextStep : null;
+      setMessages((prev) => [
+        ...prev,
+        { kind: 'text', role: 'assistant', content: 'No problem.' },
+      ]);
+      if (next) {
+        promptForStep(next);
+      } else {
+        exchangesAtCaptureDoneRef.current = exchangeCountRef.current;
+        promptedFieldRef.current = null;
+        maybeOfferConversion();
+      }
     } catch (error) {
       console.warn('capture: skip failed', error);
     }
   }
 
-  /** Show the next prompt+widget, or — when capture is done — the conversion CTA. */
-  function advanceCapture(
-    nextStep: CaptureStep | null,
-    copy: { conversionPrompt: string; conversionCtaLabel: string },
-  ) {
-    if (nextStep) {
-      setMessages((prev) => [
-        ...prev,
-        { kind: 'text', role: 'assistant', content: nextStep.prompt },
-        { kind: 'capture', role: 'assistant', step: nextStep },
-      ]);
-      scrollToEnd();
+  /**
+   * Route a composer submission: is it an answer to the pending field, or a
+   * question? Disambiguated per field so the visitor can just type naturally.
+   */
+  function routeCaptureOrAsk(text: string) {
+    if (!text || pending) return;
+    const step = companion?.nextStep;
+    if (!step || !captureStartedRef.current) {
+      void send(text);
       return;
     }
+    if (isSkip(text)) {
+      void skipCapture(step);
+      return;
+    }
+    if (step.field === 'name') {
+      if (looksLikeQuestion(text)) void send(text);
+      else void submitCapture(step, text);
+      return;
+    }
+    if (step.field === 'email') {
+      // An email has an @; anything without one is a question we answer, leaving
+      // email pending. A malformed address (has @) is caught server-side.
+      if (text.includes('@')) void submitCapture(step, text);
+      else void send(text);
+      return;
+    }
+    // goal
+    const slug = matchCareArea(text);
+    if (slug) {
+      void submitCapture(step, slug);
+      return;
+    }
+    if (looksLikeQuestion(text)) {
+      void send(text);
+      return;
+    }
+    // Not a care area and not a question — nudge toward the chips.
+    setInput('');
+    setMessages((prev) => [
+      ...prev,
+      { kind: 'text', role: 'user', content: text },
+      {
+        kind: 'text',
+        role: 'assistant',
+        content: 'Tap one of the options below, or tell me a bit more about what you want to change.',
+      },
+    ]);
+    scrollToEnd();
+  }
 
-    // Capture complete. Decide CTA inclusion OUTSIDE the updater — mutating a
-    // ref inside it is impure, and React's strict-mode double-invocation would
-    // drop the CTA on the second (kept) run.
-    const showCta = !ctaShownRef.current;
+  /** The conversion offer, shown at the earliest of the three triggers, once. */
+  function maybeOfferConversion() {
+    if (ctaShownRef.current) return;
+    const status = companion?.profile.status;
+    if (status === 'ready' || status === 'converted') {
+      ctaShownRef.current = true;
+      return;
+    }
+    const captureDone = !companion?.nextStep;
+    const oneMoreAfterCapture =
+      exchangesAtCaptureDoneRef.current !== null &&
+      exchangeCountRef.current > exchangesAtCaptureDoneRef.current;
+    const trigger =
+      buyingSignalRef.current ||
+      (captureDone && oneMoreAfterCapture) ||
+      exchangeCountRef.current >= CONVERSION_EXCHANGE_THRESHOLD;
+    if (!trigger) return;
+
     ctaShownRef.current = true;
-    setMessages((prev) => {
-      const next: DisplayMessage[] = [
-        ...prev,
-        {
-          kind: 'text',
-          role: 'assistant',
-          content: "Perfect — that's all I need. Ask me anything about peptides or protocols.",
-        },
-      ];
-      if (showCta) {
-        next.push({
-          kind: 'cta',
-          role: 'assistant',
-          content: copy.conversionPrompt,
-          ctaLabel: copy.conversionCtaLabel,
-        });
-      }
-      return next;
-    });
+    const copy = companion?.copy;
+    setMessages((prev) => [
+      ...prev,
+      {
+        kind: 'cta',
+        role: 'assistant',
+        content: copy?.conversionPrompt ?? 'Whenever you’re ready, I can help you start your journey.',
+        ctaLabel: copy?.conversionCtaLabel ?? 'Start my journey',
+      },
+    ]);
     scrollToEnd();
   }
 
@@ -357,39 +506,20 @@ export function PeptideChat() {
     }
   }
 
-  // Opener: seed the transcript once from the server-side profile. A visitor
-  // mid-capture resumes at the right step; one who finished but hasn't converted
-  // gets a welcome-back nudge; a converted visitor sees the plain hero.
+  // No form on load — the voice hero shows, and capture begins only after the
+  // first real answer (see send's finally → beginCapture). This effect just
+  // seeds the counters for a return visitor whose capture is already done, so
+  // the conversion triggers behave and questions aren't re-asked.
   useEffect(() => {
-    if (seededRef.current || !companion) return;
-    seededRef.current = true;
-    const { nextStep, copy, profile } = companion;
-
-    if (nextStep) {
-      setMessages([
-        { kind: 'text', role: 'assistant', content: copy.greeting },
-        { kind: 'text', role: 'assistant', content: nextStep.prompt },
-        { kind: 'capture', role: 'assistant', step: nextStep },
-      ]);
-    } else if (profile.status === 'exploring') {
-      ctaShownRef.current = true;
-      setMessages([
-        {
-          kind: 'text',
-          role: 'assistant',
-          content: profile.name
-            ? `Welcome back, ${profile.name}. Ask me anything, or pick up where you left off.`
-            : 'Welcome back. Ask me anything, or pick up where you left off.',
-        },
-        {
-          kind: 'cta',
-          role: 'assistant',
-          content: copy.conversionPrompt,
-          ctaLabel: copy.conversionCtaLabel,
-        },
-      ]);
+    if (initRef.current || !companion) return;
+    initRef.current = true;
+    if (!companion.nextStep) {
+      captureStartedRef.current = true;
+      exchangesAtCaptureDoneRef.current = 0;
+      if (companion.profile.status === 'ready' || companion.profile.status === 'converted') {
+        ctaShownRef.current = true;
+      }
     }
-    // Otherwise (ready/converted) leave the transcript empty → the voice hero.
   }, [companion]);
 
   const started = messages.length > 0;
@@ -412,55 +542,95 @@ export function PeptideChat() {
           ? 'Looking through the research…'
           : null;
 
+  // What the composer is asking for right now drives its placeholder and the
+  // goal chips. Null once capture is done (or before it begins).
+  const pendingStep = captureStartedRef.current ? (companion?.nextStep ?? null) : null;
+  const composerPlaceholder = recorder.recording && live.interim
+    ? live.interim
+    : pendingStep?.field === 'name'
+      ? 'Type your first name…'
+      : pendingStep?.field === 'email'
+        ? 'Your email…'
+        : pendingStep?.field === 'goal'
+          ? 'Pick one below, or tell me in your own words…'
+          : brainUi.inputPlaceholder;
+
   const composer = (
-    <form
-      className={cn('flex items-end gap-3', started && 'border-t border-line/70 px-4 py-4 sm:px-6')}
-      onSubmit={(e) => {
-        e.preventDefault();
-        void send(input.trim());
-      }}
-    >
-      {started ? (
-        <VoiceSun
-          state={sunState}
-          size="sm"
-          disabled={busy && !recorder.recording}
-          onClick={() => toggleMic()}
-        />
+    <div className={cn(started && 'border-t border-line/70 px-4 py-4 sm:px-6')}>
+      {/* Goal step: tappable quick-replies sit right above the composer, so
+          they're always reachable even after a question scrolls the thread. */}
+      {pendingStep?.field === 'goal' ? (
+        <div className="mb-3">
+          <GoalChips
+            step={pendingStep}
+            busy={submitField.isPending}
+            onSelect={(value) => void submitCapture(pendingStep, value)}
+            onSkip={() => void skipCapture(pendingStep)}
+          />
+        </div>
       ) : null}
-      <textarea
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            void send(input.trim());
-          }
+
+      <form
+        className="flex items-end gap-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          routeCaptureOrAsk(input.trim());
         }}
-        rows={started ? 1 : 2}
-        maxLength={2000}
-        disabled={transcribing || recorder.recording}
-        placeholder={recorder.recording && live.interim ? live.interim : brainUi.inputPlaceholder}
-        aria-label="Type your question"
-        className={cn(
-          'min-h-11 flex-1 resize-none bg-transparent text-ink outline-none',
-          'placeholder:text-muted/70 disabled:opacity-50',
-          started ? 'py-2' : 'rounded-card bg-surface/70 px-5 py-3.5 shadow-[0_1px_0_0_rgba(255,255,255,0.9)_inset]',
-        )}
-      />
-      <button
-        type="submit"
-        disabled={busy || recorder.recording || input.trim().length === 0}
-        className={cn(
-          'h-11 shrink-0 rounded-full px-5 text-sm font-medium transition-colors outline-none',
-          'bg-ink text-canvas hover:bg-ink/90',
-          'focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas',
-          'disabled:cursor-not-allowed disabled:bg-ink/25',
-        )}
       >
-        {pending ? 'Asking…' : 'Ask'}
-      </button>
-    </form>
+        {started ? (
+          <VoiceSun
+            state={sunState}
+            size="sm"
+            disabled={busy && !recorder.recording}
+            onClick={() => toggleMic()}
+          />
+        ) : null}
+        <textarea
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              routeCaptureOrAsk(input.trim());
+            }
+          }}
+          rows={started ? 1 : 2}
+          maxLength={2000}
+          disabled={transcribing || recorder.recording}
+          placeholder={composerPlaceholder}
+          aria-label={pendingStep ? `Answer: ${pendingStep.prompt}` : 'Type your question'}
+          className={cn(
+            'min-h-11 flex-1 resize-none bg-transparent text-ink outline-none',
+            'placeholder:text-muted/70 disabled:opacity-50',
+            started ? 'py-2' : 'rounded-card bg-surface/70 px-5 py-3.5 shadow-[0_1px_0_0_rgba(255,255,255,0.9)_inset]',
+          )}
+        />
+        <button
+          type="submit"
+          disabled={busy || recorder.recording || input.trim().length === 0}
+          className={cn(
+            'h-11 shrink-0 rounded-full px-5 text-sm font-medium transition-colors outline-none',
+            'bg-ink text-canvas hover:bg-ink/90',
+            'focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas',
+            'disabled:cursor-not-allowed disabled:bg-ink/25',
+          )}
+        >
+          {pending ? 'Asking…' : pendingStep && pendingStep.field !== 'goal' ? 'Send' : 'Ask'}
+        </button>
+      </form>
+
+      {/* A quiet way past name/email without a widget. */}
+      {pendingStep && pendingStep.field !== 'goal' ? (
+        <button
+          type="button"
+          onClick={() => void skipCapture(pendingStep)}
+          disabled={submitField.isPending}
+          className="mt-2 font-mono text-[10px] tracking-[0.15em] text-muted/70 uppercase transition-colors hover:text-muted disabled:opacity-50"
+        >
+          Skip
+        </button>
+      ) : null}
+    </div>
   );
 
   return (
@@ -546,28 +716,6 @@ export function PeptideChat() {
             {messages.map((message, i) => {
               const messageId = `msg-${i}`;
               const align = message.role === 'user' ? 'self-end' : 'self-start';
-
-              // A capture turn: render its widget live only while it's the tail
-              // and the field is still pending; otherwise show the prompt text.
-              if (message.kind === 'capture') {
-                const isActive =
-                  i === messages.length - 1 && companion?.nextStep?.field === message.step.field;
-                return (
-                  <div key={i} className={align}>
-                    {isActive ? (
-                      <CaptureWidget
-                        step={message.step}
-                        handlers={{
-                          onSubmit: (value, note) => void submitCapture(message.step, value, note),
-                          onSkip: () => void skipCapture(message.step),
-                          busy: submitField.isPending,
-                          error: captureError ?? undefined,
-                        }}
-                      />
-                    ) : null}
-                  </div>
-                );
-              }
 
               // The conversion offer: a warm card with the CTA button.
               if (message.kind === 'cta') {

@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import type { Database } from '@joice/db';
 import { createProfileService, ProfileValidationError, captureStepFor } from './service';
+import { matchCareArea } from './schemas';
 import type { Requester } from '../ports';
 
 /**
@@ -203,6 +204,21 @@ describe('toView', () => {
     await svc.get(anon);
     const row = await svc.applyField(anon, 'goal', 'weight-metabolic');
     expect(svc.toView(row).goalLabel).toBe('Weight & metabolic');
+  });
+});
+
+describe('matchCareArea', () => {
+  test('maps prose goals to the right care-area slug', () => {
+    expect(matchCareArea('I want to lose weight')).toBe('weight-metabolic');
+    expect(matchCareArea('recovery from a tendon injury')).toBe('body-comp-recovery');
+    expect(matchCareArea('better skin and collagen')).toBe('beauty-skin');
+    expect(matchCareArea('more energy through the day')).toBe('energy');
+    expect(matchCareArea('I struggle with sleep and stress')).toBe('stress-sleep');
+  });
+
+  test('returns null when nothing matches, so the chips keep showing', () => {
+    expect(matchCareArea('what is a peptide?')).toBeNull();
+    expect(matchCareArea('not sure honestly')).toBeNull();
   });
 });
 

@@ -44,6 +44,7 @@ export const brainSettingsSchema = z.object({
    * nested object would be replaced wholesale by any partial write. Detection
    * and validation are code; only the copy is admin-editable.
    */
+  /** The woven intro shown when capture begins, after the first real answer. */
   companionGreeting: z.string().trim().min(1).max(400),
   companionNamePrompt: z.string().trim().min(1).max(200),
   companionEmailPrompt: z.string().trim().min(1).max(200),
@@ -94,9 +95,9 @@ export const DEFAULT_BRAIN_SETTINGS: Omit<BrainSettings, 'model' | 'pollyVoiceId
   restrictedTopics: [],
   customInstructions: '',
   companionGreeting:
-    "Hi — I'm Joice. I can answer anything about peptides and protocols, and help you " +
-    'figure out where to start. First, a couple of quick things so I can tailor this to you.',
-  companionNamePrompt: 'What should I call you?',
+    "Love that you're digging into this. So I can tailor what I share — mind if I grab a " +
+    'couple of quick things?',
+  companionNamePrompt: 'First up, what should I call you?',
   companionEmailPrompt: "What's the best email to reach you? I'll use it to save your progress.",
   companionGoalPrompt: 'What brings you here today?',
   companionConversionPrompt:

@@ -36,6 +36,26 @@ const CARE_AREA_SLUGS = CARE_AREAS.map((a) => a.slug);
 /** Every acceptable `goal` value: a real care area, or an honest "not sure". */
 export const GOAL_VALUES = [...CARE_AREA_SLUGS, GOAL_UNSURE] as const;
 
+/**
+ * Keyword → care-area mapping, so a goal typed in prose ("I want to lose
+ * weight") maps to a slug the same way whether the client pre-matches it or the
+ * server re-derives it. Order matters only for overlaps; the lists are disjoint
+ * enough that first-match is fine. Returns null when nothing matches — the
+ * caller then keeps offering the chips.
+ */
+const GOAL_KEYWORDS: Array<{ slug: string; test: RegExp }> = [
+  { slug: 'weight-metabolic', test: /\b(weight|metaboli|appetite|fat[\s-]?loss|lose weight|glp|slim)\b/i },
+  { slug: 'body-comp-recovery', test: /\b(recover|repair|tissue|injur|muscle|tendon|ligament|joint|body[\s-]?comp|lean mass|heal)\b/i },
+  { slug: 'beauty-skin', test: /\b(skin|beauty|collagen|hair|aging|ageing|anti[\s-]?aging|wrinkle|complexion)\b/i },
+  { slug: 'energy', test: /\b(energy|fatigue|tired|drive|stamina|vitality|endurance)\b/i },
+  { slug: 'stress-sleep', test: /\b(sleep|stress|anxiety|calm|rest|insomnia|mood|relax)\b/i },
+];
+
+/** Best-effort care-area slug for free-text goal input, or null if unclear. */
+export function matchCareArea(text: string): string | null {
+  return GOAL_KEYWORDS.find((k) => k.test.test(text))?.slug ?? null;
+}
+
 /** The fields the companion captures, in the order it asks for them. */
 export const CAPTURE_FIELDS = ['name', 'email', 'goal'] as const;
 export type CaptureField = (typeof CAPTURE_FIELDS)[number];
