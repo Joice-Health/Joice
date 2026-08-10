@@ -70,6 +70,12 @@ function isBuyingSignal(text: string): boolean {
   );
 }
 
+/**
+ * How many answered questions the visitor gets before the companion starts
+ * asking its own — value first. 2 means capture begins after the second answer.
+ */
+const CAPTURE_AFTER_EXCHANGES = 2;
+
 /** How many total exchanges before the journey is offered regardless of capture. */
 const CONVERSION_EXCHANGE_THRESHOLD = 4;
 
@@ -295,11 +301,13 @@ export function PeptideChat() {
         exchangeCountRef.current += 1;
         if (isBuyingSignal(question)) buyingSignalRef.current = true;
 
-        // Value first: only after the visitor has had a real answer does the
-        // companion start asking its questions. On later answers, gently
-        // re-anchor the pending field. Then consider offering the journey.
-        if (!captureStartedRef.current && companion?.nextStep) {
-          beginCapture();
+        // Value first: the companion holds its questions until the visitor has
+        // had a couple of real answers. Once started, gently re-anchor the
+        // pending field on later answers. Then consider offering the journey.
+        if (!captureStartedRef.current) {
+          if (companion?.nextStep && exchangeCountRef.current >= CAPTURE_AFTER_EXCHANGES) {
+            beginCapture();
+          }
         } else {
           reofferCapture();
         }
