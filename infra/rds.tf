@@ -8,8 +8,13 @@ resource "aws_db_subnet_group" "main" {
 }
 
 resource "aws_security_group" "rds" {
-  name        = "${var.project}-rds"
-  description = "RDS Postgres - ingress from the service tasks only"
+  name = "${var.project}-rds"
+  # NOTE: a security group's description is IMMUTABLE in AWS — changing it forces
+  # Terraform to destroy and recreate the SG, which means detaching the live
+  # RDS ENI (it fails, and would be an outage if it didn't). This string must
+  # stay byte-identical to the deployed value; adding an ingress rule below is an
+  # in-place change, which is all we want.
+  description = "RDS Postgres - ingress from the API tasks only"
   vpc_id      = aws_vpc.main.id
 
   # Both services share one database. The brain writes only its own tables
