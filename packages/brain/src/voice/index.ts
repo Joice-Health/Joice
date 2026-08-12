@@ -166,7 +166,9 @@ export function createSpeechClient(opts: {
     async synthesize(text) {
       const response = await client.send(
         new SynthesizeSpeechCommand({
-          Engine: 'neural',
+          // The voice id must be generative-capable (not every Polly voice is)
+          // or this call fails and the clip is skipped client-side.
+          Engine: 'generative',
           VoiceId: (await opts.getVoiceId()) as VoiceId,
           OutputFormat: 'mp3',
           Text: text,

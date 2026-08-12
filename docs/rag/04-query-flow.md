@@ -236,7 +236,7 @@ sequenceDiagram
     B->>B: transcript auto-sends through the normal SSE chat flow
     Note over B,API: …text answer streams exactly as in the diagram above…
     B->>API: POST /api/brain/voice/speak { text } ([n] markers stripped server-side)
-    API->>P: SynthesizeSpeech (neural, POLLY_VOICE_ID)
+    API->>P: SynthesizeSpeech (generative, POLLY_VOICE_ID)
     P-->>API: mp3
     API-->>B: audio/mpeg
     B->>B: Web Audio decode → AnalyserNode → speakers<br/>visualizer bars animate from the real signal
@@ -262,7 +262,7 @@ Hitting either cap sends `{"type":"error","reason":"max-audio"\|"max-duration"}`
 and closes with code 1009. The `TranscribeStreamingClient` is released in
 `onClose` too, so a dropped connection can't leave a billed session running.
 | `POST /api/brain/voice/transcribe` | raw 16kHz mono PCM16 body (`application/octet-stream`, ≤2MB ≈ 60s) | `{ "transcript": "..." }` (empty string = nothing recognized) | Fallback for when the socket can't open. 10 req/min/IP |
-| `POST /api/brain/voice/speak` | `{ "text": "..." }` (≤3000 chars; `[n]` markers stripped server-side) | mp3 bytes (`audio/mpeg`) | 10 req/min/IP. `POLLY_VOICE_ID` env picks the neural voice (default **Ruth**) |
+| `POST /api/brain/voice/speak` | `{ "text": "..." }` (≤3000 chars; `[n]` markers stripped server-side) | mp3 bytes (`audio/mpeg`) | 60 req/min/IP (an answer is many sentence-sized calls). `POLLY_VOICE_ID` env picks the voice (default **Ruth**) — must be a **generative-capable** voice or synthesis fails |
 
 ### Client behavior (`use-recorder.ts`, `use-speaker.ts`, `voice-visualizer.tsx`)
 
@@ -298,9 +298,14 @@ and closes with code 1009. The `TranscribeStreamingClient` is released in
   cut into sentences as they stream in, each is synthesized the moment it's
   complete, and the clips are scheduled back-to-back on the audio clock
   (gapless). Measured on a 1,560-character answer: speech begins at **1.8s**
-  instead of 3.8s, and the gap grows with answer length. Polly synthesis
-  itself is ~0.4s regardless of chunk size — the old delay was almost entirely
-  waiting for generation to finish. Sentence detection requires whitespace
+  instead of 3.8s, and the gap grows with answer length — the old delay was
+  almost entirely waiting for generation to finish. TTS uses Polly's
+  **generative** engine (its most human-like; ~2× the per-character cost of
+  neural). Generative synthesis scales with clip length (measured locally:
+  **0.6s** for the short first clip, **1.8s** for a 140-character sentence)
+  but runs far faster than real time — a 140-character clip is ~9s of audio —
+  so the queue never starves; the deliberately short first chunk keeps the
+  added first-audio cost over neural to ~0.2s. Sentence detection requires whitespace
   after the `.`, which is what keeps "2.5 mg" from being split mid-dose, and
   markdown is stripped before anything is read aloud so asterisks aren't
   spoken.

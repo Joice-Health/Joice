@@ -71,7 +71,7 @@ differs between requests: you may be hitting two different tasks.
 | Transcript is wrong for peptide names ("BBC 157") | Transcribe lacks the jargon | Add an Amazon Transcribe **custom vocabulary** (BPC-157, TB-500, …) — tuning knob, not architecture |
 | `/api/brain/voice/*` returns 500 | Same credential/IAM issues as Bedrock (`ExpiredTokenException` locally; missing `transcribe:StartStreamTranscription`/`polly:SynthesizeSpeech` on the task role in prod — `infra/iam.tf → brain_voice`) | Locally: `./scripts/dev-aws-refresh.sh`. Prod: `terraform apply` |
 | Answer plays but no visualizer movement | `prefers-reduced-motion` is on (static bars are intentional), or the analyser wasn't connected | Reduced motion = working as designed |
-| Polly mispronounces a peptide name | Neural voices read unusual tokens phonetically | Add a Polly **lexicon** for clinical terms (v2 knob) |
+| Polly mispronounces a peptide name | Polly reads unusual tokens phonetically | Add a Polly **lexicon** for clinical terms (v2 knob) |
 | No audio on iOS Safari until a second tap | AudioContext started outside a user gesture | Already handled (contexts resume inside the tap); if it regresses, keep `context.resume()` in the click handler |
 
 ## Answer quality

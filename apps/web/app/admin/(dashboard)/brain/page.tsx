@@ -23,7 +23,7 @@ const REWRITE_MODEL_PRESETS = [
   { value: 'us.amazon.nova-pro-v1:0', label: 'Amazon Nova Pro' },
 ] as const;
 
-const VOICE_PRESETS = ['Ruth', 'Danielle', 'Joanna', 'Kendra', 'Stephen', 'Matthew', 'Gregory'] as const;
+const VOICE_PRESETS = ['Ruth', 'Danielle', 'Joanna', 'Salli', 'Tiffany', 'Matthew', 'Stephen'] as const;
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
@@ -151,7 +151,10 @@ export default function AdminBrainPage() {
                   className="h-11 max-w-xs"
                 />
               </Field>
-              <Field label="Voice (spoken answers)">
+              <Field
+                label="Voice (spoken answers)"
+                hint="Polly generative-engine voices only — others fail to synthesize."
+              >
                 <select
                   value={form.pollyVoiceId}
                   onChange={(e) => set('pollyVoiceId', e.target.value)}

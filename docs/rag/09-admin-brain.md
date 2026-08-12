@@ -46,7 +46,7 @@ flowchart LR
 | **Follow-up understanding** | Rewrites context-dependent follow-ups ("is there a protocol for *that*?") into standalone search queries using the conversation, via a small fast model. Off = follow-ups embed as-typed |
 | **Rewrite model** | The Bedrock model doing that rewrite (default Nova Lite — it only writes search queries, small and fast is right) |
 | **Model** | Bedrock model at runtime — Nova Pro today; Claude Sonnet 4.6/5 once the account's Anthropic use-case form is approved; or any custom Bedrock id |
-| **Voice** | The Polly neural voice for spoken answers |
+| **Voice** | The Polly voice for spoken answers — generative-engine voices only (Ruth, Danielle, Joanna, Salli, Tiffany, Matthew, Stephen for en-US) |
 
 ## Tuning tips
 

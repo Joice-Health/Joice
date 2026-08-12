@@ -35,7 +35,7 @@ const envSchema = z.object({
    */
   RAG_MODEL: z.string().default('us.anthropic.claude-sonnet-5'),
   BEDROCK_REGION: z.string().default('us-east-1'),
-  /** Polly neural voice for spoken answers. */
+  /** Polly voice for spoken answers — must be generative-capable. */
   POLLY_VOICE_ID: z.string().default('Ruth'),
   /**
    * Git SHA of the image, baked in at build time and reported by /health.
