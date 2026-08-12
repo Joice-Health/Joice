@@ -12,6 +12,7 @@ COPY apps/brain/package.json ./apps/brain/
 COPY apps/web/package.json ./apps/web/
 COPY packages/brain/package.json ./packages/brain/
 COPY packages/core/package.json ./packages/core/
+COPY packages/marketing/package.json ./packages/marketing/
 COPY packages/db/package.json ./packages/db/
 COPY packages/api-client/package.json ./packages/api-client/
 COPY packages/ui/package.json ./packages/ui/

@@ -161,10 +161,13 @@ resource "aws_ecs_task_definition" "api" {
         { name = "RAG_MODEL", value = var.rag_model },
         { name = "BEDROCK_REGION", value = var.region },
         { name = "POLLY_VOICE_ID", value = var.polly_voice_id },
+        # Klaviyo waitlist sync — the list id is visible in the list URL, not a secret.
+        { name = "KLAVIYO_LIST_ID", value = var.klaviyo_list_id },
       ]
       secrets = [
         { name = "DATABASE_URL", valueFrom = aws_secretsmanager_secret.database_url.arn },
         { name = "CLERK_SECRET_KEY", valueFrom = aws_secretsmanager_secret.clerk_secret_key.arn },
+        { name = "KLAVIYO_API_KEY", valueFrom = aws_secretsmanager_secret.klaviyo_api_key.arn },
       ]
       logConfiguration = {
         logDriver = "awslogs"

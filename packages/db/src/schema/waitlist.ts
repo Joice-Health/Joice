@@ -62,6 +62,13 @@ export const waitlistEntries = pgTable(
     /** Hashed IP for light abuse mitigation; never store raw IPs. */
     ipHash: text('ip_hash'),
 
+    /**
+     * Last successful push to the marketing platform (Klaviyo). Null means the
+     * fire-and-forget sync never succeeded — the only visibility we have into
+     * that path, since a marketing outage must never fail a signup.
+     */
+    marketingSyncedAt: timestamp('marketing_synced_at', { withTimezone: true }),
+
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

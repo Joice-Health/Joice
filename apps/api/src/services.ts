@@ -3,20 +3,33 @@ import {
   createAdminWaitlistService,
   createAuditService,
   createFeatureFlagService,
+  createKlaviyoMarketingAdapter,
   createLeadsService,
   createSettingsService,
   createUserService,
   createWaitlistService,
 } from '@joice/core';
+import { createKlaviyoClient } from '@joice/marketing';
 import { createBrainConfigService } from '@joice/brain';
 import { env } from './env';
 
 /** Single service graph over the shared DB client, reused across routes. */
 const db = getDatabase();
 
-export const waitlist = createWaitlistService(db);
+/**
+ * Unconfigured (local default) → undefined: signups work, nothing syncs.
+ * env.ts guarantees both vars are set together, so checking one is enough.
+ */
+const marketing = env.KLAVIYO_API_KEY
+  ? createKlaviyoMarketingAdapter(createKlaviyoClient({ apiKey: env.KLAVIYO_API_KEY }), {
+      listId: env.KLAVIYO_LIST_ID,
+    })
+  : undefined;
+console.log(`[api] Klaviyo waitlist sync: ${marketing ? 'enabled' : 'disabled (no keys set)'}`);
+
+export const waitlist = createWaitlistService(db, { marketing });
 export const audit = createAuditService(db);
-export const adminWaitlist = createAdminWaitlistService(db, audit);
+export const adminWaitlist = createAdminWaitlistService(db, audit, { marketing });
 export const userService = createUserService(db, audit);
 export const featureFlags = createFeatureFlagService(db, audit);
 export const settings = createSettingsService(db, audit);

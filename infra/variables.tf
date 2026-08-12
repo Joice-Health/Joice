@@ -115,6 +115,21 @@ variable "clerk_secret_key" {
   default     = ""
 }
 
+# ---- Klaviyo (waitlist marketing sync) ----
+
+variable "klaviyo_api_key" {
+  description = "Klaviyo private API key (pk_...). Set in terraform.tfvars (gitignored); stored in Secrets Manager for the api task. Empty disables the sync."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "klaviyo_list_id" {
+  description = "Klaviyo List ID of the master email-consent list (6-char code in the list URL; not a secret). Every consent-capturing surface subscribes to this one list — see docs/marketing/01-klaviyo.md. Empty disables the sync."
+  type        = string
+  default     = ""
+}
+
 # ---- RAG ----
 
 variable "rag_model" {

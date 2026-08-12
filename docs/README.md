@@ -24,6 +24,12 @@ want the shape of the system before the detail.
 
 **New here? Read 01 and 10, then 05 to get it running.**
 
+## Marketing (Klaviyo)
+
+| Doc | What it covers |
+|---|---|
+| [01 — Klaviyo Waitlist Sync](marketing/01-klaviyo.md) | Architecture (shared client → per-domain ports), the fire-and-forget sync, what data leaves the DB, config/secrets, the checkpoint extension recipe, troubleshooting |
+
 > Diagrams are [Mermaid](https://mermaid.js.org/). GitHub renders them natively.
 > **Cursor/VS Code's markdown preview needs a one-time extension:**
 > `cursor --install-extension bierner.markdown-mermaid` (or search "Markdown

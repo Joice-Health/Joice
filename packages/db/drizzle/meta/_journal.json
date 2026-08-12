@@ -50,6 +50,13 @@
       "when": 1784902708196,
       "tag": "0006_unique_human_torch",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1786462214326,
+      "tag": "0007_nervous_wolfsbane",
+      "breakpoints": true
     }
   ]
 }

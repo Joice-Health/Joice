@@ -25,6 +25,7 @@
         "@joice/brain": "*",
         "@joice/core": "*",
         "@joice/db": "*",
+        "@joice/marketing": "*",
         "hono": "^4.12.23",
         "zod": "^3.24.1",
       },
@@ -138,6 +139,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@joice/db": "*",
+        "@joice/marketing": "*",
         "nanoid": "^5.0.9",
         "zod": "^3.24.1",
       },
@@ -162,6 +164,15 @@
         "@joice/config": "*",
         "@types/node": "^22.10.7",
         "drizzle-kit": "^0.31.4",
+        "typescript": "^5.7.3",
+      },
+    },
+    "packages/marketing": {
+      "name": "@joice/marketing",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@joice/config": "*",
+        "@types/bun": "^1.3.14",
         "typescript": "^5.7.3",
       },
     },
@@ -403,6 +414,8 @@
     "@joice/core": ["@joice/core@workspace:packages/core"],
 
     "@joice/db": ["@joice/db@workspace:packages/db"],
+
+    "@joice/marketing": ["@joice/marketing@workspace:packages/marketing"],
 
     "@joice/ui": ["@joice/ui@workspace:packages/ui"],
 

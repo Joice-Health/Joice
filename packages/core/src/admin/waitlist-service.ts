@@ -18,12 +18,22 @@ import type {
   Paginated,
   WaitlistStatus,
 } from './schemas';
+import { toWaitlistMarketingProfile, type WaitlistMarketingPort } from '../marketing';
+
+export interface AdminWaitlistServiceOptions {
+  /** Absent = no marketing platform configured; status changes don't sync. */
+  marketing?: WaitlistMarketingPort;
+}
 
 /**
  * Admin-side waitlist operations. Kept separate from the public
  * createWaitlistService so the public surface never grows admin capability.
  */
-export function createAdminWaitlistService(db: Database, audit: AuditService) {
+export function createAdminWaitlistService(
+  db: Database,
+  audit: AuditService,
+  { marketing }: AdminWaitlistServiceOptions = {},
+) {
   return {
     async list(query: AdminWaitlistQuery): Promise<Paginated<WaitlistEntry>> {
       const { page, limit, search, status, sort } = query;
@@ -61,7 +71,7 @@ export function createAdminWaitlistService(db: Database, audit: AuditService) {
       status: WaitlistStatus,
       actor: AdminActor,
     ): Promise<WaitlistEntry | null> {
-      return db.transaction(async (tx) => {
+      const after = await db.transaction(async (tx) => {
         const [before] = await tx
           .select()
           .from(waitlistEntries)
@@ -69,7 +79,7 @@ export function createAdminWaitlistService(db: Database, audit: AuditService) {
           .limit(1);
         if (!before) return null;
 
-        const [after] = await tx
+        const [updated] = await tx
           .update(waitlistEntries)
           .set({ status, updatedAt: new Date() })
           .where(eq(waitlistEntries.id, id))
@@ -88,8 +98,22 @@ export function createAdminWaitlistService(db: Database, audit: AuditService) {
           tx,
         );
 
-        return after ?? null;
+        return updated ?? null;
       });
+
+      // Fire-and-forget after commit: keep the synced waitlist_status property
+      // truthful in marketing segments and emit the checkpoint metric for
+      // flows. A marketing outage must never fail the admin action; the id
+      // (never the email) is all that reaches the logs. Deliberately does not
+      // touch marketingSyncedAt — that column means "initial subscribe
+      // succeeded" and belongs to the signup path.
+      if (after && marketing) {
+        marketing.statusChanged(toWaitlistMarketingProfile(after)).catch((err) => {
+          console.error(`[admin/waitlist] marketing status sync failed for entry ${id}:`, err);
+        });
+      }
+
+      return after;
     },
 
     /** Stream all entries in signup order, in batches, for CSV export. */

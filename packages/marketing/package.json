@@ -1,28 +1,19 @@
 {
-  "name": "@joice/core",
+  "name": "@joice/marketing",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./schemas": "./src/schemas.ts"
+    ".": "./src/index.ts"
   },
   "scripts": {
     "type-check": "tsc --noEmit",
     "lint": "eslint .",
     "test": "bun test"
   },
-  "dependencies": {
-    "@joice/db": "*",
-    "@joice/marketing": "*",
-    "nanoid": "^5.0.9",
-    "zod": "^3.24.1"
-  },
   "devDependencies": {
     "@joice/config": "*",
     "@types/bun": "^1.3.14",
-    "@types/node": "^22.10.7",
-    "drizzle-orm": "^0.45.2",
     "typescript": "^5.7.3"
   }
 }
