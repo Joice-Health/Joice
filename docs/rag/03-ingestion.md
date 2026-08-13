@@ -12,7 +12,7 @@ flowchart LR
         report -->|"doctor reviews,<br/>fixes/removes flagged files"| approved
     end
     subgraph Stage2["2 · Upload (workstation)"]
-        approved -->|"aws s3 sync *.md"| s3[("S3 joice-notes-&lt;acct&gt;")]
+        approved -->|"aws s3 sync *.md / *.pdf"| s3[("S3 joice-notes-&lt;acct&gt;")]
     end
     subgraph Stage3["3 · Ingest (ECS RunTask)"]
         s3 --> ingest["ingest.ts"] --> titan["Bedrock Titan<br/>(embed)"] --> rds[("note_chunks")]
@@ -28,6 +28,12 @@ flowchart LR
 ## Stage 1 — Vault prep (`apps/brain/scripts/prep-vault.ts`)
 
 Local-only; never deployed. Run on the machine that has the raw vault:
+
+> ⚠️ **prep-vault scans MARKDOWN ONLY.** PDFs get no automated PHI scan at all —
+> which is why `ingest.ts` REFUSES any PDF outside the low-risk prefixes
+> (`products/`, `faq/`, `policies/`). PDFs under those prefixes still require a
+> documented **manual review before upload** — the automated gate simply does
+> not exist for them.
 
 ```bash
 # AUTOMATIC PII cleanup (recommended for PII-heavy vaults): detect + redact.
@@ -86,7 +92,7 @@ review near-misses manually too), and only then does anyone run stage 2.
 ```bash
 # Bucket name: terraform output notes_bucket
 aws s3 sync ./approved/ "s3://$(cd infra && terraform output -raw notes_bucket)/" \
-  --exclude "*" --include "*.md"
+  --exclude "*" --include "*.md" --include "*.pdf"
 ```
 
 The bucket (`infra/s3.tf`) is versioned, fully private (public-access-block),
@@ -96,9 +102,17 @@ object-by-object.
 ## Stage 3 — Ingestion (`apps/brain/scripts/ingest.ts`)
 
 Runs as the **`joice-ingest`** one-off ECS task (`infra/ingest.tf`) — same
-Docker image as the API (the monorepo is already inside it), different
-`command`. No service, no schedule: the vault is a one-time upload, so
-ingestion is a manual invocation, re-run only if the notes ever change.
+Docker image as the **brain** (ingestion is the brain's own pipeline and the
+script ships with it), different `command`. No service, no schedule: the vault
+is a one-time upload, so ingestion is a manual invocation, re-run only if the
+notes ever change.
+
+Every file gets a **source type** from its path prefix — a registry in
+`packages/brain/src/knowledge/sources.ts` (first match wins): `products/` →
+`product_sheet`, `faq/` → `faq`, `protocols/` → `protocol`, `policies/` →
+`policy`, everything else `clinical_note`. PDFs are extracted to text
+in-process (unpdf — extraction must stay inside the BAA boundary) and then
+chunked exactly like markdown.
 
 ```bash
 # Paste-ready (composed with real subnet/SG ids):
@@ -115,20 +129,20 @@ sequenceDiagram
     participant DB as Postgres (note_chunks)
     participant BR as Bedrock Titan
 
-    T->>S3: ListObjectsV2 (paginated, *.md only)
+    T->>S3: ListObjectsV2 (paginated, *.md and *.pdf)
     loop each file
         T->>S3: GetObject
-        T->>T: sha256(raw)
+        T->>T: sha256(raw bytes)
         T->>DB: SELECT source_hash WHERE source_path = key LIMIT 1
         alt hash unchanged
             T->>T: skip (zero embedding cost)
         else new or changed
-            T->>T: chunkMarkdown(raw) → chunks + frontmatter
+            T->>T: (PDF → extract text in-process) · chunkMarkdown(raw) → chunks + frontmatter
             T->>BR: embed "breadcrumb\n\ncontent" ×N (concurrency 5)
-            T->>DB: BEGIN · DELETE WHERE source_path = key · INSERT chunks · COMMIT
+            T->>DB: BEGIN · DELETE WHERE source_path = key · INSERT chunks · UPSERT knowledge_documents row · COMMIT
         end
     end
-    T->>DB: DELETE WHERE source_path NOT IN (bucket keys) — orphan sweep
+    T->>DB: BEGIN · DELETE orphans from note_chunks AND knowledge_documents · COMMIT — orphan sweep
     T->>T: log summary, exit 0
 ```
 
@@ -136,10 +150,15 @@ Behavioral guarantees:
 
 - **Idempotent** — unchanged files are skipped by hash; re-running after a
   crash or a partial failure is always safe and only pays for what changed.
-- **Atomic per file** — delete + insert happen in one transaction; a file is
-  never half-ingested.
+  (The hash is over raw **bytes** now, for PDF compatibility — a valid-UTF-8
+  markdown file hashes exactly as it did before, so this change does NOT force
+  a re-embed of an existing corpus.)
+- **Atomic per file** — delete + insert happen in one transaction, which also
+  upserts the file's `knowledge_documents` inventory row; a file is never
+  half-ingested.
 - **Self-cleaning** — files deleted (or renamed) in the bucket lose their rows
-  on the next run via the orphan sweep. A rename is a delete + fresh ingest.
+  on the next run via the orphan sweep, which deletes from `note_chunks` and
+  `knowledge_documents` in one transaction. A rename is a delete + fresh ingest.
 - **Observable** — per-file `✓ path: N chunks` lines and a final summary
   (`X files scanned, Y unchanged, Z (re)ingested, N chunks written`) go to
   CloudWatch `/ecs/joice-ingest`. Non-zero exit on any error, so a failed task
@@ -156,7 +175,7 @@ Environment it needs (all provided by the task definition):
 
 ---
 
-## The chunker (`packages/core/src/chunker.ts`)
+## The chunker (`packages/brain/src/knowledge/chunker.ts`)
 
 Pure functions, fully unit-tested (`chunker.test.ts`). Rules, in processing
 order:

@@ -34,10 +34,10 @@ sequenceDiagram
 
 ## Endpoints
 
-Both live in the single route chain in `apps/api/src/app.ts` (the AppType
-contract), both rate-limited **5 requests/min/IP** (each route has its own
-in-memory window), both validated against `chatRequestSchema` from
-`@joice/core`.
+Both live in the single route chain in `apps/brain/src/app.ts` (the
+BrainAppType contract), both rate-limited **5 requests/min/IP** (each route has
+its own in-memory window), both validated against `chatRequestSchema` from
+`@joice/brain`.
 
 ### Request body (both endpoints)
 
@@ -79,7 +79,8 @@ Waits for the full generation, returns:
       "index": 1,                                  // the [1] in the answer
       "sourcePath": "peptides/bpc-157.md",         // S3 key of the source note
       "headingPath": "BPC-157 > Dosing > Oral",    // null for pre-heading text
-      "citedText": "250-500mcg daily"              // the exact span Claude cited
+      "citedText": "250-500mcg daily",             // the exact span Claude cited
+      "sourceType": "clinical_note"                // lets the UI render a product-sheet chip differently
     },
     { "index": 2, "sourcePath": "peptides/absorption.md", "headingPath": "Absorption", "citedText": "with food" }
   ]
@@ -87,7 +88,7 @@ Waits for the full generation, returns:
 ```
 
 Consumed via the typed hook `usePeptideRecommendation()` from
-`@joice/api-client` — full end-to-end types from the Hono AppType.
+`@joice/api-client` — full end-to-end types from the Hono BrainAppType.
 
 ### `POST /api/brain/chat/stream` — SSE (chat-UI path)
 
@@ -109,23 +110,36 @@ the events as an async generator. This is the one sanctioned exception to
 ## Retrieval
 
 Implemented in `createRecommendationService().retrieve()`
-(`packages/core/src/recommendation-service.ts`):
+(`packages/brain/src/generation/answer-service.ts`):
 
 ```ts
-const similarity = sql<number>`1 - (${cosineDistance(noteChunks.embedding, queryVector)})`;
-rows = await db.select({ sourcePath, headingPath, content, similarity })
+const distance = cosineDistance(noteChunks.embedding, queryVector);
+const similarity = sql<number>`1 - (${distance})`;
+rows = await db.select({ sourcePath, headingPath, content, similarity, sourceType })
   .from(noteChunks)
-  .orderBy(sql`${similarity} desc`)   // pgvector <=> under the hood → HNSW index
-  .limit(TOP_K);                      // 8
-return rows.filter(r => r.similarity >= SIMILARITY_FLOOR);  // 0.4
+  .where(sourceTypes?.length ? inArray(noteChunks.sourceType, sourceTypes) : undefined)
+  .orderBy(asc(distance))   // MUST stay the bare <=> operator — see below
+  .limit(topK);             // default 8
+return rows.filter(r => r.similarity >= similarityFloor);  // default 0.4
 ```
 
-Two tunables, both constants in the service:
+**The ORDER BY must stay the bare ascending distance operator.** Ordering by
+`1 - (a <=> b) DESC` is mathematically identical, but pgvector's HNSW index
+can only serve an `ORDER BY embedding <=> $1` — the derived expression forced
+a full scan of every chunk (measured: 265ms over 31k rows vs 20ms on the
+index). Similarity survives as a projection, which is all the floor needs.
 
-| Constant | Value | Effect of raising | Effect of lowering |
+Retrieval also takes an **optional `sourceTypes` filter** (one corpus, filtered
+by type when a question calls for it — pgvector applies it as a post-filter on
+the HNSW candidate set).
+
+Two tunables — **admin-editable at runtime on `/admin/brain`** (no deploy;
+live in ~30s):
+
+| Setting | Default | Effect of raising | Effect of lowering |
 |---|---|---|---|
-| `TOP_K` | 8 | More context per answer (more input tokens, better recall on broad questions) | Cheaper, tighter answers |
-| `SIMILARITY_FLOOR` | 0.4 | More "not covered" refusals (higher precision) | More marginal chunks reach Claude (risk of tangential answers) |
+| `topK` (Notes per answer) | 8 | More context per answer (more input tokens, better recall on broad questions) | Cheaper, tighter answers |
+| `similarityFloor` (Match threshold) | 0.4 | More "not covered" refusals (higher precision) | More marginal chunks reach Claude (risk of tangential answers) |
 
 **0.4 is a starting point** — cosine similarity distributions vary by embedding
 model and corpus. After the real vault is ingested, sanity-check with a handful
@@ -134,20 +148,29 @@ questions the notes clearly cover come back "not covered". Too low: answers
 citing barely-related notes.
 
 **Zero survivors → the not-covered path.** The service returns a fixed honest
-answer (see the constant `NOT_COVERED_ANSWER`) **without calling Claude** —
+answer (the admin-editable **Not-covered message**) **without calling Claude** —
 off-corpus questions cost one Titan embed (~free) and no generation tokens, and
 structurally cannot hallucinate.
 
+**Tools mode replaces that short-circuit.** When the admin `toolsEnabled` flag
+is on, the model holds a toolbelt (`search_notes`, `search_catalogue`, handoff/
+intent signals) and decides when to search, so there is no chunks==0 gate
+before the model runs. Grounding becomes behavioral (the `TOOL_SAFETY_FLOOR`
+prompt) backed by a code-level **provenance registry**: `[n]` markers can only
+resolve to chunks a `search_notes` call actually returned, so the model cannot
+mint a citation. The flag is the rollback lever — off runs the classic path
+byte-for-byte. See [11 — Brain Audit](11-brain-audit.md).
+
 ## Prompt construction
 
-Built in `buildRequest()` (`recommendation-service.ts`) and sent through the
+Built in `buildRequest()` (`answer-service.ts`) and sent through the
 **model-agnostic Bedrock Converse API** (`createGenerationClient` in
-`bedrock.ts`) — so `RAG_MODEL` can be any Bedrock chat model (Claude in prod,
+`providers/bedrock.ts`) — so `RAG_MODEL` can be any Bedrock chat model (Claude in prod,
 Nova in dev; see [05](05-local-development.md)). The retrieved chunks are
 numbered and inlined into the final user turn:
 
 ```
-system: <the stable SYSTEM_PROMPT>
+system: <buildSystemPrompt(config) — safety floor + persona/tone/guardrails>
 
 ...prior conversation turns, verbatim...
 
@@ -171,13 +194,16 @@ Why this shape:
   (Anthropic-native citation spans were the original design, but they require
   Anthropic model access, which is gated on the account's use-case form —
   and prompt-based markers proved accurate in practice.)
-- **The system prompt** (constant `SYSTEM_PROMPT` in the service) enforces:
-  answer only from the documents; cite with `[n]`; say plainly when the
-  documents don't cover it (or only partially); educational information,
-  **not medical advice** — no diagnosing, prescribing, or individual dosing
-  (defer to the clinical team); never invent sources or numbers.
-- `maxTokens: 1024` bounds cost and keeps answers chat-sized. No sampling
-  params.
+- **The system prompt is assembled at runtime** by `buildSystemPrompt()`
+  (`packages/brain/src/generation/prompt.ts`) over the admin-managed config —
+  persona, tone, attribution style and extra guardrails are all editable on
+  `/admin/brain`. The non-negotiable **safety floor** stays a code constant
+  always prepended: answer only from the documents; say plainly when they
+  don't cover it (or only partially); educational information, **not medical
+  advice** — no diagnosing, prescribing, or individual dosing (defer to the
+  clinical team); never invent sources or numbers.
+- `maxTokens` (default 1024, admin-tunable) bounds cost and keeps answers
+  chat-sized. No sampling params.
 
 ## Citation parsing
 
@@ -188,7 +214,8 @@ markers to structured citations:
 2. Each `n` maps to retrieved chunk `n − 1`; markers pointing at documents
    that weren't provided are dropped defensively.
 3. Build the `citations` array: footnote number, the chunk's `sourcePath` +
-   `headingPath`, and a ≤200-char snippet of the chunk as `citedText`.
+   `headingPath`, its `sourceType`, and a ≤200-char snippet of the chunk as
+   `citedText`.
 
 The markers stay inline in the answer text (they stream live, which reads
 naturally in the chat UI); the chat UI renders the `citations` list as chips
@@ -250,7 +277,7 @@ sequenceDiagram
 
 The socket is the one endpoint CORS can't protect (the browser sends no preflight
 for a WebSocket upgrade), and every second of audio on it is billed to Transcribe.
-Three bounds, all in `apps/api/src/app.ts`:
+Three bounds, all in `apps/brain/src/app.ts`:
 
 | Bound | Value | Why |
 |---|---|---|
@@ -324,4 +351,4 @@ and closes with code 1009. The `TranscribeStreamingClient` is released in
 | Rate limited | Both | `429` + `Retry-After` (per-IP fixed window, per task instance) |
 | Bedrock error before generation (creds/access/throttle) | JSON endpoint | `500 {"error": "Something went wrong..."}` via the global `onError` |
 | Bedrock error mid-stream | SSE endpoint | `error` SSE event (the try/catch inside `streamSSE`), connection then closes |
-| Empty corpus / off-corpus question | Both | Honest `NOT_COVERED_ANSWER`, `citations: []`, HTTP 200 |
+| Empty corpus / off-corpus question | Both | Honest not-covered message (admin-editable), `citations: []`, HTTP 200 |

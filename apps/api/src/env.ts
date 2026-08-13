@@ -29,9 +29,11 @@ const envSchema = z.object({
   KLAVIYO_API_KEY: z.string().default(''),
   KLAVIYO_LIST_ID: z.string().default(''),
   /**
-   * RAG chatbot — everything runs through Bedrock (AWS BAA; IAM-authenticated
-   * via the ECS task role, no API keys). Locally, requests fail with 500 until
-   * AWS creds with Bedrock access are present; the rest of the API still works.
+   * RAG chatbot model id — on this service it is ONLY the display default the
+   * admin console (/api/admin/brain) resolves settings against. All actual
+   * model traffic runs on the brain service under the brain task role; the
+   * api task role has NO Bedrock permissions (deliberately removed when the
+   * brain became its own service — see infra/iam.tf).
    */
   RAG_MODEL: z.string().default('us.anthropic.claude-sonnet-4-5-20250929-v1:0'),
   BEDROCK_REGION: z.string().default('us-east-1'),

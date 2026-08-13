@@ -76,9 +76,11 @@ never touches the brain's own tables.
 ```
 packages/brain/          the domain — testable without a server
   config/       admin-managed behavior (persona, guardrails, model) + schemas
-  knowledge/    the notes: chunking and retrieval
+  knowledge/    the notes: chunking and source types
   conversation/ history assembly, citation handling, wire schemas
-  generation/   prompt construction and answering
+  generation/   prompt construction, retrieval and answering (answer-service.ts)
+                + the tool loop (agent-loop.ts)
+  tools/        the toolbelt for tool mode (search_notes, search_catalogue, …)
   voice/        speech in and out
   providers/    Bedrock clients — the swap seam for model vendors
   ports/        what the brain needs from the rest of the platform

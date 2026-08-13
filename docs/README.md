@@ -21,6 +21,7 @@ want the shape of the system before the detail.
 | [08 — Troubleshooting](rag/08-troubleshooting.md) | Symptom → cause → fix for every known failure mode |
 | [09 — Admin Brain Settings](rag/09-admin-brain.md) | The `/admin/brain` control panel: persona, tone, guardrails, retrieval, model, voice |
 | [10 — The Brain as Its Own Service](rag/10-architecture.md) | Why it's a separate deployable, the URL namespace, ports, schema ownership, migrations, how to deploy it |
+| [11 — The Brain Audit](rag/11-brain-audit.md) | What the audit found and what the `brain-v2` branch changed: tool mode, source types, the corpus inventory, retention/erasure — and what is deliberately still open |
 
 **New here? Read 01 and 10, then 05 to get it running.**
 

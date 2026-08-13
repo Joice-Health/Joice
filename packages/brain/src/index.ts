@@ -8,9 +8,11 @@
  * Layout mirrors what the domain actually does:
  *
  *   config/       admin-managed behavior (persona, guardrails, model)
- *   knowledge/    the notes: chunking and retrieval
+ *   knowledge/    the notes: chunking and source types
  *   conversation/ history assembly and citation handling
- *   generation/   prompt construction and answering
+ *   generation/   prompt construction, retrieval and answering
+ *                 (answer-service.ts) + the tool loop (agent-loop.ts)
+ *   tools/        the toolbelt for tool mode (search_notes, search_catalogue, …)
  *   voice/        speech in and out
  *   providers/    Bedrock clients — the swap seam for model vendors
  *   ports/        what the brain needs from the rest of the platform

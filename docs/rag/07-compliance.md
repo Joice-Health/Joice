@@ -49,10 +49,10 @@ flowchart LR
 ## The hard rules
 
 1. **No note content or member chat traffic may ever be routed to a non-BAA
-   endpoint.** Concretely: don't swap `createClaudeClient`/
-   `createEmbeddingClient` (in `packages/core/src/bedrock.ts`) for a direct
-   Anthropic/OpenAI/Voyage client without a BAA in hand. Those two factories
-   are the deliberate seam — the check happens there.
+   endpoint.** Concretely: don't swap `createGenerationClient`/
+   `createEmbeddingClient` (in `packages/brain/src/providers/bedrock.ts`) for a
+   direct Anthropic/OpenAI/Voyage client without a BAA in hand. Those two
+   factories are the deliberate seam — the check happens there.
 2. **Nothing leaves the workstation before PHI review.** `aws s3 sync` *is*
    transmission. `prep-vault.ts` + the doctor's review of the report it writes
    (`<output-dir>-phi-report.md`, a sibling of the upload folder — never inside
@@ -60,6 +60,11 @@ flowchart LR
    and the automated Comprehend Medical scan is a helper, not a sign-off; a
    human decides. The report stays on the workstation: never uploaded, never
    ingested (`ingest.ts` refuses to run if it finds one in the source).
+   **PDF exception:** `prep-vault.ts` scans **markdown only** — a PDF gets no
+   automated PHI scan at all. `ingest.ts` therefore refuses any PDF outside
+   the low-risk prefixes (`products/`, `faq/`, `policies/`), and PDFs under
+   those prefixes require a **documented manual review before sync** — the
+   human gate is the only gate they have.
 3. **Never store or log raw member identifiers with questions.** The existing
    house rules apply (salted IP hashes only). Note that `logger()` logs
    request paths, not bodies — keep it that way; don't add body logging to
@@ -131,11 +136,15 @@ id. Storing it makes this a system that holds PHI, with everything that follows.
 
 | Question | Why it blocks |
 |---|---|
-| Retention period, and what deletes the data | Indefinite retention of health questions is not defensible; there is no deletion job today |
-| Member deletion / right-to-erasure path | `ON DELETE CASCADE` covers messages, but nothing yet erases a member's threads on request |
+| Retention period, and what deletes the data | The **mechanism is built**: `apps/brain/scripts/retention.ts` deletes threads idle past the window, run nightly by a scheduled ECS task (`infra/retention.tf` — always enabled; a sweep of an empty table is free, and expiry must not stop when storage does). What's missing is the **number** — counsel must set the retention period; indefinite retention of health questions is not defensible |
+| Member deletion / right-to-erasure path | The **mechanism is built**: `deleteForRequester` on both services erases the requester's threads (messages cascade) and their lead profile, suppressing the email in Klaviyo first. What's missing is the **authenticated endpoint** that exposes it — that arrives with member auth |
 | AWS AI-services opt-out policy applied at the org | Keeps prompts out of AWS service-improvement pipelines |
 | The Before-PHI checklist items below | Private subnets, KMS CMKs, CloudTrail, encrypted last hop — all of them become required, not recommended |
 | Member auth on the chat routes | An anonymous session cookie is not an accountability boundary |
+
+One deliberate property of the erasure path: **Klaviyo suppression is
+profile-global by design** — suppressing the email stops *all* marketing to
+that person, not just the companion's, so erasure over-suppresses. Intended.
 
 **What is safe about it as built:** reads are always scoped to the requester
 (a conversation id alone returns 404 to anyone else), question and answer are

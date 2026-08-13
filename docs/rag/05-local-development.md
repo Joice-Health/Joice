@@ -31,7 +31,7 @@ docker compose up -d
 DATABASE_URL=postgresql://joice:joice@localhost:5433/joice \
 NOTES_DIR=apps/brain/fixtures/sample-notes \
 bun apps/brain/scripts/ingest.ts
-# → "✅ Ingest complete: 4 files scanned, 0 unchanged, 4 (re)ingested, ..."
+# → "✅ Ingest complete: 5 files scanned, 0 unchanged, 5 (re)ingested, ..."
 
 # 4 · Ask (JSON endpoint)
 curl -s localhost:4100/api/brain/chat \
@@ -68,7 +68,7 @@ The rest of this page is the same flow with every knob explained.
 
 | Var | Where it's read | Local default | Notes |
 |---|---|---|---|
-| `RAG_MODEL` | `apps/api/src/env.ts` | `us.anthropic.claude-sonnet-5` | Bedrock **cross-region inference profile** id (`us.` prefix). Any Bedrock chat model works (Converse API). **Until the account's Anthropic use-case form is approved, use `us.amazon.nova-pro-v1:0` locally** — Amazon models need no form |
+| `RAG_MODEL` | `apps/brain/src/env.ts` | `us.anthropic.claude-sonnet-4-5-20250929-v1:0` | Bedrock **cross-region inference profile** id (`us.` prefix). These ids are **dated** — verify the exact one with `aws bedrock list-inference-profiles`. Any Bedrock chat model works (Converse API). **Until the account's Anthropic use-case form is approved, use `us.amazon.nova-pro-v1:0` locally** — Amazon models need no form |
 | `BEDROCK_REGION` | api + ingest script | `us-east-1` | Where Titan/Claude are invoked |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` | api container (compose passes them through) | empty | Local stand-in for the ECS task role. In prod these don't exist — the task role provides SigV4 |
 | `NOTES_BUCKET` | `apps/brain/scripts/ingest.ts` only | empty | S3 source for ingestion (prod). The API never reads it |
@@ -79,9 +79,10 @@ The rest of this page is the same flow with every knob explained.
 Also relevant (pre-existing): `TEAM_PASSWORD` (default `joice-dev` in dev) —
 you need it to get past the team gate to see `/ask`.
 
-Where each value must be declared when you add more later: the Zod schema in
-`apps/api/src/env.ts` (never bare `process.env`), `.env.example`,
-`docker-compose.yml`, and `turbo.json → globalEnv`.
+Where each value must be declared when you add more later: the owning app's
+Zod schema (`apps/brain/src/env.ts` for the RAG set; never bare
+`process.env`), `.env.example`, `docker-compose.yml`, and
+`turbo.json → globalEnv`.
 
 ## Step-by-step
 
@@ -175,9 +176,10 @@ NOTES_DIR=apps/brain/fixtures/sample-notes \
 bun apps/brain/scripts/ingest.ts
 ```
 
-The fixtures (`bpc-157.md`, `tb-500.md`, `protocols/sleep.md`) are fabricated
-sample content — enough to exercise chunking, retrieval, citations, and the
-not-covered path. Never upload them to the prod bucket.
+The fixtures (`bpc-157.md`, `tb-500.md`, `products/magnesium-glycinate.md`,
+`protocols/sleep.md`) are fabricated sample content — enough to exercise
+chunking, retrieval, source types, citations, and the not-covered path. Never
+upload them to the prod bucket.
 
 **Option B — your own local folder** (e.g. a scratch copy of real-ish notes):
 same command with `NOTES_DIR=/path/to/folder`. Relative paths become the
@@ -191,18 +193,25 @@ enough.
 Expected output (option A):
 
 ```
-Found 4 markdown files in apps/brain/fixtures/sample-notes
-✓ README.md: 1 chunks
-✓ peptides/bpc-157.md: 5 chunks
-✓ peptides/tb-500.md: 5 chunks
-✓ protocols/sleep.md: 4 chunks
-✅ Ingest complete: 4 files scanned, 0 unchanged, 4 (re)ingested, 15 chunks written
+Found 5 ingestable files (.md/.pdf) in apps/brain/fixtures/sample-notes
+✓ (1/5) README.md: 1 chunks [clinical_note]
+✓ (2/5) peptides/bpc-157.md: 5 chunks [clinical_note]
+✓ (3/5) peptides/tb-500.md: 5 chunks [clinical_note]
+✓ (4/5) products/magnesium-glycinate.md: 3 chunks [product_sheet]
+✓ (5/5) protocols/sleep.md: 4 chunks [protocol]
+✅ Ingest complete: 5 files scanned, 0 unchanged, 5 (re)ingested, 18 chunks written
 ```
 
-Run it again — every file should report as unchanged (`4 unchanged, 0
+Run it again — every file should report as unchanged (`5 unchanged, 0
 (re)ingested`): that's the idempotency guarantee working. Switching sources
 (fixtures → real bucket) also works cleanly: the orphan sweep removes rows for
 files the new source doesn't have.
+
+**Measure it:** with the fixtures ingested, the eval harness scores retrieval
+against the golden question set — `cd apps/brain &&
+NOTES_DIR=fixtures/sample-notes bun scripts/ingest.ts && bun scripts/eval.ts`
+(retrieval-only by default: Titan embeds, cents; `--full` generates real
+answers via Bedrock).
 
 ### 6. Ask a real question
 
@@ -253,20 +262,20 @@ answer to hear it on demand.
 ### 8. Tests & checks
 
 ```bash
-bun run test          # includes chunker + recommendation-service suites (no AWS/DB needed — all stubbed)
+bun run test          # includes chunker + answer-service suites (no AWS/DB needed — all stubbed)
 bun run type-check
 bun run lint
 
 # just the RAG suites:
-cd packages/core && bun test src/chunker.test.ts src/recommendation-service.test.ts
+cd packages/brain && bun test src/knowledge/chunker.test.ts src/generation/answer-service.test.ts
 ```
 
 ## Rate limit while developing
 
 Both chat endpoints allow **5 requests/min per IP** (in-memory, per process).
-Hitting `429 Too Many Requests` while iterating? Restart the api container
+Hitting `429 Too Many Requests` while iterating? Restart the brain container
 (resets the window) or temporarily raise `max` on the routes in
-`apps/api/src/app.ts` — don't commit that.
+`apps/brain/src/app.ts` — don't commit that.
 
 ## What works without AWS credentials
 

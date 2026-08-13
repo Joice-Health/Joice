@@ -51,11 +51,11 @@ What this apply creates/changes (all in `infra/`):
 | Resource | File | Kind |
 |---|---|---|
 | `aws_s3_bucket.notes` + versioning/encryption/public-access-block | `s3.tf` | **new** — `joice-notes-<account-id>` |
-| `aws_iam_role_policy.task_bedrock` on the existing api task role | `iam.tf` | **new** — Claude (incl. inference profiles) + Titan invoke |
+| `aws_iam_role_policy.brain_bedrock` on the **brain** task role (`joice-brain-task` — the api role has no Bedrock permissions) | `iam.tf` | **new** — Claude (incl. inference profiles) + Titan invoke |
 | `aws_iam_role.ingestion_task` + policy | `iam.tf` | **new** — S3 read + Titan only (no Claude) |
-| `aws_ecs_task_definition.ingest` + `/ecs/joice-ingest` log group | `ingest.tf` | **new** — one-off task, reuses the api image with a command override |
+| `aws_ecs_task_definition.ingest` + `/ecs/joice-ingest` log group | `ingest.tf` | **new** — one-off task, reuses the **brain** image with a command override |
 | api task definition env: `RAG_MODEL`, `BEDROCK_REGION` | `ecs.tf` | **in-place update** (new task def revision) |
-| `rag_model` variable | `variables.tf` | default `us.anthropic.claude-sonnet-5` |
+| `rag_model` variable | `variables.tf` | default `us.anthropic.claude-sonnet-4-5-20250929-v1:0` (inference-profile ids are dated — verify with `aws bedrock list-inference-profiles`) |
 | Outputs: `notes_bucket`, `ingest_run_task_command` | `outputs.tf` | convenience |
 
 ```bash
@@ -77,7 +77,7 @@ flagged files →
 
 ```bash
 aws s3 sync ./approved/ "s3://$(cd infra && terraform output -raw notes_bucket)/" \
-  --exclude "*" --include "*.md"
+  --exclude "*" --include "*.md" --include "*.pdf"
 ```
 
 > ⛔ **Do not upload before the PHI review is signed off.** The upload is the
@@ -85,18 +85,19 @@ aws s3 sync ./approved/ "s3://$(cd infra && terraform output -raw notes_bucket)/
 
 ## 5. Deploy the code
 
-Normal flow — push/merge to `main`. `.github/workflows/deploy.yml` builds both
-images, pushes to ECR, forces new ECS deployments. **No workflow changes were
-needed**: the api image already contains `apps/brain/scripts/`, and the ingest
-task pulls `:latest` at invocation time.
+Normal flow — push/merge to `main`. `.github/workflows/deploy.yml` builds the
+images, pushes to ECR, forces new ECS deployments. The brain image contains
+`apps/brain/scripts/`, and the ingest task pulls `:latest` at invocation time.
 
-Watch the api service roll: migration `0003` runs at boot (extension + table +
-HNSW index — idempotent `IF NOT EXISTS` on the extension). A failed migration
-blocks startup and the deployment circuit breaker rolls back — check
-`/ecs/joice-api` logs if the deployment doesn't stabilize.
+Migrations run as the one-shot **`joice-migrate`** ECS task: CI runs it to
+completion and checks its exit code **before** updating either service
+(migration `0003` is the extension + table + HNSW index — idempotent
+`IF NOT EXISTS` on the extension). A failed migration fails the deploy and
+leaves the old code serving — check the migrate task's logs if the workflow
+stops there.
 
 ```bash
-aws logs tail /ecs/joice-api --since 10m | grep -i -E "migration|error"
+aws logs tail /ecs/joice-migrate --since 10m | grep -i -E "migration|error"
 ```
 
 ## 6. Run the ingestion (one command)
@@ -107,9 +108,10 @@ cd infra && $(terraform output -raw ingest_run_task_command)
 aws logs tail /ecs/joice-ingest --follow
 ```
 
-Expected log shape: `Found N markdown files…`, one `✓ path: k chunks` per
-file, then `✅ Ingest complete: N files scanned, 0 unchanged, N (re)ingested,
-M chunks written`. The task then exits 0.
+Expected log shape: `Found N ingestable files (.md/.pdf)…`, one
+`✓ (i/N) path: k chunks [source_type]` per file, then `✅ Ingest complete:
+N files scanned, 0 unchanged, N (re)ingested, M chunks written`. The task
+then exits 0.
 
 Failed mid-run? Just run it again — completed files are skipped by hash.
 
@@ -152,21 +154,23 @@ renders, and answers refuse questions the notes don't cover.
 | Change | How | Rebuild needed? |
 |---|---|---|
 | Notes content | Re-run prep → `s3 sync` → step 6 again (hash-skip makes it cheap; orphan sweep removes deleted files) | No |
-| Model (e.g. new Claude version) | Edit `rag_model` in tfvars or `variables.tf` → `terraform apply` → force new api deployment | No (runtime env) |
-| Retrieval tuning (`TOP_K`, `SIMILARITY_FLOOR`) | Constants in `packages/core/src/recommendation-service.ts` → normal deploy | Code deploy |
-| System prompt / disclaimer copy | `SYSTEM_PROMPT` in the same file (**counsel review gate applies** — see 07) | Code deploy |
+| Model (e.g. new Claude version) | The **Model** field on `/admin/brain` (live in ~30s); or change the env default: edit `rag_model` in tfvars or `variables.tf` → `terraform apply` → force new deployment | No |
+| Retrieval tuning (topK, match threshold) | **Admin form fields** on `/admin/brain` (Notes per answer, Match threshold) — live in ~30s | No |
+| System prompt (persona/tone/instructions) / disclaimer copy | **Admin form fields** on `/admin/brain` — live in ~30s (**counsel review gate applies to the disclaimer** — see 07). The safety floor stays a code constant | No |
 | Embedding model or dimensions | Schema migration + full re-embed (delete rows, update `vector(N)` + `EMBEDDING_DIMENSIONS`, re-run ingest) — see [02](02-data-model.md) | Code deploy + re-ingest |
 
 ## Rollback
 
-- **Feature off**: remove the two routes from `apps/api/src/app.ts` (or gate
-  them behind a feature flag via the existing `featureFlags` service) and
-  deploy. Everything else is inert without them.
+- **Tool mode off**: the `toolsEnabled` toggle on `/admin/brain` — a settings
+  change, not a deploy; off runs the classic pipeline byte-for-byte.
+- **Feature off**: the chat routes live on the **brain service**
+  (`apps/brain/src/app.ts`) — remove them there (or gate them behind a feature
+  flag) and deploy. Everything else is inert without them.
 - **Bad ingest**: `TRUNCATE note_chunks;` and re-run the task — the table is
   derived data. Bucket versioning lets you restore a previous note version
   first if the source itself was bad.
-- **Bad migration**: it blocks boot by design; the ECS circuit breaker keeps
-  the previous task revision serving. Fix forward (new migration) — `0003`
+- **Bad migration**: the `joice-migrate` task exits non-zero, CI fails the
+  deploy, and the old code keeps serving. Fix forward (new migration) — `0003`
   itself has no destructive statements.
 
 ## Before member launch (deferred, tracked)

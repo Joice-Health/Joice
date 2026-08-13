@@ -12,8 +12,8 @@ flowchart LR
     admin["/admin/brain form"] -->|"PUT /api/admin/brain (audited)"| row[("app_settings\nkey = brain\n(partial overrides)")]
     row -->|"cached ~30s, safeParse + merge onto code defaults"| chat["recommendation service\n(prompt, retrieval, model)"]
     row --> voice["speech client (Polly voice)"]
-    row -->|"public-safe subset via GET /api/brain"| ask["/ask page copy + citation chips"]
-    floor["SAFETY FLOOR (code constant\nin packages/core/src/prompt.ts)"] -->|"always prepended,\nnot admin-editable"| chat
+    row -->|"public-safe subset via GET /api/brain/config"| ask["/ask page copy + citation chips"]
+    floor["SAFETY FLOOR (code constant\nin packages/brain/src/generation/prompt.ts)"] -->|"always prepended,\nnot admin-editable"| chat
 ```
 
 - **Storage**: one `app_settings` row (`key = brain`) holding only the fields
@@ -24,8 +24,10 @@ flowchart LR
 - **The safety floor cannot be changed here**: answer only from the retrieved
   notes; educational information, not medical advice; no diagnosing,
   prescribing, or individual dosing; never invent sources. It is a code
-  constant (`SAFETY_FLOOR` in `packages/core/src/prompt.ts`) always prepended
-  to the prompt, and shown read-only at the bottom of the admin page.
+  constant (`SAFETY_FLOOR` in `packages/brain/src/generation/prompt.ts`)
+  always prepended to the prompt, and shown read-only at the bottom of the
+  admin page. When **Tool calling** is on, that panel shows the tool-mode
+  floor (`TOOL_SAFETY_FLOOR` — "MUST call search_notes first") instead.
 
 ## What each control does
 
@@ -43,6 +45,9 @@ flowchart LR
 | **Notes per answer (topK)** | How many note excerpts are retrieved for each question (1–20) |
 | **Match threshold** | Cosine-similarity floor (0–1). Higher = stricter grounding, more "not covered"; lower = more marginal notes reach the model |
 | **Max answer length** | Output token cap (128–4096) |
+| **Tool calling (toolsEnabled)** | **Default off — this is the kill switch.** On: the model holds a toolbelt (search_notes, search_catalogue, clinician handoff) and decides when to search; grounding shifts from the structural chunks==0 gate to `TOOL_SAFETY_FLOOR` + the provenance registry. Off runs the classic pipeline byte-for-byte — rollback is this toggle, not a deploy |
+| **Max tool rounds** | Tool-execution rounds per answer (1–5) — each round is an extra model call |
+| **Prompt caching (promptCache)** | Bedrock prompt caching of the static prefix (system prompt + tool definitions). **Off by default** — it only pays once the prefix crosses the model's minimum cacheable size, and support varies by model (unsupported models degrade to uncached). Verify it's actually working via `cacheReadInputTokens` in the usage counts |
 | **Follow-up understanding** | Rewrites context-dependent follow-ups ("is there a protocol for *that*?") into standalone search queries using the conversation, via a small fast model. Off = follow-ups embed as-typed |
 | **Rewrite model** | The Bedrock model doing that rewrite (default Nova Lite — it only writes search queries, small and fast is right) |
 | **Model** | Bedrock model at runtime — Nova Pro today; Claude Sonnet 4.6/5 once the account's Anthropic use-case form is approved; or any custom Bedrock id |
@@ -57,9 +62,14 @@ flowchart LR
   lower **topK**.
 - Test every persona/tone change with one on-corpus question, one off-corpus
   question, and one restricted topic — the floor should hold in all three.
+- **The eval harness is the gate for `toolsEnabled` in prod**: tool-mode
+  grounding is behavioral, so run `apps/brain/scripts/eval.ts` (its golden
+  refusal cases measure the residual off-corpus risk) before flipping the
+  toggle anywhere real.
 - The full config surface is `brainSettingsSchema` in
-  `packages/core/src/admin/schemas.ts`; prompt assembly is
-  `buildSystemPrompt()` in `packages/core/src/prompt.ts` (unit-tested).
+  `packages/brain/src/config/schemas.ts`; prompt assembly is
+  `buildSystemPrompt()` in `packages/brain/src/generation/prompt.ts`
+  (unit-tested).
 
 ## API surface
 
@@ -68,4 +78,4 @@ flowchart LR
 | `GET /api/admin/brain` | admin | `{ settings (stored overrides), resolved (what chat uses now), defaults, safetyFloor }` |
 | `PUT /api/admin/brain` | admin | Merge a partial patch (validated); audited as `brain.update` |
 | `DELETE /api/admin/brain` | admin | Reset to defaults; audited as `brain.reset` |
-| `GET /api/brain` | public | Safe subset only: chat copy + `showCitations` — never the prompt or guardrails |
+| `GET /api/brain/config` | public | Safe subset only: chat copy + `showCitations` — never the prompt or guardrails |

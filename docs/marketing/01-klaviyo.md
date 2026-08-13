@@ -131,14 +131,23 @@ surface (the companion's lead capture) starts upserting the same emails:
   `external_id` (Klaviyo treats it as an identifier — two services fighting
   over it is at best last-writer-wins).
 - **Custom properties are prefix-namespaced per domain**: the waitlist owns
-  `referral_*`, `signup_*`, `waitlist_*`, `joined_waitlist_at`; the brain
-  should use `lead_*`, onboarding `onboarding_*`, and so on. Klaviyo's
-  profile-import merges properties key-by-key (omitted keys are preserved), so
-  partial upserts are safe — but only distinct names keep them collision-free.
+  `referral_*`, `signup_*`, `waitlist_*`, `joined_waitlist_at`; the brain owns
+  `lead_*` — the companion's lead sync (`apps/brain/src/services.ts`) writes
+  `lead_source` (`"companion"`), `lead_status`, and `lead_goal` — onboarding
+  gets `onboarding_*`, and so on. Klaviyo's profile-import merges properties
+  key-by-key (omitted keys are preserved), so partial upserts are safe — but
+  only distinct names keep them collision-free.
 - **Top-level name fields are shared.** `first_name`/`last_name` are set by
   whoever upserts last; the client skips empty values so a sync can never
   *clear* a name, but domains with lower-quality name data (a chat-collected
-  single "name" field) should prefer leaving them unset.
+  single "name" field) should prefer leaving them unset. The companion follows
+  this: it **never writes `first_name`** — the chat-collected name stays on
+  the lead row and in `/admin/leads`.
+- **`suppressProfile` (the erasure primitive) is profile-global by design** —
+  suppressing an email stops *all* marketing to that person, not just the
+  suppressing domain's. The brain's erasure path uses it deliberately:
+  over-suppression is the intended behavior for someone who asked to be
+  forgotten.
 
 ## What we send (and what we never send)
 
