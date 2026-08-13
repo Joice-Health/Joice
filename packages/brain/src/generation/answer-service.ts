@@ -8,6 +8,11 @@ import type {
 import type { ResolvedBrainConfig } from '../config/schemas';
 import { buildSystemPrompt } from './prompt';
 import { runToolLoop } from './agent-loop';
+import {
+  createThinkingStreamFilter,
+  stripThinking,
+  stripTrailingCitationClump,
+} from './sanitize';
 import { buildToolExecutors, type NotesPrefetch } from '../tools';
 import { citedIndexes, stripCitationMarkers } from '../conversation/citations';
 import { stubPorts, type BrainPorts } from '../ports';
@@ -192,7 +197,7 @@ export function createRecommendationService(
     // system prompt: smaller models (Nova) reliably drop the markers when the
     // instruction is buried above long documents, but honor it in this position.
     const citationReminder = config.showCitations
-      ? '\n\n(Remember: cite each claim with the document number in square brackets, e.g. [1].)'
+      ? '\n\n(Remember: cite each claim with the document number in square brackets, e.g. [1]. Never stack a row of citations at the end.)'
       : '';
 
     return {
@@ -217,11 +222,14 @@ export function createRecommendationService(
     answer: string,
     chunks: RetrievedChunk[],
   ): PeptideRecommendation {
+    // Model scaffolding never reaches a visitor: chain-of-thought blocks are
+    // dropped, and a decorative row of citations stacked at the end goes too.
+    const cleaned = stripTrailingCitationClump(stripThinking(answer));
     if (!config.showCitations) {
       // Defensive: strip any markers the model emitted despite instructions.
-      return { answer: stripCitationMarkers(answer), citations: [] };
+      return { answer: stripCitationMarkers(cleaned), citations: [] };
     }
-    return { answer: answer.trim(), citations: parseCitations(answer, chunks) };
+    return { answer: cleaned.trim(), citations: parseCitations(cleaned, chunks) };
   }
 
   async function searchQuery(config: ResolvedBrainConfig, messages: ChatMessage[]) {
@@ -267,7 +275,7 @@ export function createRecommendationService(
     });
 
     const citationReminder = config.showCitations
-      ? '\n\n(Remember: cite each claim with the reference numbers from search_notes, e.g. [1].)'
+      ? '\n\n(Remember: cite each claim with the reference numbers from search_notes, e.g. [1]. Never stack a row of citations at the end.)'
       : '';
 
     const loop = runToolLoop({
@@ -289,9 +297,15 @@ export function createRecommendationService(
       maxRounds: config.maxToolRounds,
     });
 
+    // Nova narrates its reasoning in <thinking> blocks, which stream as
+    // ordinary text; the filter swallows them delta by delta, and finalize()
+    // strips the authoritative text the same way, so both always agree.
+    const thinkingFilter = createThinkingStreamFilter();
+
     for await (const event of loop) {
       if (event.type === 'delta') {
-        yield event;
+        const visible = thinkingFilter.push(event.text);
+        if (visible) yield { type: 'delta', text: visible };
       } else if (event.type === 'tool') {
         yield { ...event, label: TOOL_LABELS[event.name] ?? '' };
       } else if (event.type === 'action') {
@@ -349,9 +363,11 @@ export function createRecommendationService(
       return;
     }
 
+    const thinkingFilter = createThinkingStreamFilter();
     for await (const event of generation.generateStream(buildRequest(config, messages, chunks))) {
       if (event.type === 'text') {
-        yield { type: 'delta', text: event.text };
+        const visible = thinkingFilter.push(event.text);
+        if (visible) yield { type: 'delta', text: visible };
       } else {
         yield { type: 'complete', recommendation: finalize(config, event.text, chunks) };
       }

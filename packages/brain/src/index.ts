@@ -32,6 +32,7 @@ export * from './knowledge/sources';
 export * from './generation/prompt';
 export * from './generation/answer-service';
 export * from './generation/agent-loop';
+export * from './generation/sanitize';
 export * from './providers/bedrock';
 export * from './tools';
 export * from './voice';

@@ -69,7 +69,8 @@ export function buildSystemPrompt(
   if (config.showCitations) {
     sections.push(
       'Cite your sources: after each claim, add the number of the document it came from in square brackets, e.g. [1] or [2]. ' +
-        'Only cite documents that actually support the claim.' +
+        'Only cite documents that actually support the claim, at most one or two per sentence. ' +
+        'Never end the answer with a row of stacked citations, and never cite a document you did not use.' +
         (config.attributionStyle === 'natural'
           ? ' Do not explain what the bracketed numbers are; just include them.'
           : ''),

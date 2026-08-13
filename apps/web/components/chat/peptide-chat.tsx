@@ -90,8 +90,13 @@ const CAPTURE_AFTER_EXCHANGES = 2;
 /** How many total exchanges before the journey is offered regardless of capture. */
 const CONVERSION_EXCHANGE_THRESHOLD = 4;
 
-/** Knowledge detours after a capture prompt before it's gently re-anchored. */
-const REOFFER_AFTER_DETOURS = 2;
+/**
+ * Knowledge detours after a capture prompt before it's gently re-anchored
+ * (once per field). One detour is enough: a pending question that scrolled
+ * away behind an answer reads as never asked, and a typed reply to it then
+ * goes to the model as a question instead of into the profile.
+ */
+const REOFFER_AFTER_DETOURS = 1;
 
 /** Minimum exchanges between conversion offers — a re-offer must not nag. */
 const CTA_REOFFER_EXCHANGES = 2;
@@ -411,7 +416,24 @@ export function PeptideChat() {
    */
   function promptForStep(step: CaptureStep, lead?: string) {
     detoursSincePromptRef.current = 0;
-    const content = lead ? `${lead} ${step.prompt}` : step.prompt;
+    // The goal step listens before it asks: if the conversation already said
+    // why they're here ("what peptides help with weight loss?"), confirm the
+    // inference instead of asking cold. Deterministic keyword matching, the
+    // same matchCareArea the composer uses; nothing goes near the model.
+    let prompt = step.prompt;
+    if (step.field === 'goal') {
+      let slug: string | null = null;
+      for (const m of messages) {
+        if (m.kind === 'text' && m.role === 'user') slug = matchCareArea(m.content) ?? slug;
+      }
+      const label = slug
+        ? step.input.choices?.find((choice) => choice.value === slug)?.label
+        : null;
+      if (label) {
+        prompt = `From what you've been asking, it sounds like ${label.toLowerCase()} is what brings you here. Tap it below to confirm, or pick what fits better.`;
+      }
+    }
+    const content = lead ? `${lead} ${prompt}` : prompt;
     setMessages((prev) => [...prev, { kind: 'capture', role: 'assistant', content }]);
     scrollToEnd();
   }
@@ -659,8 +681,19 @@ export function PeptideChat() {
     if (!companion.nextStep) {
       captureStartedRef.current = true;
       exchangesAtCaptureDoneRef.current = 0;
-      // ready/converted visitors never see the offer again — maybeOfferConversion
+      // ready/converted visitors never see the offer again: maybeOfferConversion
       // checks the profile status directly, so nothing to seed here.
+    } else if (
+      companion.profile.name ||
+      companion.profile.email ||
+      companion.profile.goal
+    ) {
+      // Capture began in an earlier visit and a field is still pending. Resume
+      // it VISIBLY: without this, a reload left only a placeholder hint, the
+      // question was never on screen, and a typed answer ("Sean") was routed
+      // to the model as a chat question instead of into the profile.
+      captureStartedRef.current = true;
+      promptForStep(companion.nextStep, 'Picking up where we left off.');
     }
   }, [companion]);
 
