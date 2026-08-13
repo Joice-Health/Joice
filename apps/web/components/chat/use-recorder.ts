@@ -156,7 +156,7 @@ export function useRecorder({ onAudio, onChunk, onError }: UseRecorderOptions) {
     warmTimerRef.current = setTimeout(releaseMic, WARM_MS);
 
     if (!heardSpeech || pcmBytes === 0) {
-      callbacksRef.current.onError("Didn't catch that — try again a little louder.");
+      callbacksRef.current.onError("Didn't catch that. Try again a little louder.");
       return;
     }
     callbacksRef.current.onAudio(concatPcm(pcm, pcmBytes));
@@ -209,7 +209,7 @@ export function useRecorder({ onAudio, onChunk, onError }: UseRecorderOptions) {
           setArming(false);
           armingRef.current = false;
           callbacksRef.current.onError(
-            'Microphone access was blocked — allow it in your browser settings to ask by voice.',
+            'Microphone access was blocked. Allow it in your browser settings to ask by voice.',
           );
           return;
         }
@@ -348,7 +348,7 @@ export function useRecorder({ onAudio, onChunk, onError }: UseRecorderOptions) {
       // Whatever failed, never leave the button stuck in "arming".
       setArming(false);
       sessionRef.current = null;
-      callbacksRef.current.onError('Could not start recording — try again.');
+      callbacksRef.current.onError('Could not start recording. Try again.');
     } finally {
       armingRef.current = false;
     }

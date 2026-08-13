@@ -7,7 +7,7 @@ import { GetStartedCta } from '@/components/ui/get-started-cta';
 import { CARE_AREAS, PRODUCTS } from '@/lib/site-content';
 
 export const metadata: Metadata = {
-  title: 'Explore — Joice',
+  title: 'Explore · Joice',
   description: 'Browse clinician-guided protocols by care area.',
 };
 

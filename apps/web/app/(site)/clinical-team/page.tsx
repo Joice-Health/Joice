@@ -6,7 +6,7 @@ import { LearnBylines } from '@/components/clinical-team/learn-bylines';
 import { GetStartedCta } from '@/components/ui/get-started-cta';
 
 export const metadata: Metadata = {
-  title: 'Clinical Team — Joice',
+  title: 'Clinical Team · Joice',
   description:
     'The licensed clinicians who set, review, and stand behind every Joice protocol.',
 };

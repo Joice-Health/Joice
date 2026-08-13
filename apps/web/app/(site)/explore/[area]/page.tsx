@@ -19,8 +19,8 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const area = getCareArea((await params).area);
   return area
-    ? { title: `${area.name} — Joice`, description: area.blurb }
-    : { title: 'Explore — Joice' };
+    ? { title: `${area.name} · Joice`, description: area.blurb }
+    : { title: 'Explore · Joice' };
 }
 
 /** Care-area template (L3, ×5): header, products, related education, CTA. */

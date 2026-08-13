@@ -6,9 +6,9 @@ import { GetStartedCta } from '@/components/ui/get-started-cta';
 import { ARTICLES } from '@/lib/site-content';
 
 export const metadata: Metadata = {
-  title: 'Learn — Joice',
+  title: 'Learn · Joice',
   description:
-    'Clinician-reviewed education on peptides, sourcing, labs, and protocols — no hype.',
+    'Clinician-reviewed education on peptides, sourcing, labs, and protocols. No hype.',
 };
 
 /** Learn hub (L2): topic organization + article grid. SEO/AEO engine. */

@@ -24,7 +24,7 @@ describe('buildSystemPrompt', () => {
     const prompt = buildSystemPrompt(
       config({ personaName: 'Dot', personaDescription: 'a friendly guide', clinicianHandoffMessage: 'Book a consult.' }),
     );
-    expect(prompt).toContain('You are Dot — a friendly guide.');
+    expect(prompt).toContain('You are Dot, a friendly guide.');
     expect(prompt).toContain('Book a consult.');
   });
 

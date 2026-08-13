@@ -14,11 +14,11 @@ const yantramanav = Yantramanav({
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Joice — The future of peptide medicine',
+  title: 'Joice · The future of peptide medicine',
   description:
     'Join the Joice waitlist. AI-guided peptides and supplements, with real clinical governance. Refer friends to move up the line.',
   openGraph: {
-    title: 'Joice — The future of peptide medicine',
+    title: 'Joice · The future of peptide medicine',
     description: 'Join the waitlist for AI-guided peptides and supplements.',
     type: 'website',
   },

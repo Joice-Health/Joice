@@ -232,12 +232,12 @@ export function PeptideChat() {
       if (!res.ok) throw new Error(`transcribe failed (${res.status})`);
       const { transcript } = (await res.json()) as { transcript: string };
       if (!transcript) {
-        setVoiceHint("Didn't catch that — try again a little closer to the mic.");
+        setVoiceHint("Didn't catch that. Try again a little closer to the mic.");
         return;
       }
       routeCaptureOrAsk(transcript.trim(), { viaVoice: true });
     } catch {
-      setVoiceHint('Voice is unavailable right now — you can still type your question.');
+      setVoiceHint('Voice is unavailable right now, but you can still type your question.');
     } finally {
       setTranscribing(false);
     }
@@ -325,7 +325,7 @@ export function PeptideChat() {
                   kind: 'handoff',
                   role: 'assistant',
                   content:
-                    'This one deserves a clinician’s eyes on your specifics — I can connect you with the team.',
+                    'This one deserves a clinician’s eyes on your specifics. I can connect you with the team.',
                   ctaLabel: 'Talk to the clinical team',
                 },
               ]);
@@ -445,9 +445,9 @@ export function PeptideChat() {
   /** A warm line acknowledging what the visitor just gave. */
   function ackFor(step: CaptureStep, value: string, result: CompanionActionResult): string {
     if (step.field === 'name') return `Nice to meet you, ${result.profile.name ?? value}.`;
-    if (step.field === 'email') return "Thanks — that's saved.";
+    if (step.field === 'email') return "Thanks, that's saved.";
     const label = result.profile.goalLabel ?? answerLabel(step, value);
-    return `Great — ${label.toLowerCase()}. I'll keep that front of mind.`;
+    return `Great, ${label.toLowerCase()}. I'll keep that front of mind.`;
   }
 
   async function submitCapture(step: CaptureStep, value: string, note?: string) {
@@ -549,7 +549,7 @@ export function PeptideChat() {
             kind: 'capture',
             role: 'assistant',
             content: alreadyStarted
-              ? 'You’re already set up — head to Get started whenever you like.'
+              ? 'You’re already set up. Head to Get started whenever you like.'
               : 'Whenever you’re ready, “Start my journey” above will take you straight there. Happy to keep answering questions in the meantime.',
           },
         ]);
@@ -705,7 +705,7 @@ export function PeptideChat() {
     restored.push({
       kind: 'capture',
       role: 'assistant',
-      content: `Welcome back${name ? `, ${name}` : ''} — we can pick up where we left off, or start something new.`,
+      content: `Welcome back${name ? `, ${name}` : ''}. We can pick up where we left off, or start something new.`,
     });
     resumedThreadRef.current = true;
     setMessages(restored);
@@ -743,7 +743,7 @@ export function PeptideChat() {
   const status = recorder.arming
     ? 'Connecting microphone…'
     : recorder.recording
-      ? `Listening — pause when you're done · ${recorder.elapsed}s`
+      ? `Listening · pause when you're done · ${recorder.elapsed}s`
       : transcribing
         ? 'Writing that down…'
         : pending

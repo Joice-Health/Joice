@@ -3,8 +3,8 @@ import { Eyebrow } from '@/components/ui/eyebrow';
 import { LeadSummary } from '@/components/get-started/lead-summary';
 
 export const metadata: Metadata = {
-  title: 'Get Started — Joice',
-  description: 'Tell us where you are — a licensed clinician decides with you.',
+  title: 'Get Started · Joice',
+  description: 'Tell us where you are. A licensed clinician decides with you.',
 };
 
 /**

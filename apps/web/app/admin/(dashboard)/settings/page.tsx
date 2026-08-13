@@ -81,7 +81,7 @@ export default function AdminSettingsPage() {
           <textarea
             value={rawValue}
             onChange={(e) => setRawValue(e.target.value)}
-            placeholder='Value as JSON — e.g. true, 42, "text", {"a": 1}'
+            placeholder='Value as JSON, e.g. true, 42, "text", {"a": 1}'
             aria-label="Setting value (JSON)"
             required
             rows={3}

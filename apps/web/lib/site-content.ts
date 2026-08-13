@@ -112,7 +112,7 @@ export const ARTICLES: Article[] = [
     slug: 'peptides-101',
     title: 'Peptides 101: what they are and how they work',
     topic: 'Foundations',
-    excerpt: 'A plain-language primer on peptide signaling — no hype, no shortcuts.',
+    excerpt: 'A plain-language primer on peptide signaling. No hype, no shortcuts.',
   },
   {
     slug: 'sourcing-and-testing',

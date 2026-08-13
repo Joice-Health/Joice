@@ -6,7 +6,7 @@ import { HowItWorks as StepsSnapshot } from '@/components/home/how-it-works';
 import { GetStartedCta } from '@/components/ui/get-started-cta';
 
 export const metadata: Metadata = {
-  title: 'How It Works — Joice',
+  title: 'How It Works · Joice',
   description:
     'The end-to-end Joice model: clinician consult, prescription-gated protocols, membership, and transparent pricing.',
 };

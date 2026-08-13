@@ -99,7 +99,7 @@ export const DEFAULT_BRAIN_SETTINGS: Omit<BrainSettings, 'model' | 'pollyVoiceId
   personaName: 'Joice',
   personaDescription:
     "Joice's peptide knowledge assistant, answering members' questions about peptides and protocols",
-  toneInstructions: 'Be specific and practical; use plain language and keep answers focused.',
+  toneInstructions: 'Be specific and practical; use plain language and keep answers focused. Never use em dashes.',
   attributionStyle: 'cite-notes',
   showCitations: true,
   notCoveredMessage:
@@ -110,17 +110,17 @@ export const DEFAULT_BRAIN_SETTINGS: Omit<BrainSettings, 'model' | 'pollyVoiceId
     'Our clinical team handles that during consultation.',
   emptyStateHint: 'Ask about any peptide or protocol in our clinical research library.',
   inputPlaceholder: 'e.g. What does the clinical team say about BPC-157 dosing?',
-  disclaimer: 'Educational information from our clinical notes — not medical advice',
+  disclaimer: 'Educational information from our clinical notes, not medical advice',
   restrictedTopics: [],
   customInstructions: '',
   companionGreeting:
-    "Love that you're digging into this. So I can tailor what I share — mind if I grab a " +
+    "Love that you're digging into this. So I can tailor what I share: mind if I grab a " +
     'couple of quick things?',
   companionNamePrompt: 'First up, what should I call you?',
   companionEmailPrompt: "What's the best email to reach you? I'll use it to save your progress.",
   companionGoalPrompt: 'What brings you here today?',
   companionConversionPrompt:
-    "Whenever you're ready, I can help you start your journey — a few quick questions and " +
+    "Whenever you're ready, I can help you start your journey: a few quick questions and " +
     'our clinical team takes it from there.',
   companionConversionCtaLabel: 'Start my journey',
   topK: 8,

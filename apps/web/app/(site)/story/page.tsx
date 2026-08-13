@@ -5,7 +5,7 @@ import { Eyebrow } from '@/components/ui/eyebrow';
 import { GetStartedCta } from '@/components/ui/get-started-cta';
 
 export const metadata: Metadata = {
-  title: 'Our Story — Joice',
+  title: 'Our Story · Joice',
   description: 'Why we built Joice, what the name means, and the standard we hold.',
 };
 

@@ -137,7 +137,7 @@ export default function AdminBrainPage() {
       </PageHeader>
 
       <p className="-mt-3 mb-6 text-sm text-muted">
-        Changes go live within ~30 seconds — test on <span className="font-mono">/ask</span> after
+        Changes go live within ~30 seconds. Test on <span className="font-mono">/ask</span> after
         saving. Every save is recorded in the audit log.
       </p>
 
@@ -156,7 +156,7 @@ export default function AdminBrainPage() {
               </Field>
               <Field
                 label="Voice (spoken answers)"
-                hint="Polly generative-engine voices only — others fail to synthesize."
+                hint="Polly generative-engine voices only; others fail to synthesize."
               >
                 <select
                   value={form.pollyVoiceId}
@@ -174,7 +174,7 @@ export default function AdminBrainPage() {
                 </select>
               </Field>
             </div>
-            <Field label="Who the assistant is" hint="Completes “You are {name} — …” in the prompt.">
+            <Field label="Who the assistant is" hint="Completes “You are {name}, …” in the prompt.">
               <textarea
                 value={form.personaDescription}
                 onChange={(e) => set('personaDescription', e.target.value)}
@@ -183,7 +183,7 @@ export default function AdminBrainPage() {
                 className={textareaClass}
               />
             </Field>
-            <Field label="Tone instructions" hint="How it should sound — e.g. “Warm and encouraging, like a coach. Short sentences.”">
+            <Field label="Tone instructions" hint="How it should sound, e.g. “Warm and encouraging, like a coach. Short sentences.”">
               <textarea
                 value={form.toneInstructions}
                 onChange={(e) => set('toneInstructions', e.target.value)}
@@ -197,7 +197,7 @@ export default function AdminBrainPage() {
               <span className="text-sm font-medium text-ink">How it refers to its knowledge</span>
               {(
                 [
-                  ['natural', 'Talks like a person', 'Never mentions notes, documents, or sources — the knowledge is simply its own.'],
+                  ['natural', 'Talks like a person', 'Never mentions notes, documents, or sources; the knowledge is simply its own.'],
                   ['cite-notes', 'References the clinical notes', 'May say things like “our clinical notes describe…”.'],
                 ] as const
               ).map(([value, label, hint]) => (
@@ -274,7 +274,7 @@ export default function AdminBrainPage() {
             </div>
             <Field
               label="Disclaimer line"
-              hint="⚠ Shown under the chat on every visit — copy changes here require counsel review."
+              hint="⚠ Shown under the chat on every visit; copy changes here require counsel review."
             >
               <Input
                 value={form.disclaimer}
@@ -358,7 +358,7 @@ export default function AdminBrainPage() {
           <div className="flex flex-col gap-4">
             <Field
               label="Restricted topics"
-              hint="The bot declines these and points members to the clinical team — even if the notes cover them. Max 20."
+              hint="The bot declines these and points members to the clinical team, even if the notes cover them. Max 20."
             >
               <div className="flex flex-wrap items-center gap-2">
                 {form.restrictedTopics.map((topic) => (
@@ -396,7 +396,7 @@ export default function AdminBrainPage() {
             </Field>
             <Field
               label="Additional instructions"
-              hint={`Appended to the prompt after everything else — the free-form knob. ${form.customInstructions.length}/4000`}
+              hint={`Appended to the prompt after everything else: the free-form knob. ${form.customInstructions.length}/4000`}
             >
               <textarea
                 value={form.customInstructions}
@@ -416,7 +416,7 @@ export default function AdminBrainPage() {
             <Field label="Notes per answer (topK)" hint="How many note excerpts to consider. 1–20.">
               {numberInput('topK', 1, 20)}
             </Field>
-            <Field label="Match threshold" hint="0–1. How closely a note must match before it’s used — higher = stricter, more “not covered”.">
+            <Field label="Match threshold" hint="0–1. How closely a note must match before it’s used. Higher = stricter, more “not covered”.">
               <Input
                 type="number"
                 min={0}
@@ -516,7 +516,7 @@ export default function AdminBrainPage() {
             {form.toolsEnabled ? (
               <Field
                 label="Max tool rounds"
-                hint="1–5. Each round is an extra model call — this caps cost and latency per answer."
+                hint="1–5. Each round is an extra model call; this caps cost and latency per answer."
               >
                 <Input
                   type="number"
@@ -565,7 +565,7 @@ export default function AdminBrainPage() {
             {update.isPending ? 'Saving…' : 'Save changes'}
           </Button>
           {savedAt && !update.isPending && !update.isError ? (
-            <span className="text-sm text-muted">Saved — live within ~30s.</span>
+            <span className="text-sm text-muted">Saved. Live within ~30s.</span>
           ) : null}
         </div>
         {update.isError ? <ErrorState error={update.error} /> : null}

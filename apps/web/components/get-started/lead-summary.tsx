@@ -47,7 +47,7 @@ export function LeadSummary() {
               </p>
               <p className="mt-6 rounded-2xl bg-brand-400/12 px-5 py-4 text-sm leading-relaxed text-brand-800">
                 Your details are saved under{' '}
-                <span className="font-medium">{profile.email}</span> — you&rsquo;re set for the
+                <span className="font-medium">{profile.email}</span>. You&rsquo;re set for the
                 moment intake opens. In the meantime, the companion is right where you left it.
               </p>
               <Button size="lg" className="mt-6 w-full" onClick={() => router.push('/ask')}>
