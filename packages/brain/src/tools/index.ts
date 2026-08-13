@@ -3,6 +3,7 @@ import type { ToolExecutor, ToolOutcome } from '../generation/agent-loop';
 import type { RetrievedChunk } from '../generation/answer-service';
 import type { CatalogPort } from '../ports';
 import { HANDOFF_REASONS, INTENT_KINDS } from '../conversation/schemas';
+import { SOURCE_TYPES } from '../knowledge/sources';
 
 /**
  * The companion's toolbelt. Executors are built per-request as closures over
@@ -28,7 +29,7 @@ export interface NotesPrefetch {
 export interface ToolDeps {
   retrieve: (
     query: string,
-    opts: { topK: number; similarityFloor: number },
+    opts: { topK: number; similarityFloor: number; sourceTypes?: string[] },
   ) => Promise<RetrievedChunk[]>;
   catalog: CatalogPort;
   config: { topK: number; similarityFloor: number };
@@ -63,7 +64,12 @@ export function similarQueries(a: string, b: string): boolean {
   return shared / Math.min(ta.size, tb.size) >= 0.5;
 }
 
-const searchNotesInput = z.object({ query: z.string().trim().min(1).max(300) });
+const searchNotesInput = z.object({
+  query: z.string().trim().min(1).max(300),
+  // An empty array is treated as "no filter" below rather than rejected — the
+  // advertised JSON schema can't forbid it, so the model may legally send it.
+  source_types: z.array(z.enum(SOURCE_TYPES)).optional(),
+});
 const searchCatalogueInput = z.object({ query: z.string().trim().min(1).max(200) });
 const handoffInput = z.object({ reason: z.enum(HANDOFF_REASONS) });
 const intentInput = z.object({ intent: z.enum(INTENT_KINDS) });
@@ -95,27 +101,41 @@ export function buildToolExecutors(deps: ToolDeps): Map<string, ToolExecutor> {
         type: 'object',
         properties: {
           query: { type: 'string', description: 'Short standalone search query.' },
+          source_types: {
+            type: 'array',
+            items: { type: 'string', enum: [...SOURCE_TYPES] },
+            description:
+              'Optional filter by document kind. Omit to search everything (usually right).',
+          },
         },
         required: ['query'],
       },
     },
     async execute(raw) {
       const input = searchNotesInput.safeParse(raw);
-      if (!input.success) return invalidInput('{ "query": string } (1–300 characters)');
-      const query = input.data.query;
+      if (!input.success) {
+        return invalidInput(
+          `{ "query": string (1–300 chars), "source_types"?: array of ${SOURCE_TYPES.join(' | ')} }`,
+        );
+      }
+      const { query } = input.data;
+      const sourceTypes = input.data.source_types?.length ? input.data.source_types : undefined;
 
       let chunks: RetrievedChunk[] | null = null;
       // Claim the prefetch BEFORE awaiting: parallel same-round searches all
       // reach this line before any of them suspends, and claiming late would
       // serve the same chunks to both (duplicate registry entries, and one
-      // query silently never searched).
-      const claimed = prefetch;
-      prefetch = null;
-      if (claimed) {
-        const ready = await claimed.promise;
-        if (ready && similarQueries(query, ready.query)) chunks = ready.chunks;
+      // query silently never searched). A type-filtered search skips it —
+      // the prefetch searched everything.
+      if (!sourceTypes) {
+        const claimed = prefetch;
+        prefetch = null;
+        if (claimed) {
+          const ready = await claimed.promise;
+          if (ready && similarQueries(query, ready.query)) chunks = ready.chunks;
+        }
       }
-      chunks ??= await deps.retrieve(query, deps.config);
+      chunks ??= await deps.retrieve(query, { ...deps.config, sourceTypes });
 
       if (chunks.length === 0) {
         return {

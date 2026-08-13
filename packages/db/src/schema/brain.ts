@@ -31,8 +31,19 @@ export const noteChunks = pgTable(
       .primaryKey()
       .default(sql`gen_random_uuid()`),
 
-    /** S3 key of the source markdown file. */
+    /** S3 key of the source file (markdown or PDF). */
     sourcePath: text('source_path').notNull(),
+
+    /**
+     * What kind of knowledge this is: clinical_note | product_sheet | faq |
+     * protocol | policy. One corpus, one HNSW index — retrieval filters by
+     * type when a question calls for it (`WHERE source_type = ANY(...)`).
+     * Canonical list: packages/brain/src/knowledge/sources.ts.
+     */
+    sourceType: text('source_type').notNull().default('clinical_note'),
+
+    /** Document title (frontmatter, first heading, or filename). */
+    title: text('title'),
 
     /** sha256 of the whole source file — unchanged hash lets ingestion skip the file. */
     sourceHash: text('source_hash').notNull(),
@@ -59,6 +70,10 @@ export const noteChunks = pgTable(
   (table) => [
     uniqueIndex('note_chunks_source_path_chunk_index_unique').on(table.sourcePath, table.chunkIndex),
     index('note_chunks_source_path_idx').on(table.sourcePath),
+    // Filtered retrieval (per-source-type searches) — pgvector runs the HNSW
+    // scan and applies this as a post-filter; a b-tree keeps the non-vector
+    // lookups (inventory counts, per-type deletes) cheap.
+    index('note_chunks_source_type_idx').on(table.sourceType),
     // Retrieval's whole performance story. Declared here to match migration
     // 0003, which created it in raw SQL — undeclared, the next `db:generate`
     // would have emitted a DROP and silently returned every question to a
@@ -71,6 +86,46 @@ export const noteChunks = pgTable(
 
 export type NoteChunk = typeof noteChunks.$inferSelect;
 export type NewNoteChunk = typeof noteChunks.$inferInsert;
+
+/**
+ * The corpus inventory: one row per ingested source document. `note_chunks`
+ * is the searchable derived data; this is what lets a human (or an admin
+ * page) answer "what does the brain know, since when, and from where"
+ * without SQL over chunk rows. Written only by the ingest task, in the same
+ * transaction as the chunks it describes.
+ */
+export const knowledgeDocuments = pgTable(
+  'knowledge_documents',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+
+    /** S3 key (or relative path in dev) — the join key to note_chunks.source_path. */
+    sourcePath: text('source_path').notNull(),
+
+    /** clinical_note | product_sheet | faq | protocol | policy. */
+    sourceType: text('source_type').notNull().default('clinical_note'),
+
+    /** Frontmatter title, first heading, or filename. */
+    title: text('title'),
+
+    /** sha256 of the source file at ingest time — matches the chunks' hash. */
+    sourceHash: text('source_hash').notNull(),
+
+    chunkCount: integer('chunk_count').notNull().default(0),
+
+    /** Frontmatter + anything the ingest wants to record (e.g. PHI review notes). */
+    metadata: jsonb('metadata').$type<Record<string, unknown>>(),
+
+    ingestedAt: timestamp('ingested_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('knowledge_documents_source_path_unique').on(table.sourcePath),
+    index('knowledge_documents_source_type_idx').on(table.sourceType),
+  ],
+);
+
+export type KnowledgeDocument = typeof knowledgeDocuments.$inferSelect;
+export type NewKnowledgeDocument = typeof knowledgeDocuments.$inferInsert;
 
 /**
  * A chat thread.

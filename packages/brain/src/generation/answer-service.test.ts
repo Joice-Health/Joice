@@ -21,13 +21,18 @@ import {
  * makes. `captured.orderBy` records the ordering expression so a test can
  * assert it stayed index-usable — see the "retrieval ordering" suite.
  */
-function stubDb(rows: unknown[], captured: { orderBy?: unknown } = {}) {
+function stubDb(rows: unknown[], captured: { orderBy?: unknown; where?: unknown } = {}) {
   const db = {
     select: () => ({
       from: () => ({
-        orderBy: (expr: unknown) => {
-          captured.orderBy = expr;
-          return { limit: () => Promise.resolve(rows) };
+        where: (condition: unknown) => {
+          captured.where = condition;
+          return {
+            orderBy: (expr: unknown) => {
+              captured.orderBy = expr;
+              return { limit: () => Promise.resolve(rows) };
+            },
+          };
         },
       }),
     }),
@@ -472,5 +477,37 @@ describe('tools mode (toolsEnabled=true)', () => {
     const result = await service.recommend([{ role: 'user', content: 'bpc?' }]);
     expect(result.answer).toBe('Classic.');
     expect(capture).toHaveLength(0);
+  });
+});
+
+describe('retrieval source-type filter', () => {
+  test('sourceTypes becomes a WHERE on source_type; omitting it leaves retrieval unfiltered', async () => {
+    const captured: { where?: unknown } = {};
+    const service = createRecommendationService(stubDb([chunk()], captured), {
+      embeddings: stubEmbeddings,
+      generation: stubGeneration('unused'),
+      getConfig: configOf(),
+    });
+
+    await service.retrieve('sleep aids', {
+      topK: 8,
+      similarityFloor: 0.4,
+      sourceTypes: ['product_sheet', 'faq'],
+    });
+    const rendered = new PgDialect().sqlToQuery(captured.where as SQL).sql;
+    expect(rendered).toContain('"note_chunks"."source_type" in (');
+
+    await service.retrieve('sleep aids', { topK: 8, similarityFloor: 0.4 });
+    expect(captured.where).toBeUndefined();
+  });
+});
+
+describe('citation source types', () => {
+  test('a chunk that knows its source type carries it into the citation; others stay unchanged', () => {
+    const typed = chunk({ sourceType: 'product_sheet' });
+    const untyped = chunk({ sourcePath: 'peptides/tb-500.md', headingPath: 'TB-500' });
+    const citations = parseCitations('A [1]. B [2].', [typed, untyped]);
+    expect(citations[0]!.sourceType).toBe('product_sheet');
+    expect('sourceType' in citations[1]!).toBe(false);
   });
 });

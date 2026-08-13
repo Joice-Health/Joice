@@ -12,6 +12,8 @@ export {
   desc,
   count,
   cosineDistance,
+  inArray,
   isNull,
+  lt,
   notInArray,
 } from 'drizzle-orm';

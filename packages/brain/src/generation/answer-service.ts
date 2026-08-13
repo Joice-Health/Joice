@@ -1,4 +1,4 @@
-import { asc, cosineDistance, noteChunks, sql, type Database } from '@joice/db';
+import { asc, cosineDistance, inArray, noteChunks, sql, type Database } from '@joice/db';
 import type {
   ConverseClient,
   EmbeddingClient,
@@ -46,6 +46,8 @@ export interface RetrievedChunk {
   headingPath: string | null;
   content: string;
   similarity: number;
+  /** clinical_note | product_sheet | … — carried into citations for the UI. */
+  sourceType?: string;
 }
 
 export type RecommendationStreamEvent =
@@ -140,7 +142,11 @@ export function createRecommendationService(
 
   async function retrieve(
     question: string,
-    { topK, similarityFloor }: { topK: number; similarityFloor: number },
+    {
+      topK,
+      similarityFloor,
+      sourceTypes,
+    }: { topK: number; similarityFloor: number; sourceTypes?: string[] },
   ): Promise<RetrievedChunk[]> {
     const queryVector = await embeddings.embed(question);
     const distance = cosineDistance(noteChunks.embedding, queryVector);
@@ -152,8 +158,15 @@ export function createRecommendationService(
         headingPath: noteChunks.headingPath,
         content: noteChunks.content,
         similarity,
+        sourceType: noteChunks.sourceType,
       })
       .from(noteChunks)
+      // One corpus, filtered by type when asked; undefined = no filter. Note:
+      // pgvector applies this as a post-filter on the HNSW candidate set, so a
+      // very selective type (few rows in a big corpus) can under-fill topK —
+      // if that bites, tune hnsw.ef_search / enable iterative_scan (pgvector
+      // ≥0.8) rather than reaching for a second index.
+      .where(sourceTypes && sourceTypes.length > 0 ? inArray(noteChunks.sourceType, sourceTypes) : undefined)
       // Order by the raw distance, ascending. This must stay the bare operator
       // expression: `ORDER BY 1 - (a <=> b) DESC` is mathematically identical
       // but pgvector's HNSW index cannot serve it, so it fell back to scanning
@@ -365,6 +378,8 @@ export function parseCitations(answer: string, chunks: RetrievedChunk[]): Citati
       sourcePath: chunk.sourcePath,
       headingPath: chunk.headingPath,
       citedText: chunk.content.length > 200 ? `${chunk.content.slice(0, 200)}…` : chunk.content,
+      // Lets the UI render a product-sheet chip differently from a note chip.
+      ...(chunk.sourceType ? { sourceType: chunk.sourceType } : {}),
     });
   }
   return citations;

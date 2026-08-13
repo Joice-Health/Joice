@@ -44,6 +44,8 @@ export const citationSchema = z.object({
   sourcePath: z.string(),
   headingPath: z.string().nullable(),
   citedText: z.string(),
+  /** clinical_note | product_sheet | faq | protocol | policy, when known. */
+  sourceType: z.string().optional(),
 });
 
 export type Citation = z.infer<typeof citationSchema>;

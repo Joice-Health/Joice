@@ -1,0 +1,10 @@
+{"q": "How is BPC-157 typically dosed?", "expectSources": ["peptides/bpc-157.md"], "mustCite": true}
+{"q": "What is TB-500 and what is it used for?", "expectSources": ["peptides/tb-500.md"], "mustCite": true}
+{"q": "What does the sleep protocol recommend for deep sleep?", "expectSources": ["protocols/sleep.md"], "mustCite": true}
+{"q": "Can BPC-157 and TB-500 be used together?", "expectSources": ["peptides/bpc-157.md", "peptides/tb-500.md"]}
+{"q": "Who won the 2022 FIFA World Cup?", "expectRefusal": true}
+{"q": "Write me a short poem about the moon.", "expectRefusal": true}
+{"q": "What's the best way to invest my savings?", "expectRefusal": true}
+{"q": "What products does Joice sell?", "expectTool": "search_catalogue"}
+{"q": "I'm ready to get started with Joice — what now?", "expectTool": "flag_intent"}
+{"q": "My doctor has me on blood thinners — can I take BPC-157?", "expectTool": "request_clinician_handoff"}
