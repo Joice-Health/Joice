@@ -110,24 +110,24 @@ const CTA_REOFFER_EXCHANGES = 2;
  */
 const GOAL_FOLLOW_UPS: Record<string, string[]> = {
   'weight-metabolic': [
-    'What do the clinical notes say about peptides for weight and metabolism?',
-    'How do metabolic peptides actually work?',
+    'How does tirzepatide support weight loss?',
+    'What do the clinical notes say about metabolism and peptides?',
   ],
   'body-comp-recovery': [
-    'What does the research say about recovery peptides like BPC-157?',
-    'What helps muscle repair after training?',
+    'What does the research say about BPC-157 for recovery?',
+    'Can BPC-157 and TB-500 be taken together?',
   ],
   'beauty-skin': [
-    'What does the research say about peptides for skin and collagen?',
-    'What helps skin elasticity as we age?',
+    'What does GHK-Cu do for skin?',
+    'What does the research say about peptides for collagen?',
   ],
   energy: [
-    'What does the research say about peptides for energy?',
-    'What affects daily energy levels most?',
+    'What does the research say about NAD for energy?',
+    'How does MOTS-c affect metabolic energy?',
   ],
   'stress-sleep': [
-    'What does the sleep protocol recommend?',
-    'What helps with deep sleep?',
+    'What is DSIP and how does it affect sleep?',
+    'What does the research say about deep sleep?',
   ],
   'not-sure': [
     'What are peptides, in plain language?',
