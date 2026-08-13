@@ -402,10 +402,17 @@ export function PeptideChat() {
     return value;
   }
 
-  /** Put a field's question on screen (goal chips render near the composer). */
-  function promptForStep(step: CaptureStep) {
+  /**
+   * Put a field's question on screen (goal chips render near the composer).
+   * `lead` is whatever the companion was already saying — the greeting, an
+   * acknowledgment — merged into the SAME bubble, because "Nice to meet you,
+   * Shaun." and "What's the best email…" are one breath, not two messages.
+   * Stacked one-line bubbles are what made this read like a form.
+   */
+  function promptForStep(step: CaptureStep, lead?: string) {
     detoursSincePromptRef.current = 0;
-    setMessages((prev) => [...prev, { kind: 'capture', role: 'assistant', content: step.prompt }]);
+    const content = lead ? `${lead} ${step.prompt}` : step.prompt;
+    setMessages((prev) => [...prev, { kind: 'capture', role: 'assistant', content }]);
     scrollToEnd();
   }
 
@@ -415,11 +422,7 @@ export function PeptideChat() {
     if (!step || captureStartedRef.current) return;
     captureStartedRef.current = true;
     track({ event: 'capture_started' });
-    const intro = companion?.copy.greeting;
-    setMessages((prev) =>
-      intro ? [...prev, { kind: 'capture', role: 'assistant', content: intro }] : prev,
-    );
-    promptForStep(step);
+    promptForStep(step, companion?.copy.greeting);
   }
 
   /**
@@ -455,12 +458,16 @@ export function PeptideChat() {
       setMessages((prev) => [
         ...prev,
         { kind: 'capture', role: 'user', content: answerLabel(step, value) },
-        { kind: 'capture', role: 'assistant', content: ackFor(step, value, result) },
       ]);
       const next = result.nextStep?.field ? result.nextStep : null;
       if (next) {
-        promptForStep(next);
+        // Ack and next question in one bubble — one conversational beat.
+        promptForStep(next, ackFor(step, value, result));
       } else {
+        setMessages((prev) => [
+          ...prev,
+          { kind: 'capture', role: 'assistant', content: ackFor(step, value, result) },
+        ]);
         // Capture complete — remember when, so "one more chat" can be measured,
         // and check the offer now: a visitor already past the threshold (or one
         // who showed intent) shouldn't need one more question to see it.
@@ -488,13 +495,14 @@ export function PeptideChat() {
       const result = await submitField.mutateAsync({ kind: 'skip', field: step.field });
       track({ event: 'capture_skipped', field: step.field });
       const next = result.nextStep?.field ? result.nextStep : null;
-      setMessages((prev) => [
-        ...prev,
-        { kind: 'capture', role: 'assistant', content: 'No problem.' },
-      ]);
       if (next) {
-        promptForStep(next);
+        // "No problem." flows straight into the next question, one bubble.
+        promptForStep(next, 'No problem.');
       } else {
+        setMessages((prev) => [
+          ...prev,
+          { kind: 'capture', role: 'assistant', content: 'No problem.' },
+        ]);
         exchangesAtCaptureDoneRef.current = exchangeCountRef.current;
         maybeOfferConversion();
       }
