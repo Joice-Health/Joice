@@ -12,10 +12,13 @@ import { Card, ErrorState, PageHeader, Toggle } from '@/components/admin/ui';
 
 type BrainForm = AdminBrain['resolved'];
 
+// Preset ids must be REAL Bedrock inference-profile ids — dated, with the
+// version suffix. Confirm what the account can see with
+// `aws bedrock list-inference-profiles` before adding one; a plausible-looking
+// undated id ("us.anthropic.claude-sonnet-5") fails at invoke time.
 const MODEL_PRESETS = [
   { value: 'us.amazon.nova-pro-v1:0', label: 'Amazon Nova Pro' },
-  { value: 'us.anthropic.claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
-  { value: 'us.anthropic.claude-sonnet-5', label: 'Claude Sonnet 5' },
+  { value: 'us.anthropic.claude-sonnet-4-5-20250929-v1:0', label: 'Claude Sonnet 4.5' },
 ] as const;
 
 const REWRITE_MODEL_PRESETS = [
@@ -493,6 +496,41 @@ export default function AdminBrainPage() {
               </Field>
             ) : null}
           </div>
+
+          <div className="mt-6 flex flex-col gap-3 border-t border-ink/10 pt-4">
+            <div className="flex items-center gap-3">
+              <Toggle
+                checked={form.toolsEnabled}
+                onChange={(v) => set('toolsEnabled', v)}
+                label="Tool-calling answers"
+              />
+              <span className="text-sm text-ink">
+                Tool-calling answers{' '}
+                <span className="text-xs text-muted">
+                  (the model decides when to search the notes or the catalogue, and can flag
+                  clinician handoffs — off runs the classic retrieve-then-answer pipeline. This
+                  toggle is the rollback switch; changes land within ~30s, no deploy.)
+                </span>
+              </span>
+            </div>
+            {form.toolsEnabled ? (
+              <Field
+                label="Max tool rounds"
+                hint="1–5. Each round is an extra model call — this caps cost and latency per answer."
+              >
+                <Input
+                  type="number"
+                  min={1}
+                  max={5}
+                  value={form.maxToolRounds}
+                  onChange={(e) =>
+                    set('maxToolRounds', Math.min(5, Math.max(1, Math.round(Number(e.target.value)) || 1)))
+                  }
+                  className="h-11 max-w-32"
+                />
+              </Field>
+            ) : null}
+          </div>
         </Card>
 
         {/* --- Safety floor (read-only) --- */}
@@ -502,7 +540,9 @@ export default function AdminBrainPage() {
             These rules are built into the code and cannot be changed or removed from this page.
           </p>
           <pre className="rounded-card bg-canvas p-4 font-mono text-xs whitespace-pre-wrap text-ink">
-            {query.data.safetyFloor}
+            {form.toolsEnabled && query.data.toolSafetyFloor
+              ? query.data.toolSafetyFloor
+              : query.data.safetyFloor}
           </pre>
         </Card>
 

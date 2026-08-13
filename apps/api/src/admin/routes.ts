@@ -19,7 +19,12 @@ import {
 } from '@joice/core';
 // The admin console edits the brain's behavior, so it validates against the
 // brain's own schema rather than keeping a second copy in sync.
-import { brainSettingsPatchSchema, DEFAULT_BRAIN_SETTINGS, SAFETY_FLOOR } from '@joice/brain';
+import {
+  brainSettingsPatchSchema,
+  DEFAULT_BRAIN_SETTINGS,
+  SAFETY_FLOOR,
+  TOOL_SAFETY_FLOOR,
+} from '@joice/brain';
 import { z } from 'zod';
 import { rateLimit } from '../middleware/rate-limit';
 import { requireAdmin, type AdminEnv } from './auth';
@@ -213,6 +218,8 @@ export const adminRoutes = new Hono<AdminEnv>()
       defaults: DEFAULT_BRAIN_SETTINGS,
       /** Code-level rules that cannot be changed from the admin. */
       safetyFloor: SAFETY_FLOOR,
+      /** The floor when tool-calling answers are enabled. */
+      toolSafetyFloor: TOOL_SAFETY_FLOOR,
     });
   })
   .put('/brain', zValidator('json', brainSettingsPatchSchema), async (c) => {

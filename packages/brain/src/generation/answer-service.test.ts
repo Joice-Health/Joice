@@ -3,7 +3,12 @@ import type { SQL } from 'drizzle-orm';
 import { PgDialect } from 'drizzle-orm/pg-core';
 import type { Database } from '@joice/db';
 import { DEFAULT_BRAIN_SETTINGS, type ResolvedBrainConfig } from '../config/schemas';
-import type { EmbeddingClient, GenerationClient, GenerationRequest } from '../providers/bedrock';
+import type {
+  ConverseStreamEvent,
+  EmbeddingClient,
+  GenerationClient,
+  GenerationRequest,
+} from '../providers/bedrock';
 import {
   condenseQuestion,
   createRecommendationService,
@@ -341,5 +346,131 @@ describe('retrieval ordering', () => {
     // Guard the specific regression rather than only the happy shape.
     expect(rendered).not.toContain('1 -');
     expect(rendered).not.toContain('desc');
+  });
+});
+
+describe('tools mode (toolsEnabled=true)', () => {
+  type ConverseEvents = ConverseStreamEvent[];
+
+  /** Legacy stub + a scripted Converse surface: call N replays sequence N. */
+  function toolGeneration(calls: ConverseEvents[], capture: GenerationRequest[] = []) {
+    let call = 0;
+    return {
+      ...stubGeneration('legacy path should not run'),
+      converse: () => Promise.reject(new Error('not used')),
+       
+      converseStream: async function* (request: GenerationRequest) {
+        capture.push(request);
+        const events = calls[call]!;
+        call += 1;
+        yield* events;
+      },
+    };
+  }
+
+  const searchThenAnswer = (query: string, answer: string): ConverseEvents[] => [
+    [
+      { type: 'toolUseStart', toolUseId: 'tu_1', name: 'search_notes' },
+      {
+        type: 'done',
+        result: {
+          stopReason: 'tool_use',
+          blocks: [{ type: 'toolUse', toolUseId: 'tu_1', name: 'search_notes', input: { query } }],
+          text: '',
+          usage: { inputTokens: 200, outputTokens: 30 },
+        },
+      },
+    ],
+    [
+      { type: 'text', text: answer },
+      {
+        type: 'done',
+        result: {
+          stopReason: 'end_turn',
+          blocks: [{ type: 'text', text: answer }],
+          text: answer,
+          usage: { inputTokens: 400, outputTokens: 80 },
+        },
+      },
+    ],
+  ];
+
+  test('search → answer: citations map against the provenance registry, usage accumulates', async () => {
+    const capture: GenerationRequest[] = [];
+    const service = createRecommendationService(stubDb([chunk()]), {
+      embeddings: stubEmbeddings,
+      generation: toolGeneration(searchThenAnswer('bpc dosing', 'Dosed at 250-500mcg [1].'), capture),
+      getConfig: configOf({ toolsEnabled: true }),
+    });
+
+    const events = [];
+    for await (const event of service.recommendStream([{ role: 'user', content: 'bpc dosing?' }])) {
+      events.push(event);
+    }
+
+    const tools = events.filter((e) => e.type === 'tool');
+    expect(tools[0]).toMatchObject({ name: 'search_notes', status: 'started', label: 'Checking the research library…' });
+    const complete = events.at(-1)!;
+    if (complete.type !== 'complete') throw new Error('expected complete');
+    expect(complete.recommendation.answer).toBe('Dosed at 250-500mcg [1].');
+    expect(complete.recommendation.citations).toHaveLength(1);
+    expect(complete.recommendation.citations[0]!.sourcePath).toBe('peptides/bpc-157.md');
+    expect(complete.usage).toEqual({ inputTokens: 600, outputTokens: 110 });
+
+    // The request carried the toolbelt and the tools-mode floor.
+    expect(capture[0]!.tools!.map((t) => t.name)).toContain('search_catalogue');
+    expect(capture[0]!.system).toContain('MUST call the search_notes tool');
+  });
+
+  test('a loop that ends with no prose falls back to the not-covered copy', async () => {
+    const service = createRecommendationService(stubDb([chunk()]), {
+      embeddings: stubEmbeddings,
+      generation: toolGeneration([
+        [
+          {
+            type: 'done',
+            result: { stopReason: 'end_turn', blocks: [], text: '', usage: { inputTokens: 10, outputTokens: 0 } },
+          },
+        ],
+      ]),
+      getConfig: configOf({ toolsEnabled: true, notCoveredMessage: 'Nothing on that.' }),
+    });
+
+    const result = await service.recommend([{ role: 'user', content: 'hm?' }]);
+    expect(result).toEqual({ answer: 'Nothing on that.', citations: [] });
+  });
+
+  test('toolsEnabled with a legacy-only client falls back to the classic pipeline', async () => {
+    const calls: GenerationRequest[] = [];
+    const service = createRecommendationService(stubDb([chunk()]), {
+      embeddings: stubEmbeddings,
+      generation: stubGeneration('Classic answer [1].', calls),
+      getConfig: configOf({ toolsEnabled: true }),
+    });
+
+    const result = await service.recommend([{ role: 'user', content: 'bpc dosing?' }]);
+    expect(result.answer).toBe('Classic answer [1].');
+    expect(calls[0]!.turns.at(-1)!.content).toContain('<documents>'); // classic prompt shape
+  });
+
+  test('toolsEnabled=false never touches the Converse surface', async () => {
+    const capture: GenerationRequest[] = [];
+    const generation = {
+      ...stubGeneration('Classic.'),
+      converse: () => Promise.reject(new Error('must not be called')),
+      converseStream: async function* (): AsyncGenerator<ConverseStreamEvent> {
+        throw new Error('must not be called');
+         
+        yield undefined as never;
+      },
+    };
+    const service = createRecommendationService(stubDb([chunk()]), {
+      embeddings: stubEmbeddings,
+      generation,
+      getConfig: configOf({ toolsEnabled: false }),
+    });
+    const result = await service.recommend([{ role: 'user', content: 'bpc?' }]);
+    expect(result.answer).toBe('Classic.');
+    expect(capture).toHaveLength(0);
   });
 });

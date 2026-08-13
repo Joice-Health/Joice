@@ -11,8 +11,12 @@
 export {
   chatMessageSchema,
   chatRequestSchema,
+  chatActionSchema,
   citationSchema,
   peptideRecommendationSchema,
+  HANDOFF_REASONS,
+  INTENT_KINDS,
+  type ChatAction,
   type ChatMessage,
   type ChatRequest,
   type Citation,

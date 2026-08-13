@@ -28,6 +28,8 @@ export * from './profile/service';
 export * from './knowledge/chunker';
 export * from './generation/prompt';
 export * from './generation/answer-service';
+export * from './generation/agent-loop';
 export * from './providers/bedrock';
+export * from './tools';
 export * from './voice';
 export * from './ports';

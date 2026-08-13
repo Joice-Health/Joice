@@ -207,6 +207,7 @@ async function record(
   c: Context<{ Variables: RequestIdVariables & RequesterVariables }>,
   messages: ChatMessage[],
   recommendation: PeptideRecommendation,
+  usage?: { inputTokens: number; outputTokens: number },
 ): Promise<void> {
   if (!persistConversations) return;
   const question = messages[messages.length - 1]!.content;
@@ -216,6 +217,8 @@ async function record(
     await conversationService.recordExchange(conversationId, question, recommendation.answer, {
       citations: recommendation.citations,
       model: (await brainConfig.get()).model,
+      inputTokens: usage?.inputTokens,
+      outputTokens: usage?.outputTokens,
     });
   } catch (error) {
     console.error(
@@ -291,6 +294,9 @@ const routes = app
     async (c) => {
       const { messages } = c.req.valid('json');
       const recommendation = await recommendations.recommend(messages);
+      // Known gap: recommend() doesn't surface token usage, so non-streaming
+      // exchanges persist without counts. The chat UI always streams; this
+      // path exists for non-chat surfaces and the typed-client flow.
       await record(c, messages, recommendation);
       return c.json(recommendation);
     },
@@ -310,12 +316,22 @@ const routes = app
             if (aborted.aborted || stream.aborted || stream.closed) break;
             if (event.type === 'delta') {
               await stream.writeSSE({ event: 'delta', data: JSON.stringify({ text: event.text }) });
+            } else if (event.type === 'tool') {
+              // Tool activity (tools mode only): lets the UI say "checking the
+              // catalogue…" honestly. Names/labels only — never tool inputs.
+              await stream.writeSSE({
+                event: 'tool',
+                data: JSON.stringify({ name: event.name, status: event.status, label: event.label }),
+              });
+            } else if (event.type === 'action') {
+              // A UI signal a tool raised (handoff card, intent nudge).
+              await stream.writeSSE({ event: 'action', data: JSON.stringify(event.action) });
             } else {
               await stream.writeSSE({
                 event: 'complete',
                 data: JSON.stringify(event.recommendation),
               });
-              await record(c, messages, event.recommendation);
+              await record(c, messages, event.recommendation, event.usage);
             }
           }
         } catch (err) {

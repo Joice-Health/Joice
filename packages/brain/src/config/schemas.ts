@@ -56,6 +56,15 @@ export const brainSettingsSchema = z.object({
   topK: z.number().int().min(1).max(20),
   similarityFloor: z.number().min(0).max(1),
   maxAnswerTokens: z.number().int().min(128).max(4096),
+  /**
+   * Tool-calling answers: the model decides when to search the notes or the
+   * catalogue instead of the fixed retrieve-then-answer pipeline. OFF runs the
+   * classic path byte-for-byte — this flag is the rollback switch (a settings
+   * change, not a deploy).
+   */
+  toolsEnabled: z.boolean(),
+  /** Max tool-execution rounds per answer — each round is an extra model call. */
+  maxToolRounds: z.number().int().min(1).max(5),
   /** Rewrite follow-up questions into standalone search queries using the conversation. */
   queryRewriting: z.boolean(),
   /** Small/fast Bedrock model used for the rewrite. */
@@ -107,6 +116,8 @@ export const DEFAULT_BRAIN_SETTINGS: Omit<BrainSettings, 'model' | 'pollyVoiceId
   topK: 8,
   similarityFloor: 0.4,
   maxAnswerTokens: 1024,
+  toolsEnabled: false,
+  maxToolRounds: 3,
   queryRewriting: true,
   rewriteModel: 'us.amazon.nova-lite-v1:0',
 };

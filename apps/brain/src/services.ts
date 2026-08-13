@@ -29,10 +29,19 @@ export const brainConfig = createBrainConfigService(db, noopAuditPort, {
   envDefaults: { model: env.RAG_MODEL, pollyVoiceId: env.POLLY_VOICE_ID },
 });
 
+/**
+ * Member context, catalogue and cart. Stubs today — no commerce or member
+ * accounts exist yet. When they do, these become HTTP clients to the api
+ * service and only this line changes. The catalogue stub makes search_catalogue
+ * honestly answer "nothing is listed yet" rather than inventing products.
+ */
+export const ports = stubPorts;
+
 export const recommendations = createRecommendationService(db, {
   embeddings: createEmbeddingClient({ region: env.BEDROCK_REGION }),
   generation: createGenerationClient({ region: env.BEDROCK_REGION }),
   getConfig: brainConfig.get,
+  ports,
 });
 
 export const transcriber = createTranscribeClient({ region: env.BEDROCK_REGION });
@@ -90,10 +99,3 @@ console.log(`[brain] Klaviyo lead sync: ${env.KLAVIYO_API_KEY ? 'enabled' : 'dis
  * flag, which governs health-question content only.
  */
 export const profileService = createProfileService(db, { leadSync });
-
-/**
- * Member context, catalogue and cart. Stubs today — no commerce or member
- * accounts exist yet. When they do, these become HTTP clients to the api
- * service and only this line changes.
- */
-export const ports = stubPorts;

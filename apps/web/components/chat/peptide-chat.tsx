@@ -45,7 +45,14 @@ export type DisplayMessage =
       error?: boolean;
     }
   | { kind: 'capture'; role: 'user' | 'assistant'; content: string }
-  | { kind: 'cta'; role: 'assistant'; content: string; ctaLabel: string };
+  | { kind: 'cta'; role: 'assistant'; content: string; ctaLabel: string }
+  /**
+   * The clinician-handoff card. Deliberately NOT a `cta`: its button only
+   * navigates — no profile write, no conversion tracking. A visitor clicking
+   * "talk to the clinical team" about a medication interaction is not
+   * confirming they want to start a membership journey.
+   */
+  | { kind: 'handoff'; role: 'assistant'; content: string; ctaLabel: string };
 
 type TextMessage = Extract<DisplayMessage, { kind: 'text' }>;
 
@@ -120,6 +127,8 @@ export function PeptideChat() {
   const [pending, setPending] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [voiceHint, setVoiceHint] = useState<string | null>(null);
+  /** Server-labelled tool activity ("Checking the catalogue…"), tools mode only. */
+  const [toolStatus, setToolStatus] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   /** Cancels the in-flight answer; see the note in send(). */
@@ -145,6 +154,8 @@ export function PeptideChat() {
   const initRef = useRef(false);
   /** exchangeCount when the offer was last shown, or null if never. */
   const ctaShownAtExchangeRef = useRef<number | null>(null);
+  /** One handoff card per page load — the model may ask repeatedly; we don't. */
+  const handoffShownRef = useRef(false);
 
   // Leaving the page must stop the generation, not just stop rendering it.
   useEffect(() => () => askAbortRef.current?.abort(), []);
@@ -295,6 +306,30 @@ export function PeptideChat() {
         if (event.type === 'delta') {
           updateAssistant((m) => ({ ...m, content: m.content + event.text }));
           if (opts.viaVoice) speaker.pushText(event.text);
+        } else if (event.type === 'tool') {
+          setToolStatus(event.status === 'started' && event.label ? event.label : null);
+        } else if (event.type === 'action') {
+          if (event.action.kind === 'handoff') {
+            // The model asked for the clinical team — one card per page load,
+            // woven in below the streaming answer.
+            if (!handoffShownRef.current) {
+              handoffShownRef.current = true;
+              setMessages((prev) => [
+                ...prev,
+                {
+                  kind: 'handoff',
+                  role: 'assistant',
+                  content:
+                    'This one deserves a clinician’s eyes on your specifics — I can connect you with the team.',
+                  ctaLabel: 'Talk to the clinical team',
+                },
+              ]);
+            }
+          } else {
+            // Intent nudge: treated exactly like a typed buying signal — the
+            // offer is considered once the answer completes.
+            buyingSignalRef.current = true;
+          }
         } else if (event.type === 'complete') {
           answeredOk = true;
           track({
@@ -323,6 +358,7 @@ export function PeptideChat() {
       if (askAbortRef.current === abort) askAbortRef.current = null;
       if (opts.viaVoice) speaker.endStream(); // no-op if already ended
       setPending(false);
+      setToolStatus(null);
 
       // A failed turn doesn't count — no capture, no conversion off the back of
       // an error message. (An early `return` here trips no-unsafe-finally.)
@@ -632,7 +668,7 @@ export function PeptideChat() {
       : transcribing
         ? 'Writing that down…'
         : pending
-          ? 'Looking through the research…'
+          ? (toolStatus ?? 'Looking through the research…')
           : null;
 
   // What the composer is asking for right now drives its placeholder and the
@@ -813,13 +849,19 @@ export function PeptideChat() {
               const messageId = `msg-${i}`;
               const align = message.role === 'user' ? 'self-end' : 'self-start';
 
-              // The conversion offer: a warm card with the CTA button.
-              if (message.kind === 'cta') {
+              // The conversion offer and the clinician handoff: warm cards.
+              // Same look, very different clicks — the conversion button marks
+              // the lead ready; the handoff button only navigates.
+              if (message.kind === 'cta' || message.kind === 'handoff') {
+                const onClick =
+                  message.kind === 'cta'
+                    ? () => void startJourney()
+                    : () => router.push('/get-started');
                 return (
                   <div key={i} className={align}>
                     <div className="max-w-md rounded-card bg-linear-to-br from-card-from to-card-to p-5 shadow-[0_20px_50px_-30px_rgba(60,45,25,0.6)]">
                       <p className="text-pretty leading-relaxed text-ink">{message.content}</p>
-                      <Button size="lg" className="mt-4" onClick={() => void startJourney()}>
+                      <Button size="lg" className="mt-4" onClick={onClick}>
                         {message.ctaLabel}
                       </Button>
                     </div>
@@ -849,7 +891,7 @@ export function PeptideChat() {
                         <AnswerMarkdown>{text.content}</AnswerMarkdown>
                       ) : (
                         <p className="font-mono text-[10px] tracking-[0.22em] text-muted uppercase">
-                          Looking through the research…
+                          {toolStatus ?? 'Looking through the research…'}
                         </p>
                       )}
                     </div>

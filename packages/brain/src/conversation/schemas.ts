@@ -55,3 +55,26 @@ export const peptideRecommendationSchema = z.object({
 });
 
 export type PeptideRecommendation = z.infer<typeof peptideRecommendationSchema>;
+
+/**
+ * A signal a tool surfaced for the UI to act on — never free text, and never
+ * persisted. `handoff` renders the connect-with-the-team card; `intent` nudges
+ * the conversion offer's timing. Enum-only payloads by design: nothing
+ * PHI-shaped can ride through this channel.
+ */
+export const HANDOFF_REASONS = [
+  'individual_dosing',
+  'symptoms_or_condition',
+  'medication_interaction',
+  'member_request',
+  'other',
+] as const;
+
+export const INTENT_KINDS = ['purchase', 'ready_to_start'] as const;
+
+export const chatActionSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('handoff'), reason: z.enum(HANDOFF_REASONS) }),
+  z.object({ kind: z.literal('intent'), intent: z.enum(INTENT_KINDS) }),
+]);
+
+export type ChatAction = z.infer<typeof chatActionSchema>;

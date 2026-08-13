@@ -1,22 +1,44 @@
 import { asc, cosineDistance, noteChunks, sql, type Database } from '@joice/db';
-import type { EmbeddingClient, GenerationClient } from '../providers/bedrock';
+import type {
+  ConverseClient,
+  EmbeddingClient,
+  GenerationClient,
+  Usage,
+} from '../providers/bedrock';
 import type { ResolvedBrainConfig } from '../config/schemas';
 import { buildSystemPrompt } from './prompt';
+import { runToolLoop } from './agent-loop';
+import { buildToolExecutors, type NotesPrefetch } from '../tools';
 import { citedIndexes, stripCitationMarkers } from '../conversation/citations';
-import type { ChatMessage, Citation, PeptideRecommendation } from '../conversation/schemas';
+import { stubPorts, type BrainPorts } from '../ports';
+import type {
+  ChatAction,
+  ChatMessage,
+  Citation,
+  PeptideRecommendation,
+} from '../conversation/schemas';
 
 /**
- * The RAG "brain": embed the member's question, retrieve the closest chunks of
- * the doctor's notes from pgvector, and have the model answer strictly from
- * those chunks, citing them with [n] markers. Grounding is enforced two ways:
- * the similarity floor short-circuits off-corpus questions before the model is
- * ever called, and the system prompt confines answers to the provided
- * documents.
+ * The brain's answer path — two modes, switched by the admin `toolsEnabled`
+ * flag (the rollback lever: a settings change, not a deploy):
+ *
+ * CLASSIC (toolsEnabled=false): embed the question, retrieve the closest
+ * chunks, and have the model answer strictly from them. Grounding is
+ * structural — zero chunks above the floor means the model is never called.
+ *
+ * TOOLS (toolsEnabled=true): the model holds a toolbelt (search_notes,
+ * search_catalogue, handoff/intent signals) and decides when to search. The
+ * structural guarantee is replaced by a prescriptive safety floor (prompt.ts
+ * TOOL_SAFETY_FLOOR) plus a provenance registry that makes it impossible to
+ * cite anything a tool didn't return; the residual risk — uncited off-corpus
+ * prose — is measured by the eval harness, which gates enabling the flag. A
+ * speculative prefetch runs the classic condense→retrieve in parallel with
+ * the first model call so the common case (first action is search_notes)
+ * pays no extra latency.
  *
  * Behavior (persona, tone, guardrails, retrieval knobs, model, copy) comes
  * from the admin-managed brain config (`getConfig`, cached ~30s) — see
- * brain-config.ts and prompt.ts. The safety floor lives in prompt.ts and is
- * not configurable.
+ * config/service.ts and prompt.ts. The safety floors live in code.
  */
 
 export interface RetrievedChunk {
@@ -28,7 +50,17 @@ export interface RetrievedChunk {
 
 export type RecommendationStreamEvent =
   | { type: 'delta'; text: string }
-  | { type: 'complete'; recommendation: PeptideRecommendation };
+  | { type: 'tool'; name: string; status: 'started' | 'finished'; ok: boolean; label: string }
+  | { type: 'action'; action: ChatAction }
+  | { type: 'complete'; recommendation: PeptideRecommendation; usage?: Usage };
+
+/** Status-line copy per tool, mapped server-side so the client stays dumb. */
+const TOOL_LABELS: Record<string, string> = {
+  search_notes: 'Checking the research library…',
+  search_catalogue: 'Checking the catalogue…',
+  request_clinician_handoff: 'Looping in the clinical team…',
+  flag_intent: '',
+};
 
 const CONDENSE_PROMPT =
   "Rewrite the user's last message as a single standalone search query about peptides, " +
@@ -96,11 +128,15 @@ export function createRecommendationService(
   db: Database,
   deps: {
     embeddings: EmbeddingClient;
-    generation: GenerationClient;
+    /** Tool mode needs the Converse surface; legacy stubs without it still work. */
+    generation: GenerationClient & Partial<ConverseClient>;
     getConfig: () => Promise<ResolvedBrainConfig>;
+    /** Catalogue (and later member context) adapters. Stubs by default. */
+    ports?: BrainPorts;
   },
 ) {
   const { embeddings, generation, getConfig } = deps;
+  const ports = deps.ports ?? stubPorts;
 
   async function retrieve(
     question: string,
@@ -178,8 +214,94 @@ export function createRecommendationService(
       : messages[messages.length - 1]!.content;
   }
 
+  /** Can this instance run the tool path at all? (Legacy test stubs can't.) */
+  function toolCapable(): boolean {
+    return typeof generation.converseStream === 'function';
+  }
+
+  /**
+   * The tool-mode answer. The provenance registry accumulates every chunk any
+   * search_notes call returned, globally numbered — finalize() maps `[n]`
+   * markers against it, so the model cannot mint a citation to something it
+   * didn't retrieve (unknown indexes are dropped, exactly as in classic mode).
+   */
+  async function* toolStream(
+    config: ResolvedBrainConfig,
+    messages: ChatMessage[],
+  ): AsyncGenerator<RecommendationStreamEvent> {
+    const question = messages[messages.length - 1]!.content;
+    const registry: RetrievedChunk[] = [];
+
+    // Speculative prefetch: condense + retrieve, in parallel with the first
+    // model call. If the model's first search matches (the common case), the
+    // executor serves it at ~zero latency; errors just mean a fresh search.
+    const prefetch: NotesPrefetch = {
+      promise: (async () => {
+        const query = await searchQuery(config, messages);
+        return { query, chunks: await retrieve(query, config) };
+      })().catch(() => null),
+    };
+
+    const executors = buildToolExecutors({
+      retrieve,
+      catalog: ports.catalog,
+      config,
+      registry,
+      prefetch,
+    });
+
+    const citationReminder = config.showCitations
+      ? '\n\n(Remember: cite each claim with the reference numbers from search_notes, e.g. [1].)'
+      : '';
+
+    const loop = runToolLoop({
+      generation: generation as ConverseClient,
+      request: {
+        model: config.model,
+        maxTokens: config.maxAnswerTokens,
+        system: buildSystemPrompt(config, { tools: true }),
+        turns: [
+          ...messages.slice(0, -1),
+          { role: 'user' as const, content: `${question}${citationReminder}` },
+        ],
+        tools: [...executors.values()].map((executor) => executor.spec),
+      },
+      executors,
+      maxRounds: config.maxToolRounds,
+    });
+
+    for await (const event of loop) {
+      if (event.type === 'delta') {
+        yield event;
+      } else if (event.type === 'tool') {
+        yield { ...event, label: TOOL_LABELS[event.name] ?? '' };
+      } else if (event.type === 'action') {
+        yield event;
+      } else {
+        // A loop that produced no prose (rounds exhausted before an answer)
+        // falls back to the honest not-covered copy, never an empty bubble.
+        const recommendation =
+          event.text.trim().length > 0
+            ? finalize(config, event.text, registry)
+            : { answer: config.notCoveredMessage, citations: [] };
+        yield { type: 'complete', recommendation, usage: event.usage };
+      }
+    }
+  }
+
   async function recommend(messages: ChatMessage[]): Promise<PeptideRecommendation> {
     const config = await getConfig();
+    if (config.toolsEnabled && toolCapable()) {
+      let recommendation: PeptideRecommendation = {
+        answer: config.notCoveredMessage,
+        citations: [],
+      };
+      for await (const event of toolStream(config, messages)) {
+        if (event.type === 'complete') recommendation = event.recommendation;
+      }
+      return recommendation;
+    }
+
     const question = await searchQuery(config, messages);
     const chunks = await retrieve(question, config);
     if (chunks.length === 0) return { answer: config.notCoveredMessage, citations: [] };
@@ -192,6 +314,11 @@ export function createRecommendationService(
     messages: ChatMessage[],
   ): AsyncGenerator<RecommendationStreamEvent> {
     const config = await getConfig();
+    if (config.toolsEnabled && toolCapable()) {
+      yield* toolStream(config, messages);
+      return;
+    }
+
     const question = await searchQuery(config, messages);
     const chunks = await retrieve(question, config);
     if (chunks.length === 0) {

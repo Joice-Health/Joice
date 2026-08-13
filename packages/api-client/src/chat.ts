@@ -6,6 +6,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   BRAIN_UI_DEFAULTS,
   type BrainUi,
+  type ChatAction,
   type ChatMessage,
   type PeptideRecommendation,
 } from '@joice/brain/schemas';
@@ -58,6 +59,10 @@ export function usePeptideRecommendation() {
 
 export type ChatStreamEvent =
   | { type: 'delta'; text: string }
+  /** Tool activity (tools mode): show `label` as a transient status line. */
+  | { type: 'tool'; name: string; status: 'started' | 'finished'; label: string }
+  /** A UI signal a tool raised — handoff card, conversion-timing nudge. */
+  | { type: 'action'; action: ChatAction }
   | { type: 'complete'; recommendation: PeptideRecommendation }
   | { type: 'error'; error: string };
 
@@ -111,6 +116,13 @@ export async function* streamPeptideRecommendation(
 
         if (event === 'delta') {
           yield { type: 'delta', text: (JSON.parse(data) as { text: string }).text };
+        } else if (event === 'tool') {
+          yield {
+            type: 'tool',
+            ...(JSON.parse(data) as { name: string; status: 'started' | 'finished'; label: string }),
+          };
+        } else if (event === 'action') {
+          yield { type: 'action', action: JSON.parse(data) as ChatAction };
         } else if (event === 'complete') {
           yield { type: 'complete', recommendation: JSON.parse(data) as PeptideRecommendation };
         } else if (event === 'error') {
