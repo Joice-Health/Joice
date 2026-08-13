@@ -8,6 +8,37 @@ import type { CaptureStep } from '@joice/brain/schemas';
  * choice, so tappable chips read as natural quick-replies and keep the data
  * clean. The chips live just above the composer so they're always reachable.
  */
+/**
+ * Tappable starter questions, shown when capture completes so the visitor is
+ * handed their next move instead of a closing statement. One tap asks the
+ * question through the normal chat path.
+ */
+export function SuggestionChips({
+  suggestions,
+  busy,
+  onAsk,
+}: {
+  suggestions: string[];
+  busy: boolean;
+  onAsk: (question: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {suggestions.map((question) => (
+        <button
+          key={question}
+          type="button"
+          disabled={busy}
+          onClick={() => onAsk(question)}
+          className="rounded-full bg-surface px-4 py-2 text-sm text-ink shadow-[0_10px_28px_-20px_rgba(40,35,25,0.6)] transition-all hover:-translate-y-0.5 hover:bg-brand-400/12 disabled:opacity-50"
+        >
+          {question}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function GoalChips({
   step,
   busy,

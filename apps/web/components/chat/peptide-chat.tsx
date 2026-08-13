@@ -22,7 +22,7 @@ import {
 import { track } from '@/lib/analytics';
 import { brainUrl } from '@/lib/env';
 import { AnswerMarkdown } from './answer-markdown';
-import { GoalChips } from './capture-widgets';
+import { GoalChips, SuggestionChips } from './capture-widgets';
 import { useAudioLevel } from './use-audio-level';
 import { useLiveTranscript } from './use-live-transcript';
 import { useRecorder } from './use-recorder';
@@ -101,6 +101,40 @@ const REOFFER_AFTER_DETOURS = 1;
 /** Minimum exchanges between conversion offers — a re-offer must not nag. */
 const CTA_REOFFER_EXCHANGES = 2;
 
+/**
+ * Starter questions offered the moment capture completes, tailored to the
+ * goal the visitor just picked. The highest-intent moment in the whole
+ * conversation must not end on a full stop ("I'll keep that front of mind.")
+ * with nothing to do next. Phrased to retrieve broadly from the corpus;
+ * tune alongside the live vault, and a candidate for admin config later.
+ */
+const GOAL_FOLLOW_UPS: Record<string, string[]> = {
+  'weight-metabolic': [
+    'What do the clinical notes say about peptides for weight and metabolism?',
+    'How do metabolic peptides actually work?',
+  ],
+  'body-comp-recovery': [
+    'What does the research say about recovery peptides like BPC-157?',
+    'What helps muscle repair after training?',
+  ],
+  'beauty-skin': [
+    'What does the research say about peptides for skin and collagen?',
+    'What helps skin elasticity as we age?',
+  ],
+  energy: [
+    'What does the research say about peptides for energy?',
+    'What affects daily energy levels most?',
+  ],
+  'stress-sleep': [
+    'What does the sleep protocol recommend?',
+    'What helps with deep sleep?',
+  ],
+  'not-sure': [
+    'What are peptides, in plain language?',
+    'Where do most people start?',
+  ],
+};
+
 
 function SpeakerIcon({ className }: { className?: string }) {
   return (
@@ -135,6 +169,8 @@ export function PeptideChat() {
   const [voiceHint, setVoiceHint] = useState<string | null>(null);
   /** Server-labelled tool activity ("Checking the catalogue…"), tools mode only. */
   const [toolStatus, setToolStatus] = useState<string | null>(null);
+  /** Goal-tailored starter questions shown after capture completes; one tap asks. */
+  const [suggestions, setSuggestions] = useState<string[] | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   /** Cancels the in-flight answer; see the note in send(). */
@@ -274,6 +310,7 @@ export function PeptideChat() {
 
     setInput('');
     setVoiceHint(null);
+    setSuggestions(null); // the conversation moved on; starter chips are done
     setPending(true);
     // Computed here, not inside the updater: React may not have run the updater
     // yet when speaker.startStream reads this below, and a stale 0 meant the
@@ -486,16 +523,7 @@ export function PeptideChat() {
         // Ack and next question in one bubble — one conversational beat.
         promptForStep(next, ackFor(step, value, result));
       } else {
-        setMessages((prev) => [
-          ...prev,
-          { kind: 'capture', role: 'assistant', content: ackFor(step, value, result) },
-        ]);
-        // Capture complete — remember when, so "one more chat" can be measured,
-        // and check the offer now: a visitor already past the threshold (or one
-        // who showed intent) shouldn't need one more question to see it.
-        exchangesAtCaptureDoneRef.current = exchangeCountRef.current;
-        maybeOfferConversion();
-        scrollToEnd();
+        completeCapture(ackFor(step, value, result), result.profile.goal);
       }
     } catch (error) {
       if (error instanceof FieldError) {
@@ -521,16 +549,33 @@ export function PeptideChat() {
         // "No problem." flows straight into the next question, one bubble.
         promptForStep(next, 'No problem.');
       } else {
-        setMessages((prev) => [
-          ...prev,
-          { kind: 'capture', role: 'assistant', content: 'No problem.' },
-        ]);
-        exchangesAtCaptureDoneRef.current = exchangeCountRef.current;
-        maybeOfferConversion();
+        completeCapture('No problem.', result.profile.goal);
       }
     } catch (error) {
       console.warn('capture: skip failed', error);
     }
+  }
+
+  /**
+   * Capture is done: keep the momentum. The ack pivots straight into the
+   * visitor's goal in the same bubble, with tappable starter questions, so
+   * the conversation hands the next move back instead of ending on a
+   * statement. The conversion offer still gets its usual check.
+   */
+  function completeCapture(ack: string, goal: string | null) {
+    const starters = GOAL_FOLLOW_UPS[goal ?? 'not-sure'] ?? GOAL_FOLLOW_UPS['not-sure']!;
+    setMessages((prev) => [
+      ...prev,
+      {
+        kind: 'capture',
+        role: 'assistant',
+        content: `${ack} Want to see what the research actually says? Tap a question below, or ask your own.`,
+      },
+    ]);
+    setSuggestions(starters);
+    exchangesAtCaptureDoneRef.current = exchangeCountRef.current;
+    maybeOfferConversion();
+    scrollToEnd();
   }
 
   /**
@@ -754,6 +799,7 @@ export function PeptideChat() {
   function startFresh() {
     resumedThreadRef.current = false;
     setMessages([]);
+    setSuggestions(null);
     exchangeCountRef.current = 0;
     detoursSincePromptRef.current = 0;
     ctaShownAtExchangeRef.current = null;
@@ -810,6 +856,17 @@ export function PeptideChat() {
             busy={submitField.isPending || pending}
             onSelect={(value) => void submitCapture(pendingStep, value)}
             onSkip={() => void skipCapture(pendingStep)}
+          />
+        </div>
+      ) : null}
+
+      {/* Post-capture starter questions: the next move, one tap away. */}
+      {!pendingStep && suggestions ? (
+        <div className="mb-3">
+          <SuggestionChips
+            suggestions={suggestions}
+            busy={pending || transcribing}
+            onAsk={(question) => void send(question)}
           />
         </div>
       ) : null}
