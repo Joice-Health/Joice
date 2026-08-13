@@ -135,7 +135,7 @@ variable "klaviyo_list_id" {
 variable "rag_model" {
   description = "Bedrock model ID for the peptide chatbot (cross-region inference profile)."
   type        = string
-  default     = "us.anthropic.claude-sonnet-5"
+  default     = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
 }
 
 variable "polly_voice_id" {

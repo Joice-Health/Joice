@@ -22,7 +22,7 @@ const envSchema = z.object({
    * task role, no API keys). Locally these fail with 500 until AWS credentials
    * with Bedrock access are present.
    */
-  RAG_MODEL: z.string().default('us.anthropic.claude-sonnet-5'),
+  RAG_MODEL: z.string().default('us.anthropic.claude-sonnet-4-5-20250929-v1:0'),
   BEDROCK_REGION: z.string().default('us-east-1'),
   /** Polly voice for spoken answers — must be generative-capable. */
   POLLY_VOICE_ID: z.string().default('Ruth'),

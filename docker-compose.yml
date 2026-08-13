@@ -55,7 +55,7 @@ services:
       KLAVIYO_LIST_ID: ${KLAVIYO_LIST_ID:-}
       # The admin console edits the brain's settings, so it needs the same
       # model/voice defaults the brain resolves against.
-      RAG_MODEL: ${RAG_MODEL:-us.anthropic.claude-sonnet-5}
+      RAG_MODEL: ${RAG_MODEL:-us.anthropic.claude-sonnet-4-5-20250929-v1:0}
       BEDROCK_REGION: ${BEDROCK_REGION:-us-east-1}
       POLLY_VOICE_ID: ${POLLY_VOICE_ID:-Ruth}
     ports:
@@ -81,7 +81,7 @@ services:
       NODE_ENV: production
       # Bedrock/Transcribe/Polly — needs AWS creds to answer for real; without
       # them these endpoints fail and the rest of the site still works.
-      RAG_MODEL: ${RAG_MODEL:-us.anthropic.claude-sonnet-5}
+      RAG_MODEL: ${RAG_MODEL:-us.anthropic.claude-sonnet-4-5-20250929-v1:0}
       BEDROCK_REGION: ${BEDROCK_REGION:-us-east-1}
       POLLY_VOICE_ID: ${POLLY_VOICE_ID:-Ruth}
       # Chat-thread persistence. Off by default — storing member questions
