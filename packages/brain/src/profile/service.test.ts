@@ -1,4 +1,6 @@
 import { describe, expect, test } from 'bun:test';
+import type { SQL } from 'drizzle-orm';
+import { PgDialect } from 'drizzle-orm/pg-core';
 import type { Database } from '@joice/db';
 import { createProfileService, ProfileValidationError, captureStepFor } from './service';
 import { matchCareArea } from './schemas';
@@ -30,19 +32,33 @@ type Row = {
 
 function stubDb() {
   const rows: Row[] = [];
+  const wheres: unknown[] = [];
   let seq = 0;
   const fresh = 0; // fixed timestamp — Date.now() is unavailable in some contexts
 
-  const chain = (result: () => Row[]) => ({
+  const chain = (result: () => Row[]): Record<string, unknown> => ({
     from: () => chain(result),
-    where: () => chain(result),
+    where: (w: unknown) => {
+      wheres.push(w);
+      return chain(result);
+    },
     orderBy: () => chain(result),
     limit: () => Promise.resolve(result()),
     returning: () => Promise.resolve(result()),
+    for: () => chain(result), // SELECT ... FOR UPDATE
+    // Thenable, so a terminal `await db.select().from().where()` resolves.
+    then: (resolve: (rows: Row[]) => void) => resolve(result()),
   });
 
   const db = {
     select: () => chain(() => rows.slice()),
+    delete: () => ({
+      where: (w: unknown) => {
+        wheres.push(w);
+        return { returning: () => Promise.resolve(rows.splice(0)) };
+      },
+    }),
+    transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn(db),
     insert: () => ({
       values: (v: Partial<Row>) => ({
         returning: () => {
@@ -79,7 +95,7 @@ function stubDb() {
       }),
     }),
   };
-  return { db: db as unknown as Database, rows };
+  return { db: db as unknown as Database, rows, wheres };
 }
 
 const anon: Requester = { memberId: null, sessionId: 'sess-1' };
@@ -213,12 +229,18 @@ describe('lead sync', () => {
   type SyncedLead = { email: string; name?: string | null; goal?: string | null; status: string };
   function stubLeadSync(fail = false) {
     const calls: SyncedLead[] = [];
+    const suppressed: string[] = [];
     return {
       calls,
+      suppressed,
       port: {
         async upsertLead(lead: SyncedLead) {
           if (fail) throw new Error('klaviyo down');
           calls.push(lead);
+        },
+        async suppressLead(email: string) {
+          if (fail) throw new Error('klaviyo down');
+          suppressed.push(email);
         },
       },
     };
@@ -263,6 +285,79 @@ describe('lead sync', () => {
     const row = await svc.applyField(anon, 'email', 'shaun@example.com');
     expect(row.email).toBe('shaun@example.com'); // the write itself succeeded
     await flush(); // the rejected sync must not surface as an unhandled error
+  });
+});
+
+describe('erasure', () => {
+  const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  test('suppresses the marketing profile first, then deletes the row', async () => {
+    const { db, rows } = stubDb();
+    const sync = (function stub() {
+      const suppressed: string[] = [];
+      return {
+        suppressed,
+        port: {
+          async upsertLead() {},
+          async suppressLead(email: string) {
+            suppressed.push(email);
+          },
+        },
+      };
+    })();
+    const svc = createProfileService(db, { leadSync: sync.port });
+    await svc.get(anon);
+    await svc.applyField(anon, 'email', 'shaun@example.com');
+    await flush();
+
+    const count = await svc.deleteForRequester(anon);
+    expect(count).toBe(1);
+    expect(sync.suppressed).toEqual(['shaun@example.com']);
+    expect(rows).toHaveLength(0);
+  });
+
+  test('a failed suppression aborts the delete, so erasure stays retryable end-to-end', async () => {
+    const { db, rows } = stubDb();
+    const svc = createProfileService(db, {
+      leadSync: {
+        async upsertLead() {},
+        async suppressLead() {
+          throw new Error('klaviyo down');
+        },
+      },
+    });
+    await svc.get(anon);
+    // Row has no email yet → nothing to suppress → delete proceeds.
+    // Give it one first:
+    rows[0]!.email = 'shaun@example.com';
+
+    await expect(svc.deleteForRequester(anon)).rejects.toThrow('klaviyo down');
+    expect(rows).toHaveLength(1); // the local row survives for the retry
+  });
+
+  test('a lead with no email needs no suppression', async () => {
+    const { db, rows } = stubDb();
+    const svc = createProfileService(db); // no leadSync at all
+    await svc.get(anon);
+    expect(await svc.deleteForRequester(anon)).toBe(1);
+    expect(rows).toHaveLength(0);
+  });
+
+  test('the erasure select is scoped to the requester, never a bare sweep', async () => {
+    const { db, wheres } = stubDb();
+    const svc = createProfileService(db);
+    await svc.get(anon);
+    await svc.deleteForRequester(anon);
+
+    const rendered = wheres
+      .filter(Boolean)
+      .map((w) => new PgDialect().sqlToQuery(w as SQL));
+    // The row-selecting where of the erasure carries the session scope.
+    expect(
+      rendered.some(
+        (r) => r.sql.includes('anonymous_session_id') && r.params.includes('sess-1'),
+      ),
+    ).toBe(true);
   });
 });
 

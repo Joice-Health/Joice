@@ -158,6 +158,12 @@ variable "redirect_domains" {
   default     = ["joice.health"]
 }
 
+variable "brain_retention_days" {
+  description = "Delete chat threads idle longer than this (retention.tf). Only meaningful once persist_conversations is true."
+  type        = number
+  default     = 90
+}
+
 variable "persist_conversations" {
   description = <<-EOT
     Store member chat threads in Postgres. Leave false until the

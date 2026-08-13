@@ -1,4 +1,14 @@
-import { and, asc, conversations, desc, eq, isNull, messages, type Database } from '@joice/db';
+import {
+  and,
+  asc,
+  conversations,
+  desc,
+  eq,
+  isNull,
+  messages,
+  or,
+  type Database,
+} from '@joice/db';
 import type { Citation } from './schemas';
 import type { Requester } from '../ports';
 
@@ -214,6 +224,27 @@ export function createConversationService(db: Database) {
         .where(scope)
         .orderBy(desc(conversations.updatedAt))
         .limit(limit);
+    },
+
+    /**
+     * Erasure: delete every thread the requester owns (messages cascade).
+     * Scopes BROAD where reads scope narrow — a member's erasure also catches
+     * unclaimed threads from their current session. A Before-PHI checklist
+     * primitive built ahead of the authenticated endpoint that will expose
+     * it; the surface arrives with member auth.
+     */
+    async deleteForRequester(requester: Requester): Promise<number> {
+      const scope = requester.memberId
+        ? or(
+            eq(conversations.memberId, requester.memberId),
+            eq(conversations.anonymousSessionId, requester.sessionId),
+          )
+        : eq(conversations.anonymousSessionId, requester.sessionId);
+      const deleted = await db
+        .delete(conversations)
+        .where(scope)
+        .returning({ id: conversations.id });
+      return deleted.length;
     },
 
     /**

@@ -57,6 +57,13 @@ export interface KlaviyoClient {
     properties?: Record<string, unknown>,
     uniqueId?: string,
   ): Promise<void>;
+  /**
+   * Suppress a profile from all email marketing
+   * (POST /api/profile-suppression-bulk-create-jobs/). The erasure primitive:
+   * deleting someone locally without suppressing them in Klaviyo would keep
+   * marketing them after they asked to be forgotten.
+   */
+  suppressProfile(email: string): Promise<void>;
 }
 
 export function createKlaviyoClient(opts: KlaviyoClientOptions): KlaviyoClient {
@@ -116,6 +123,19 @@ export function createKlaviyoClient(opts: KlaviyoClientOptions): KlaviyoClient {
             },
           },
           relationships: { list: { data: { type: 'list', id: listId } } },
+        },
+      });
+    },
+
+    async suppressProfile(email) {
+      await post('/api/profile-suppression-bulk-create-jobs/', {
+        data: {
+          type: 'profile-suppression-bulk-create-job',
+          attributes: {
+            profiles: {
+              data: [{ type: 'profile', attributes: { email } }],
+            },
+          },
         },
       });
     },

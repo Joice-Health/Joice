@@ -87,6 +87,9 @@ const leadSync: LeadSyncPort = env.KLAVIYO_API_KEY
             },
           });
         },
+        async suppressLead(email) {
+          await klaviyo.suppressProfile(email);
+        },
       } satisfies LeadSyncPort;
     })()
   : noopLeadSyncPort;

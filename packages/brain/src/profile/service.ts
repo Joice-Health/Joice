@@ -1,4 +1,4 @@
-import { and, brainProfiles, desc, eq, isNull, type Database } from '@joice/db';
+import { and, brainProfiles, desc, eq, inArray, isNull, or, type Database } from '@joice/db';
 import type { LeadSyncPort, Requester } from '../ports';
 import {
   CAPTURE_FIELDS,
@@ -29,6 +29,20 @@ import {
 function scopeFor(requester: Requester) {
   return requester.memberId
     ? eq(brainProfiles.memberId, requester.memberId)
+    : eq(brainProfiles.anonymousSessionId, requester.sessionId);
+}
+
+/**
+ * Erasure scopes BROAD where reads scope narrow: a signed-in member's erasure
+ * must also catch rows from their current session that were never claimed —
+ * "delete my data" cannot leave data behind on a technicality.
+ */
+function erasureScopeFor(requester: Requester) {
+  return requester.memberId
+    ? or(
+        eq(brainProfiles.memberId, requester.memberId),
+        eq(brainProfiles.anonymousSessionId, requester.sessionId),
+      )
     : eq(brainProfiles.anonymousSessionId, requester.sessionId);
 }
 
@@ -195,6 +209,38 @@ export function createProfileService(db: Database, deps: { leadSync?: LeadSyncPo
     async markReady(requester: Requester) {
       const row = await loadOrCreate(requester);
       return persist(row.id, { readyForOnboarding: true, status: 'ready' });
+    },
+
+    /**
+     * Erasure: suppress the lead in marketing, then delete the row.
+     * Deliberately all-or-nothing — if suppression fails the transaction
+     * rolls back and the row survives (with the email still on it), so the
+     * erasure can be retried end-to-end; deleting first would orphan a
+     * suppressed-nowhere Klaviyo profile with no key left to find it by.
+     *
+     * SELECT ... FOR UPDATE closes the race where an email changes between
+     * the read and the delete (the old address suppressed, the new one not).
+     * The lock is held across the suppression call — acceptable for a rare,
+     * account-terminal operation that only ever blocks the requester's own
+     * writes. No endpoint exposes this yet; it arrives with member auth.
+     */
+    async deleteForRequester(requester: Requester): Promise<number> {
+      return db.transaction(async (tx) => {
+        const rows = await tx
+          .select({ id: brainProfiles.id, email: brainProfiles.email })
+          .from(brainProfiles)
+          .where(erasureScopeFor(requester))
+          .for('update');
+        for (const row of rows) {
+          if (deps.leadSync && row.email) await deps.leadSync.suppressLead(row.email);
+        }
+        if (rows.length === 0) return 0;
+        const deleted = await tx
+          .delete(brainProfiles)
+          .where(inArray(brainProfiles.id, rows.map((row) => row.id)))
+          .returning({ id: brainProfiles.id });
+        return deleted.length;
+      });
     },
 
     /**

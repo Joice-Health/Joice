@@ -163,6 +163,20 @@ describe('recordExchange', () => {
   });
 });
 
+describe('deleteForRequester', () => {
+  test('the erasure delete is scoped to the requester, never a bare sweep', async () => {
+    const { db, recorded } = stubDb([{ id: 'conv-1' }, { id: 'conv-2' }]);
+    const service = createConversationService(db);
+
+    const count = await service.deleteForRequester(anonymous);
+    expect(count).toBe(2);
+
+    const rendered = new PgDialect().sqlToQuery(recorded.wheres.at(-1) as SQL);
+    expect(rendered.sql).toContain('"conversations"."anonymous_session_id"');
+    expect(rendered.params).toContain('session-abc');
+  });
+});
+
 describe('get', () => {
   test('a thread nobody owns comes back as null, not as someone else’s', async () => {
     const { db } = stubDb([]);

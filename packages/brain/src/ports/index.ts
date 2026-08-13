@@ -145,11 +145,18 @@ export interface LeadSyncPort {
     /** capturing → exploring → ready → converted. */
     status: string;
   }): Promise<void>;
+  /**
+   * The erasure half: suppress this address from all marketing. Called by the
+   * profile erasure path — deleting a lead locally while Klaviyo keeps
+   * emailing them is not erasure.
+   */
+  suppressLead(email: string): Promise<void>;
 }
 
 /** Marketing sync disabled — local dev and tests. */
 export const noopLeadSyncPort: LeadSyncPort = {
   async upsertLead() {},
+  async suppressLead() {},
 };
 
 /** Who changed a setting. Recorded on every audited brain mutation. */

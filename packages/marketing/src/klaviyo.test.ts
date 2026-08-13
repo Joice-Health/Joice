@@ -142,3 +142,20 @@ describe('createKlaviyoClient', () => {
     expect(requests).toHaveLength(1);
   });
 });
+
+describe('suppressProfile', () => {
+  test('posts the suppression job body Klaviyo expects', async () => {
+    const { fetchImpl, requests } = fakeFetch([ok()]);
+    const client = createKlaviyoClient({ apiKey: 'pk_test_123', fetchImpl });
+
+    await client.suppressProfile('gone@example.com');
+
+    expect(requests[0]!.url).toContain('/api/profile-suppression-bulk-create-jobs/');
+    const data = requests[0]!.body.data as {
+      type: string;
+      attributes: { profiles: { data: Array<{ attributes: { email: string } }> } };
+    };
+    expect(data.type).toBe('profile-suppression-bulk-create-job');
+    expect(data.attributes.profiles.data[0]!.attributes.email).toBe('gone@example.com');
+  });
+});

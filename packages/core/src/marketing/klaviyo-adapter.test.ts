@@ -21,6 +21,9 @@ function fakeClient() {
     async trackEvent(...args) {
       calls.push({ method: 'trackEvent', args });
     },
+    async suppressProfile(...args) {
+      calls.push({ method: 'suppressProfile', args });
+    },
   };
   return { client, calls };
 }
