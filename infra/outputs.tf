@@ -60,6 +60,19 @@ output "ingest_run_task_command" {
   value       = "aws ecs run-task --cluster ${aws_ecs_cluster.main.name} --task-definition ${aws_ecs_task_definition.ingest.family} --launch-type FARGATE --network-configuration 'awsvpcConfiguration={subnets=[${join(",", aws_subnet.public[*].id)}],securityGroups=[${aws_security_group.brain.id}],assignPublicIp=ENABLED}'"
 }
 
+# The eval reuses the BRAIN task definition (it needs full Bedrock access and
+# the database, exactly what that task role has) with a command override.
+# Results land in the /ecs/joice-brain log group: aws logs tail /ecs/joice-brain --since 15m
+output "eval_retrieval_run_task_command" {
+  description = "Paste-ready command for the cheap retrieval-only eval (Titan embeddings, cents)."
+  value       = "aws ecs run-task --cluster ${aws_ecs_cluster.main.name} --task-definition ${aws_ecs_task_definition.brain.family} --launch-type FARGATE --network-configuration 'awsvpcConfiguration={subnets=[${join(",", aws_subnet.public[*].id)}],securityGroups=[${aws_security_group.brain.id}],assignPublicIp=ENABLED}' --overrides '{\"containerOverrides\":[{\"name\":\"brain\",\"command\":[\"bun\",\"apps/brain/scripts/eval.ts\"]}]}'"
+}
+
+output "eval_full_tools_run_task_command" {
+  description = "Paste-ready command for the full eval through the tool loop (real model answers, still cents)."
+  value       = "aws ecs run-task --cluster ${aws_ecs_cluster.main.name} --task-definition ${aws_ecs_task_definition.brain.family} --launch-type FARGATE --network-configuration 'awsvpcConfiguration={subnets=[${join(",", aws_subnet.public[*].id)}],securityGroups=[${aws_security_group.brain.id}],assignPublicIp=ENABLED}' --overrides '{\"containerOverrides\":[{\"name\":\"brain\",\"command\":[\"bun\",\"apps/brain/scripts/eval.ts\",\"--full\",\"--tools\"]}]}'"
+}
+
 output "github_repo_variables" {
   description = "Paste-ready list of GitHub repo Variables for the deploy workflow."
   value       = <<-EOT
