@@ -530,6 +530,20 @@ export default function AdminBrainPage() {
                 />
               </Field>
             ) : null}
+            <div className="flex items-center gap-3">
+              <Toggle
+                checked={form.promptCache}
+                onChange={(v) => set('promptCache', v)}
+                label="Prompt caching"
+              />
+              <span className="text-sm text-ink">
+                Prompt caching{' '}
+                <span className="text-xs text-muted">
+                  (Bedrock caches the static prompt prefix — pays off mainly with tool-calling
+                  on. Models that don&rsquo;t support it fall back automatically.)
+                </span>
+              </span>
+            </div>
           </div>
         </Card>
 

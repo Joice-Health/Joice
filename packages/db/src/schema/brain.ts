@@ -200,6 +200,14 @@ export const messages = pgTable(
     inputTokens: integer('input_tokens'),
     outputTokens: integer('output_tokens'),
 
+    /**
+     * Per-message annotations — today just `{ aborted: true }` on answers the
+     * visitor cut off mid-stream. Those partial exchanges are exactly the
+     * drop-off evidence evaluation wants, but they must be distinguishable
+     * from answers the member actually read to the end.
+     */
+    metadata: jsonb('metadata').$type<Record<string, unknown>>(),
+
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [

@@ -511,3 +511,16 @@ describe('citation source types', () => {
     expect('sourceType' in citations[1]!).toBe(false);
   });
 });
+
+describe('prompt caching plumb-through', () => {
+  test('config.promptCache rides into the generation request on the classic path', async () => {
+    const calls: GenerationRequest[] = [];
+    const service = createRecommendationService(stubDb([chunk()]), {
+      embeddings: stubEmbeddings,
+      generation: stubGeneration('Answer.', calls),
+      getConfig: configOf({ promptCache: true }),
+    });
+    await service.recommend([{ role: 'user', content: 'Dosing?' }]);
+    expect(calls[0]!.promptCache).toBe(true);
+  });
+});

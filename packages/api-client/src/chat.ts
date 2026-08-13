@@ -9,6 +9,7 @@ import {
   type ChatAction,
   type ChatMessage,
   type PeptideRecommendation,
+  type StoredConversationView,
 } from '@joice/brain/schemas';
 import { useBrainClient } from './provider';
 import { publicBrainKeys } from './admin/hooks';
@@ -23,10 +24,20 @@ import type { BrainClient } from './client';
  * These talk to the brain service (`useBrainClient`), not the api service.
  */
 
+/**
+ * Error bodies aren't always `{error: string}` — zValidator 400s carry a zod
+ * issue OBJECT under `error`, and rendering an object as a React child crashes
+ * the page. Only ever surface strings.
+ */
+function errorMessage(body: unknown, status: number): string {
+  const error = (body as { error?: unknown } | null)?.error;
+  return typeof error === 'string' ? error : `Request failed (${status})`;
+}
+
 async function unwrap<T>(res: Response): Promise<T> {
   if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? `Request failed (${res.status})`);
+    const body: unknown = await res.json().catch(() => null);
+    throw new Error(errorMessage(body, res.status));
   }
   return res.json() as Promise<T>;
 }
@@ -43,6 +54,33 @@ export function useBrainUi(): BrainUi {
     queryFn: async (): Promise<BrainUi> => unwrap(await client.api.brain.config.$get()),
   });
   return data ?? BRAIN_UI_DEFAULTS;
+}
+
+/**
+ * The visitor's most recent stored thread, for "pick up where you left off".
+ * Only fires when the server says persistence is on (`brainUi.historyEnabled`)
+ * — the session cookie is the key, so no ids ride the client. Null when there
+ * is no history yet.
+ */
+export function useLatestConversation(enabled: boolean) {
+  const client = useBrainClient();
+  return useQuery({
+    queryKey: ['brain', 'conversations', 'latest'],
+    enabled,
+    staleTime: Infinity, // hydrate once per page load; new turns live in state
+    queryFn: async (): Promise<StoredConversationView | null> => {
+      const list = await unwrap<Array<{ id: string }>>(
+        await client.api.brain.conversations.$get(),
+      );
+      const latest = list[0];
+      if (!latest) return null;
+      const res = await client.api.brain.conversations[':id'].$get({
+        param: { id: latest.id },
+      });
+      if (res.status === 404) return null;
+      return unwrap<StoredConversationView>(res);
+    },
+  });
 }
 
 /** One-shot (non-streaming) answer — for non-chat surfaces. */
@@ -86,8 +124,8 @@ export async function* streamPeptideRecommendation(
     { init: { signal } },
   );
   if (!res.ok || !res.body) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    yield { type: 'error', error: body.error ?? `Request failed (${res.status})` };
+    const body: unknown = await res.json().catch(() => null);
+    yield { type: 'error', error: errorMessage(body, res.status) };
     return;
   }
 

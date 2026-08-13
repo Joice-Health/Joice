@@ -208,6 +208,7 @@ async function record(
   messages: ChatMessage[],
   recommendation: PeptideRecommendation,
   usage?: { inputTokens: number; outputTokens: number },
+  opts?: { aborted?: boolean },
 ): Promise<void> {
   if (!persistConversations) return;
   const question = messages[messages.length - 1]!.content;
@@ -219,6 +220,7 @@ async function record(
       model: (await brainConfig.get()).model,
       inputTokens: usage?.inputTokens,
       outputTokens: usage?.outputTokens,
+      aborted: opts?.aborted,
     });
   } catch (error) {
     console.error(
@@ -280,6 +282,9 @@ const routes = app
       inputPlaceholder: config.inputPlaceholder,
       disclaimer: config.disclaimer,
       showCitations: config.showCitations,
+      // Env-derived, not an admin setting: the UI only offers "pick up where
+      // you left off" when the server is actually storing threads.
+      historyEnabled: persistConversations,
     });
   })
   /**
@@ -311,10 +316,16 @@ const routes = app
         // A closed tab should stop costing money. Without this the generation
         // ran to completion, billed in full, writing to nobody.
         const aborted = c.req.raw.signal;
+        // Accumulated so a cut-off exchange can still be recorded (marked
+        // aborted) — those partials are exactly the drop-off evidence
+        // evaluation wants, and they used to vanish entirely.
+        let partialAnswer = '';
+        let completed = false;
         try {
           for await (const event of recommendations.recommendStream(messages)) {
             if (aborted.aborted || stream.aborted || stream.closed) break;
             if (event.type === 'delta') {
+              partialAnswer += event.text;
               await stream.writeSSE({ event: 'delta', data: JSON.stringify({ text: event.text }) });
             } else if (event.type === 'tool') {
               // Tool activity (tools mode only): lets the UI say "checking the
@@ -327,6 +338,7 @@ const routes = app
               // A UI signal a tool raised (handoff card, intent nudge).
               await stream.writeSSE({ event: 'action', data: JSON.stringify(event.action) });
             } else {
+              completed = true;
               await stream.writeSSE({
                 event: 'complete',
                 data: JSON.stringify(event.recommendation),
@@ -342,6 +354,14 @@ const routes = app
             event: 'error',
             data: JSON.stringify({ error: 'Something went wrong. Please try again.' }),
           });
+        } finally {
+          // Only genuine walk-aways count as aborted; a Bedrock failure took
+          // the catch path above and is an error, not drop-off evidence.
+          if (!completed && partialAnswer && (aborted.aborted || stream.aborted)) {
+            await record(c, messages, { answer: partialAnswer, citations: [] }, undefined, {
+              aborted: true,
+            });
+          }
         }
       });
     },
@@ -383,6 +403,16 @@ const routes = app
    */
   .get('/api/brain/conversations', rateLimit({ windowMs: 60_000, max: 30 }), async (c) => {
     return c.json(await conversationService.list(c.get('requester')));
+  })
+  /**
+   * "Start a new conversation": opens an empty thread so the discarded one
+   * stops being the resume target. No-op (but honest) when persistence is off
+   * — there is nothing to rotate away from and nothing should be written.
+   */
+  .post('/api/brain/conversations', rateLimit({ windowMs: 60_000, max: 10 }), async (c) => {
+    if (!persistConversations) return c.json({ ok: true as const });
+    await conversationService.startNew(c.get('requester'));
+    return c.json({ ok: true as const });
   })
   .get(
     '/api/brain/conversations/:id',

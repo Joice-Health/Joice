@@ -31,6 +31,8 @@ export interface StoredConversation {
     content: string;
     citations: Citation[];
     createdAt: Date;
+    /** The visitor cut this answer off mid-stream — it is partial. */
+    aborted?: boolean;
   }>;
 }
 
@@ -40,17 +42,28 @@ export interface AnswerMetadata {
   model?: string;
   inputTokens?: number;
   outputTokens?: number;
+  /** The visitor cut the stream off — the answer text is partial. */
+  aborted?: boolean;
 }
 
 /** Longest title we keep; the rest of the first question is in the message row. */
 const TITLE_MAX = 120;
+
+/**
+ * A thread left alone this long is finished; the next question starts a new
+ * one. Without this, findOrCreate reused the session's first-ever thread
+ * forever — one endless row titled by a question from weeks ago, and no way
+ * to ever see more than one entry in the history list.
+ */
+const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
 
 export function createConversationService(db: Database) {
   return {
     /**
      * Find the requester's open thread or start one. Keyed on member id when
      * signed in, otherwise the anonymous session id — which is what lets a
-     * thread survive today and be claimed by a member later.
+     * thread survive today and be claimed by a member later. A thread idle
+     * for more than a day is closed: the next question opens a fresh one.
      */
     async findOrCreate(requester: Requester, firstQuestion: string): Promise<string> {
       const scope = requester.memberId
@@ -58,12 +71,26 @@ export function createConversationService(db: Database) {
         : eq(conversations.anonymousSessionId, requester.sessionId);
 
       const [existing] = await db
-        .select({ id: conversations.id })
+        .select({
+          id: conversations.id,
+          updatedAt: conversations.updatedAt,
+          title: conversations.title,
+        })
         .from(conversations)
         .where(scope)
         .orderBy(desc(conversations.createdAt))
         .limit(1);
-      if (existing) return existing.id;
+      if (existing && Date.now() - existing.updatedAt.getTime() < STALE_AFTER_MS) {
+        // A thread opened empty by startNew() gets its title from the first
+        // question actually asked in it.
+        if (!existing.title) {
+          await db
+            .update(conversations)
+            .set({ title: firstQuestion.trim().slice(0, TITLE_MAX) || null })
+            .where(eq(conversations.id, existing.id));
+        }
+        return existing.id;
+      }
 
       const [created] = await db
         .insert(conversations)
@@ -73,6 +100,24 @@ export function createConversationService(db: Database) {
           // is matched to the member who started it.
           anonymousSessionId: requester.sessionId,
           title: firstQuestion.trim().slice(0, TITLE_MAX) || null,
+        })
+        .returning({ id: conversations.id });
+      return created!.id;
+    },
+
+    /**
+     * Deliberately close the current thread by opening an empty one — the
+     * "start a new conversation" affordance. The empty thread is now the most
+     * recent, so findOrCreate appends there (titled by the next question) and
+     * a reload no longer resurrects the conversation the visitor discarded.
+     */
+    async startNew(requester: Requester): Promise<string> {
+      const [created] = await db
+        .insert(conversations)
+        .values({
+          memberId: requester.memberId,
+          anonymousSessionId: requester.sessionId,
+          title: null,
         })
         .returning({ id: conversations.id });
       return created!.id;
@@ -101,6 +146,9 @@ export function createConversationService(db: Database) {
             model: meta.model,
             inputTokens: meta.inputTokens,
             outputTokens: meta.outputTokens,
+            // Partial (cut-off) answers are marked, never silently mixed in
+            // with answers someone actually read to the end.
+            ...(meta.aborted ? { metadata: { aborted: true } } : {}),
           },
         ]);
         await tx
@@ -127,7 +175,10 @@ export function createConversationService(db: Database) {
         .select()
         .from(messages)
         .where(eq(messages.conversationId, conversationId))
-        .orderBy(asc(messages.createdAt));
+        // Both rows of an exchange share one createdAt (one INSERT, one
+        // transaction time), so a secondary key keeps the question before its
+        // answer: 'user' > 'assistant' lexically, hence desc.
+        .orderBy(asc(messages.createdAt), desc(messages.role));
 
       return {
         id: conversation.id,
@@ -138,6 +189,7 @@ export function createConversationService(db: Database) {
           content: row.content,
           citations: (row.citations ?? []) as Citation[],
           createdAt: row.createdAt,
+          ...(row.metadata?.aborted === true ? { aborted: true } : {}),
         })),
       };
     },

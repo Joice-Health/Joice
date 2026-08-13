@@ -43,6 +43,18 @@ type Turn = { role: 'user' | 'assistant'; content: string };
 export const MAX_HISTORY_TURNS = 10;
 
 /**
+ * Per-message cap, shared with `chatMessageSchema`. History turns are clipped
+ * to it here because answers can legitimately exceed it (maxAnswerTokens ≈
+ * 4000+ chars) — replaying one verbatim made every follow-up a 400, and a
+ * restored thread made that 400 reload-proof. The clipped tail loses a little
+ * context; the request stays valid.
+ */
+export const MAX_MESSAGE_CHARS = 2000;
+
+const clip = (text: string): string =>
+  text.length > MAX_MESSAGE_CHARS ? text.slice(0, MAX_MESSAGE_CHARS) : text;
+
+/**
  * Build the request history: the most recent complete exchanges, then the new
  * question. Guarantees the result starts with a user turn, alternates strictly,
  * and ends with the user — whatever state the visible thread is in.
@@ -63,13 +75,13 @@ export function buildChatHistory(
     const answer = messages[i + 1];
     if (!answer || answer.role !== 'assistant' || answer.error || !answer.content.trim()) continue;
     exchanges.push([
-      { role: 'user', content: user.content },
-      { role: 'assistant', content: answer.content },
+      { role: 'user', content: clip(user.content) },
+      { role: 'assistant', content: clip(answer.content) },
     ]);
     i++; // consumed the answer
   }
 
-  return [...exchanges.slice(-maxTurns).flat(), { role: 'user', content: question }];
+  return [...exchanges.slice(-maxTurns).flat(), { role: 'user', content: clip(question) }];
 }
 
 /**

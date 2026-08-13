@@ -67,10 +67,22 @@ const anonymous: Requester = { memberId: null, sessionId: 'session-abc' };
 const member: Requester = { memberId: 'member-1', sessionId: 'session-abc' };
 
 describe('findOrCreate', () => {
-  test('reuses the requester’s most recent thread', async () => {
-    const { db } = stubDb([{ id: 'existing-conversation' }]);
+  test('reuses the requester’s most recent thread while it is fresh', async () => {
+    const { db } = stubDb([{ id: 'existing-conversation', updatedAt: new Date() }]);
     const service = createConversationService(db);
     expect(await service.findOrCreate(anonymous, 'hello')).toBe('existing-conversation');
+  });
+
+  test('a thread idle for more than a day is closed — the next question starts fresh', async () => {
+    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+    const { db, recorded } = stubDb([{ id: 'stale-conversation', updatedAt: twoDaysAgo }]);
+    const service = createConversationService(db);
+
+    const id = await service.findOrCreate(anonymous, 'A new topic?');
+    expect(id).toBe('new-conversation');
+    // The new thread is titled by the new question, not the stale one's.
+    const values = recorded.inserts[0]!.values as Record<string, unknown>;
+    expect(values.title).toBe('A new topic?');
   });
 
   test('starts one when there is none, titled from the first question', async () => {
@@ -173,5 +185,22 @@ describe('get', () => {
     expect(rendered.sql).toContain('"conversations"."anonymous_session_id"');
     expect(rendered.sql).toContain(' and ');
     expect(rendered.params).toContain('session-abc');
+  });
+});
+
+describe('aborted exchanges', () => {
+  test('a cut-off answer is recorded with the aborted marker, never silently mixed in', async () => {
+    const { db, recorded } = stubDb([]);
+    const service = createConversationService(db);
+    await service.recordExchange('conv-1', 'Q?', 'Partial ans', {
+      citations: [],
+      aborted: true,
+    });
+    const rows = recorded.inserts[0]!.values as Array<Record<string, unknown>>;
+    expect(rows[1]!.metadata).toEqual({ aborted: true });
+
+    await service.recordExchange('conv-1', 'Q?', 'Full answer.', { citations: [] });
+    const rows2 = recorded.inserts[1]!.values as Array<Record<string, unknown>>;
+    expect(rows2[1]!.metadata).toBeUndefined();
   });
 });

@@ -206,6 +206,9 @@ export function createRecommendationService(
           content: `<documents>\n${documents}\n</documents>\n\n${question}${citationReminder}`,
         },
       ],
+      // Classic mode's static prefix is small, so this rarely engages — but
+      // the plumbing is shared and the provider degrades per-model anyway.
+      promptCache: config.promptCache,
     };
   }
 
@@ -278,6 +281,9 @@ export function createRecommendationService(
           { role: 'user' as const, content: `${question}${citationReminder}` },
         ],
         tools: [...executors.values()].map((executor) => executor.spec),
+        // System prompt + tool definitions are the stable prefix caching
+        // exists for; iteration ≥2 of the loop re-sends all of it.
+        promptCache: config.promptCache,
       },
       executors,
       maxRounds: config.maxToolRounds,

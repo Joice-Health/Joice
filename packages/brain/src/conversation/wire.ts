@@ -21,6 +21,8 @@ export const storedConversationSchema = z.object({
       content: z.string(),
       citations: z.array(citationSchema),
       createdAt: z.string(),
+      /** Cut off mid-stream — partial text; replays should skip the exchange. */
+      aborted: z.boolean().optional(),
     }),
   ),
 });

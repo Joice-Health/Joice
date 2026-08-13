@@ -27,6 +27,7 @@ export {
   alternatesFromUser,
   buildChatHistory,
   MAX_HISTORY_TURNS,
+  MAX_MESSAGE_CHARS,
   type HistoryMessage,
 } from './conversation/history';
 

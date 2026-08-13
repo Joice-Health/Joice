@@ -65,6 +65,16 @@ export const brainSettingsSchema = z.object({
   toolsEnabled: z.boolean(),
   /** Max tool-execution rounds per answer — each round is an extra model call. */
   maxToolRounds: z.number().int().min(1).max(5),
+  /**
+   * Bedrock prompt caching (cachePoint after the static system prompt + tool
+   * definitions). Off by default: it only pays once the static prefix crosses
+   * the model's minimum cacheable size (~1K tokens — which the tool
+   * definitions push it toward), and support varies by model. Models that
+   * reject cachePoint degrade to uncached automatically, so the worst case of
+   * turning this on is one failed request per model per process. Verify it's
+   * actually working via cacheReadInputTokens in the usage counts.
+   */
+  promptCache: z.boolean(),
   /** Rewrite follow-up questions into standalone search queries using the conversation. */
   queryRewriting: z.boolean(),
   /** Small/fast Bedrock model used for the rewrite. */
@@ -118,6 +128,7 @@ export const DEFAULT_BRAIN_SETTINGS: Omit<BrainSettings, 'model' | 'pollyVoiceId
   maxAnswerTokens: 1024,
   toolsEnabled: false,
   maxToolRounds: 3,
+  promptCache: false,
   queryRewriting: true,
   rewriteModel: 'us.amazon.nova-lite-v1:0',
 };
@@ -132,6 +143,8 @@ export const brainUiSchema = z.object({
   inputPlaceholder: z.string(),
   disclaimer: z.string(),
   showCitations: z.boolean(),
+  /** Server-side thread persistence is on (env-derived, not admin-set). */
+  historyEnabled: z.boolean(),
 });
 
 export type BrainUi = z.infer<typeof brainUiSchema>;
@@ -146,4 +159,6 @@ export const BRAIN_UI_DEFAULTS: BrainUi = {
   inputPlaceholder: DEFAULT_BRAIN_SETTINGS.inputPlaceholder,
   disclaimer: DEFAULT_BRAIN_SETTINGS.disclaimer,
   showCitations: DEFAULT_BRAIN_SETTINGS.showCitations,
+  // Conservative while loading: never offer resume the server can't serve.
+  historyEnabled: false,
 };

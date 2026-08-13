@@ -96,3 +96,22 @@ describe('alternatesFromUser', () => {
     expect(alternatesFromUser([{ role: 'user' }, { role: 'user' }])).toBe(false);
   });
 });
+
+describe('message length clipping', () => {
+  test('over-long turns are clipped to the wire cap, so a restored thread can never 400', async () => {
+    const { buildChatHistory: build, MAX_MESSAGE_CHARS: cap } = await import('./history');
+    const long = 'x'.repeat(cap + 500);
+    const history = build(
+      [
+        { role: 'user', content: 'short question' },
+        { role: 'assistant', content: long },
+      ],
+      long,
+    );
+    expect(history[1]!.content).toHaveLength(cap);
+    expect(history.at(-1)!.content).toHaveLength(cap);
+    // The wire schema accepts what buildChatHistory emits — same constant.
+    const { chatRequestSchema } = await import('./schemas');
+    expect(chatRequestSchema.safeParse({ messages: history }).success).toBe(true);
+  });
+});

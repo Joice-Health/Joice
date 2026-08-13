@@ -9,6 +9,7 @@ import {
   useBrainClient,
   useBrainUi,
   useCompanionProfile,
+  useLatestConversation,
   useSubmitProfileField,
   type Citation,
 } from '@joice/api-client';
@@ -156,6 +157,10 @@ export function PeptideChat() {
   const ctaShownAtExchangeRef = useRef<number | null>(null);
   /** One handoff card per page load — the model may ask repeatedly; we don't. */
   const handoffShownRef = useRef(false);
+  /** True once the transcript was restored from the server (history mode). */
+  const resumedThreadRef = useRef(false);
+  /** One-shot guard for hydration — it must never clobber a live conversation. */
+  const hydratedRef = useRef(false);
 
   // Leaving the page must stop the generation, not just stop rendering it.
   useEffect(() => () => askAbortRef.current?.abort(), []);
@@ -651,6 +656,72 @@ export function PeptideChat() {
     }
   }, [companion]);
 
+  // Pick up where they left off: when the server stores threads (history
+  // mode), restore the latest one into the transcript with a local
+  // welcome-back line. Ships dark — historyEnabled is false until
+  // BRAIN_PERSIST_CONVERSATIONS is switched on server-side.
+  const { data: resumed } = useLatestConversation(brainUi.historyEnabled);
+  useEffect(() => {
+    // Wait for the profile too, so the welcome-back line can carry the name.
+    if (hydratedRef.current || !brainUi.historyEnabled || resumed === undefined || !companion)
+      return;
+    hydratedRef.current = true;
+    if (!resumed || resumed.messages.length === 0) return;
+    // Never clobber a conversation that already started this page load.
+    if (messages.length > 0 || pending) return;
+
+    const restored: DisplayMessage[] = [];
+    for (const m of resumed.messages) {
+      // A cut-off partial answer isn't worth replaying — drop it and the
+      // question it half-answered, rather than showing text that stops
+      // mid-sentence (and feeding it back to the model as if it were said).
+      if (m.role === 'assistant' && m.aborted) {
+        const prev = restored[restored.length - 1];
+        if (prev?.kind === 'text' && prev.role === 'user') restored.pop();
+        continue;
+      }
+      restored.push({
+        kind: 'text',
+        role: m.role,
+        content: m.content,
+        ...(m.role === 'assistant' && m.citations.length > 0 ? { citations: m.citations } : {}),
+      });
+    }
+    if (restored.length === 0) return;
+    // Restored exchanges count toward conversion pacing — a returning visitor
+    // shouldn't need four fresh answers to see the offer again.
+    exchangeCountRef.current = restored.filter(
+      (m) => m.kind === 'text' && m.role === 'assistant',
+    ).length;
+    const name = companion?.profile.name;
+    restored.push({
+      kind: 'capture',
+      role: 'assistant',
+      content: `Welcome back${name ? `, ${name}` : ''} — we can pick up where we left off, or start something new.`,
+    });
+    resumedThreadRef.current = true;
+    setMessages(restored);
+    scrollToEnd();
+    // One-shot by design (hydratedRef): deliberately not keyed on messages/pending.
+  }, [resumed, brainUi.historyEnabled, companion]);
+
+  /**
+   * Start over: clear the transcript and open a new server thread so a reload
+   * doesn't resurrect the one the visitor just discarded. Conversion pacing
+   * resets with it — a fresh conversation earns a fresh offer.
+   */
+  function startFresh() {
+    resumedThreadRef.current = false;
+    setMessages([]);
+    exchangeCountRef.current = 0;
+    detoursSincePromptRef.current = 0;
+    ctaShownAtExchangeRef.current = null;
+    buyingSignalRef.current = false;
+    if (brainUi.historyEnabled) {
+      void client.api.brain.conversations.$post().catch(() => {});
+    }
+  }
+
   const started = messages.length > 0;
   const busy = pending || transcribing;
   const sunState = recorder.recording
@@ -760,6 +831,19 @@ export function PeptideChat() {
           className="mt-2 font-mono text-[10px] tracking-[0.15em] text-muted/70 uppercase transition-colors hover:text-muted disabled:opacity-50"
         >
           Skip
+        </button>
+      ) : null}
+
+      {/* Restored-thread escape hatch: local clear; the server thread rotates
+          on its own after a day idle. */}
+      {resumedThreadRef.current ? (
+        <button
+          type="button"
+          onClick={startFresh}
+          disabled={pending}
+          className="mt-2 ml-4 font-mono text-[10px] tracking-[0.15em] text-muted/70 uppercase transition-colors hover:text-muted disabled:opacity-50"
+        >
+          Start a new conversation
         </button>
       ) : null}
     </div>

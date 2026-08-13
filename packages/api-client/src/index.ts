@@ -15,6 +15,7 @@ export {
 } from './hooks';
 export {
   useBrainUi,
+  useLatestConversation,
   usePeptideRecommendation,
   streamPeptideRecommendation,
   type ChatStreamEvent,

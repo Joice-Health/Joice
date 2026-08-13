@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { alternatesFromUser, MAX_HISTORY_TURNS } from './history';
+import { alternatesFromUser, MAX_HISTORY_TURNS, MAX_MESSAGE_CHARS } from './history';
 
 /**
  * The wire contract for a chat turn. Browser-safe — the web app validates
@@ -8,7 +8,9 @@ import { alternatesFromUser, MAX_HISTORY_TURNS } from './history';
 
 export const chatMessageSchema = z.object({
   role: z.enum(['user', 'assistant']),
-  content: z.string().trim().min(1).max(2000, 'Message is too long'),
+  // Shares its cap with buildChatHistory's clipping — the client can never
+  // build a history this schema rejects.
+  content: z.string().trim().min(1).max(MAX_MESSAGE_CHARS, 'Message is too long'),
 });
 
 export type ChatMessage = z.infer<typeof chatMessageSchema>;
