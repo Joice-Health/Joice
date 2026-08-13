@@ -34,11 +34,12 @@ yarn-error.log*
 coverage
 
 # terraform (state contains secrets — never commit)
-infra/.terraform/
-infra/*.tfstate
-infra/*.tfstate.*
-infra/*.tfvars
-infra/.terraform.lock.hcl.backup
+# ** covers the env roots (infra/envs/*) and any old flat-root leftovers
+infra/**/.terraform/
+infra/**/*.tfstate
+infra/**/*.tfstate.*
+infra/**/*.tfvars
+infra/**/.terraform.lock.hcl.backup
 crash.log
 
 # misc
