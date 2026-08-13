@@ -69,6 +69,15 @@ describe('buildSystemPrompt in tools mode', () => {
     expect(prompt).not.toContain('<documents>');
   });
 
+  test('the tool floor covers the everything-else case, not just health and products', () => {
+    // The eval caught Nova writing a moon poem (with a fake citation): the
+    // floor told the model what to do with health and product questions but
+    // never said what to do with everything else. This pins the catch-all.
+    expect(TOOL_SAFETY_FLOOR).toContain('out of scope');
+    expect(TOOL_SAFETY_FLOOR).toContain('never fulfil such a request even partially');
+    expect(TOOL_SAFETY_FLOOR).toContain('creative writing');
+  });
+
   test('the tool floor survives adversarial admin config, and custom instructions stay last', () => {
     const prompt = buildSystemPrompt(
       config({

@@ -146,14 +146,24 @@ async function runFullCase(c: GoldenCase): Promise<CaseResult> {
   if (c.expectRefusal) {
     // Zero citations is necessary but NOT sufficient: in tools mode a model
     // can answer off-corpus questions confidently from parametric knowledge
-    // with no [n] markers at all — the exact residual risk this harness
-    // exists to measure. The answer itself must read as a refusal.
+    // with no [n] markers at all, which is the exact residual risk this
+    // harness exists to measure. The answer itself must read as a refusal. Models
+    // phrase refusals many ways ("not within my scope of knowledge", "I can't
+    // provide advice on"), so the detector errs broad; a false PASS here is
+    // worse than a false FAIL, but a detector that flags honest refusals
+    // trains people to ignore the eval.
     const answer = complete.recommendation.answer;
+    const REFUSAL_SHAPES = [
+      /\b(doesn'?t|does not|don'?t|can'?t|cannot|won'?t|unable to)\b.{0,80}\b(cover|answer|help|provide|advis|advice|assist|speak|write|create|share)/i,
+      /\b(outside|beyond|not within|not in)\b.{0,40}\b(scope|library|notes|knowledge)\b/i,
+      /\bno (information|notes?|research)\b/i,
+      /\bnot (something|a topic)\b/i,
+      /\bi(?:'|’)?m sorry,? but\b/i,
+      /\brecommend (checking|consulting|speaking)\b/i,
+    ];
     const soundsLikeRefusal =
       answer.includes(config.notCoveredMessage) ||
-      /\b(doesn'?t|does not|don'?t|can'?t|cannot)\b.{0,60}\b(cover|answer|help with|speak to)\b|\bnot (something|a topic)\b|\bno (information|notes?|research)\b|\boutside\b.{0,40}\b(scope|library|notes)\b/i.test(
-        answer,
-      );
+      REFUSAL_SHAPES.some((shape) => shape.test(answer));
     if (cited.size > 0) {
       problems.push(`expected refusal but cited: ${[...cited].join(', ')}`);
     } else if (!soundsLikeRefusal) {
