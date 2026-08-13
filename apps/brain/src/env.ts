@@ -40,6 +40,12 @@ const envSchema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((v) => v === 'true'),
+  /**
+   * Klaviyo, for syncing companion leads (name/email/goal — marketing-grade,
+   * same class as the waitlist's data, but a completely separate funnel).
+   * Optional: absent locally, capture still works and simply doesn't sync.
+   */
+  KLAVIYO_API_KEY: z.string().optional(),
   /** Git SHA of the image, baked in at build time and reported by /health. */
   BUILD_SHA: z.string().default('dev'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),

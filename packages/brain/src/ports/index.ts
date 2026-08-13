@@ -126,6 +126,32 @@ export const stubPorts: BrainPorts = {
   cart: unavailableCartPort,
 };
 
+/**
+ * Syncing a captured lead to the marketing platform. Fire-and-forget by
+ * contract: implementations must never throw into a request path, and callers
+ * must never await one inside a response. The brain knows nothing about
+ * Klaviyo — the adapter at the edge does.
+ *
+ * Deliberately NOT the waitlist. The waitlist and the brain are separate
+ * funnels that never touch; the marketing platform deduping profiles by email
+ * is the only place they meet.
+ */
+export interface LeadSyncPort {
+  upsertLead(lead: {
+    email: string;
+    name?: string | null;
+    /** Care-area slug, when given. */
+    goal?: string | null;
+    /** capturing → exploring → ready → converted. */
+    status: string;
+  }): Promise<void>;
+}
+
+/** Marketing sync disabled — local dev and tests. */
+export const noopLeadSyncPort: LeadSyncPort = {
+  async upsertLead() {},
+};
+
 /** Who changed a setting. Recorded on every audited brain mutation. */
 export interface SettingsActor {
   clerkUserId: string;

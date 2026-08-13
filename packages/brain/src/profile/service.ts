@@ -1,5 +1,5 @@
 import { and, brainProfiles, desc, eq, isNull, type Database } from '@joice/db';
-import type { Requester } from '../ports';
+import type { LeadSyncPort, Requester } from '../ports';
 import {
   CAPTURE_FIELDS,
   CARE_AREAS,
@@ -60,7 +60,7 @@ function isSettled(row: typeof brainProfiles.$inferSelect, field: CaptureField):
   return Boolean(row.goal); // goal
 }
 
-export function createProfileService(db: Database) {
+export function createProfileService(db: Database, deps: { leadSync?: LeadSyncPort } = {}) {
   /**
    * The next unanswered, un-skipped field in order — or null when capture is
    * done. Pure over the row, which is why the UI can drive the whole flow from
@@ -98,7 +98,47 @@ export function createProfileService(db: Database) {
       .set({ ...patch, updatedAt: new Date() })
       .where(eq(brainProfiles.id, id))
       .returning();
+    syncLead(updated!);
     return updated!;
+  }
+
+  /**
+   * Fire-and-forget sync to the marketing platform — a marketing outage must
+   * never fail or slow a capture turn, so nothing here is awaited by the
+   * caller. Runs on every persist once an email exists, so later answers
+   * (name after email, goal, ready) keep the marketing profile current.
+   *
+   * Syncs are serialized through one chain: the port retries with backoff, so
+   * without ordering, an early sync stuck in retries could land *after* a
+   * newer one and regress the marketing profile (last write wins over there).
+   *
+   * Success stamps `marketingSyncedAt` without touching `updatedAt`, so a row
+   * whose latest change failed to sync stays findable
+   * (`marketing_synced_at IS NULL OR marketing_synced_at < updated_at`).
+   * Errors log the lead id and error name only — a marketing API's error body
+   * can echo the submitted values, so the message never reaches the logs.
+   */
+  let syncChain: Promise<void> = Promise.resolve();
+  function syncLead(row: typeof brainProfiles.$inferSelect): void {
+    const port = deps.leadSync;
+    if (!port || !row.email) return;
+    const email = row.email;
+    syncChain = syncChain
+      .then(async () => {
+        await port.upsertLead({ email, name: row.name, goal: row.goal, status: row.status });
+        await db
+          .update(brainProfiles)
+          .set({ marketingSyncedAt: new Date() })
+          .where(eq(brainProfiles.id, row.id));
+      })
+      .catch((err: unknown) => {
+        const status = (err as { status?: number })?.status;
+        console.error(
+          `[companion] marketing sync failed for lead ${row.id}: ${
+            (err as Error)?.name ?? 'Error'
+          }${typeof status === 'number' ? ` (${status})` : ''}`,
+        );
+      });
   }
 
   return {

@@ -57,6 +57,13 @@
       "when": 1786462214326,
       "tag": "0007_nervous_wolfsbane",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786622689768,
+      "tag": "0008_safe_human_robot",
+      "breakpoints": true
     }
   ]
 }

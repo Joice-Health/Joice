@@ -199,6 +199,15 @@ export const brainProfiles = pgTable(
     /** capturing → exploring → ready → converted. */
     status: text('status').notNull().default('capturing'),
 
+    /**
+     * When the lead was last synced to the marketing platform (Klaviyo).
+     * NULL = never synced, which keeps unsynced rows findable — the same
+     * bookkeeping discipline as `waitlist_entries.marketing_synced_at`.
+     * The two funnels stay separate; Klaviyo deduping by email is the only
+     * place they ever meet.
+     */
+    marketingSyncedAt: timestamp('marketing_synced_at', { withTimezone: true }),
+
     metadata: jsonb('metadata').$type<Record<string, unknown>>(),
 
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

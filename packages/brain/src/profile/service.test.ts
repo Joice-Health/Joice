@@ -22,6 +22,7 @@ type Row = {
   skipped: string[];
   readyForOnboarding: boolean;
   status: string;
+  marketingSyncedAt: Date | null;
   metadata: unknown;
   createdAt: Date;
   updatedAt: Date;
@@ -56,6 +57,7 @@ function stubDb() {
             skipped: [],
             readyForOnboarding: false,
             status: 'capturing',
+            marketingSyncedAt: null,
             metadata: null,
             createdAt: new Date(fresh),
             updatedAt: new Date(fresh),
@@ -204,6 +206,63 @@ describe('toView', () => {
     await svc.get(anon);
     const row = await svc.applyField(anon, 'goal', 'weight-metabolic');
     expect(svc.toView(row).goalLabel).toBe('Weight & metabolic');
+  });
+});
+
+describe('lead sync', () => {
+  type SyncedLead = { email: string; name?: string | null; goal?: string | null; status: string };
+  function stubLeadSync(fail = false) {
+    const calls: SyncedLead[] = [];
+    return {
+      calls,
+      port: {
+        async upsertLead(lead: SyncedLead) {
+          if (fail) throw new Error('klaviyo down');
+          calls.push(lead);
+        },
+      },
+    };
+  }
+  /** The sync is deliberately not awaited by the caller — let it settle. */
+  const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  test('nothing syncs before an email exists', async () => {
+    const { db } = stubDb();
+    const sync = stubLeadSync();
+    const svc = createProfileService(db, { leadSync: sync.port });
+    await svc.get(anon);
+    await svc.applyField(anon, 'name', 'Shaun');
+    await svc.skip(anon, 'goal');
+    await flush();
+    expect(sync.calls).toHaveLength(0);
+  });
+
+  test('the email answer syncs, and later answers keep the profile current', async () => {
+    const { db } = stubDb();
+    const sync = stubLeadSync();
+    const svc = createProfileService(db, { leadSync: sync.port });
+    await svc.get(anon);
+    await svc.applyField(anon, 'name', 'Shaun');
+    await svc.applyField(anon, 'email', 'shaun@example.com');
+    await flush();
+    expect(sync.calls).toHaveLength(1);
+    expect(sync.calls[0]).toMatchObject({ email: 'shaun@example.com', name: 'Shaun' });
+
+    await svc.applyField(anon, 'goal', 'energy');
+    await svc.markReady(anon);
+    await flush();
+    expect(sync.calls).toHaveLength(3);
+    expect(sync.calls.at(-1)).toMatchObject({ email: 'shaun@example.com', goal: 'energy', status: 'ready' });
+  });
+
+  test('a sync failure never rejects the capture turn', async () => {
+    const { db } = stubDb();
+    const sync = stubLeadSync(true);
+    const svc = createProfileService(db, { leadSync: sync.port });
+    await svc.get(anon);
+    const row = await svc.applyField(anon, 'email', 'shaun@example.com');
+    expect(row.email).toBe('shaun@example.com'); // the write itself succeeded
+    await flush(); // the rejected sync must not surface as an unhandled error
   });
 });
 

@@ -18,6 +18,7 @@ import {
   type CaptureStep,
   type CompanionActionResult,
 } from '@joice/brain/schemas';
+import { track } from '@/lib/analytics';
 import { brainUrl } from '@/lib/env';
 import { AnswerMarkdown } from './answer-markdown';
 import { GoalChips } from './capture-widgets';
@@ -30,9 +31,10 @@ import { VoiceVisualizer } from './voice-visualizer';
 
 /**
  * A turn in the transcript. Knowledge Q&A and the companion's own lines share
- * one surface, so a turn is either prose (`text`) or the conversion offer
- * (`cta`). Capture happens through the composer and the goal chips, not as a
- * transcript widget — so there's no `capture` turn.
+ * one surface: `text` is a knowledge turn (part of the LLM history), `capture`
+ * is a companion line or the visitor's answer to one (rendered identically but
+ * NEVER sent to the model — a typed email in the history is PII to Bedrock and
+ * noise to retrieval), and `cta` is the conversion offer.
  */
 export type DisplayMessage =
   | {
@@ -42,6 +44,7 @@ export type DisplayMessage =
       citations?: Citation[];
       error?: boolean;
     }
+  | { kind: 'capture'; role: 'user' | 'assistant'; content: string }
   | { kind: 'cta'; role: 'assistant'; content: string; ctaLabel: string };
 
 type TextMessage = Extract<DisplayMessage, { kind: 'text' }>;
@@ -78,6 +81,12 @@ const CAPTURE_AFTER_EXCHANGES = 2;
 
 /** How many total exchanges before the journey is offered regardless of capture. */
 const CONVERSION_EXCHANGE_THRESHOLD = 4;
+
+/** Knowledge detours after a capture prompt before it's gently re-anchored. */
+const REOFFER_AFTER_DETOURS = 2;
+
+/** Minimum exchanges between conversion offers — a re-offer must not nag. */
+const CTA_REOFFER_EXCHANGES = 2;
 
 
 function SpeakerIcon({ className }: { className?: string }) {
@@ -122,17 +131,20 @@ export function PeptideChat() {
   const submitField = useSubmitProfileField();
   /** True once the companion has begun asking its questions (after the 1st answer). */
   const captureStartedRef = useRef(false);
-  /** The field we last put a prompt on screen for — avoids re-nagging. */
-  const promptedFieldRef = useRef<string | null>(null);
+  /** Knowledge answers since the pending field was last asked — 0 right after. */
+  const detoursSincePromptRef = useRef(0);
+  /** Fields already re-anchored once — a second re-ask would be nagging. */
+  const reofferedFieldsRef = useRef(new Set<string>());
   /** Completed knowledge exchanges this session — drives the conversion timing. */
   const exchangeCountRef = useRef(0);
   /** exchangeCount at the moment capture finished, or null until it does. */
   const exchangesAtCaptureDoneRef = useRef<number | null>(null);
-  /** Set once the visitor says something intent-heavy. */
+  /** Set on intent-heavy input; consumed when a conversion offer is shown. */
   const buyingSignalRef = useRef(false);
-  /** One-time guards. */
+  /** One-time guard for seeding return-visitor state. */
   const initRef = useRef(false);
-  const ctaShownRef = useRef(false);
+  /** exchangeCount when the offer was last shown, or null if never. */
+  const ctaShownAtExchangeRef = useRef<number | null>(null);
 
   // Leaving the page must stop the generation, not just stop rendering it.
   useEffect(() => () => askAbortRef.current?.abort(), []);
@@ -160,7 +172,10 @@ export function PeptideChat() {
   async function finishVoiceTurn(pcm: Uint8Array) {
     const streamed = await live.finish();
     if (streamed) {
-      await send(streamed, { viaVoice: true });
+      // Through the same router as typing: a spoken name at the name step is a
+      // capture answer, not a Bedrock question — the PII-out-of-history rule
+      // has to hold for the page's headline interaction too.
+      routeCaptureOrAsk(streamed.trim(), { viaVoice: true });
       return;
     }
     await transcribeAndAsk(pcm);
@@ -204,7 +219,7 @@ export function PeptideChat() {
         setVoiceHint("Didn't catch that — try again a little closer to the mic.");
         return;
       }
-      await send(transcript, { viaVoice: true });
+      routeCaptureOrAsk(transcript.trim(), { viaVoice: true });
     } catch {
       setVoiceHint('Voice is unavailable right now — you can still type your question.');
     } finally {
@@ -223,10 +238,18 @@ export function PeptideChat() {
     askAbortRef.current = abort;
 
     // Built from completed exchanges, not by trimming the visible thread — and
-    // only from text turns: capture/cta turns aren't part of the LLM history,
-    // and buildChatHistory reads `.content`, which they don't carry.
+    // only from `text` turns. Capture turns are excluded on purpose: a typed
+    // name or email in the history is PII shipped to Bedrock and noise in the
+    // retrieval rewrite. CTA turns aren't conversation at all.
     const textTurns = messages.filter((m): m is TextMessage => m.kind === 'text');
     const history = buildChatHistory(textTurns, question);
+
+    if (messages.length === 0) track({ event: 'chat_started' });
+    track({
+      event: 'chat_question_asked',
+      viaVoice: Boolean(opts.viaVoice),
+      exchangeIndex: exchangeCountRef.current + 1,
+    });
 
     setInput('');
     setVoiceHint(null);
@@ -248,10 +271,12 @@ export function PeptideChat() {
     ) => {
       setMessages((prev) => {
         const next = [...prev];
-        const last = next[next.length - 1];
-        // The tail is always the assistant text turn we just pushed.
-        if (!last || last.kind !== 'text') return prev;
-        next[next.length - 1] = typeof patch === 'function' ? patch(last) : { ...last, ...patch };
+        // Patch the answer turn by its index, never the tail: a capture turn
+        // (chip tap, skip) can append while the answer is still streaming, and
+        // a tail-based patch would silently truncate the answer at that point.
+        const target = next[assistantIndex];
+        if (!target || target.kind !== 'text') return prev;
+        next[assistantIndex] = typeof patch === 'function' ? patch(target) : { ...target, ...patch };
         return next;
       });
     };
@@ -272,6 +297,10 @@ export function PeptideChat() {
           if (opts.viaVoice) speaker.pushText(event.text);
         } else if (event.type === 'complete') {
           answeredOk = true;
+          track({
+            event: 'chat_answer_completed',
+            hadCitations: event.recommendation.citations.length > 0,
+          });
           updateAssistant({
             content: event.recommendation.answer,
             citations: event.recommendation.citations,
@@ -302,13 +331,15 @@ export function PeptideChat() {
         if (isBuyingSignal(question)) buyingSignalRef.current = true;
 
         // Value first: the companion holds its questions until the visitor has
-        // had a couple of real answers. Once started, gently re-anchor the
-        // pending field on later answers. Then consider offering the journey.
+        // had a couple of real answers. Once started, each knowledge answer
+        // while a field is pending counts as a detour; after a couple of those
+        // the pending field is gently re-anchored. Then consider the journey.
         if (!captureStartedRef.current) {
           if (companion?.nextStep && exchangeCountRef.current >= CAPTURE_AFTER_EXCHANGES) {
             beginCapture();
           }
-        } else {
+        } else if (companion?.nextStep) {
+          detoursSincePromptRef.current += 1;
           reofferCapture();
         }
         maybeOfferConversion();
@@ -332,8 +363,8 @@ export function PeptideChat() {
 
   /** Put a field's question on screen (goal chips render near the composer). */
   function promptForStep(step: CaptureStep) {
-    promptedFieldRef.current = step.field;
-    setMessages((prev) => [...prev, { kind: 'text', role: 'assistant', content: step.prompt }]);
+    detoursSincePromptRef.current = 0;
+    setMessages((prev) => [...prev, { kind: 'capture', role: 'assistant', content: step.prompt }]);
     scrollToEnd();
   }
 
@@ -342,22 +373,28 @@ export function PeptideChat() {
     const step = companion?.nextStep;
     if (!step || captureStartedRef.current) return;
     captureStartedRef.current = true;
+    track({ event: 'capture_started' });
     const intro = companion?.copy.greeting;
     setMessages((prev) =>
-      intro ? [...prev, { kind: 'text', role: 'assistant', content: intro }] : prev,
+      intro ? [...prev, { kind: 'capture', role: 'assistant', content: intro }] : prev,
     );
     promptForStep(step);
   }
 
   /**
-   * After a knowledge answer while a field is still pending, re-anchor it — but
-   * only if we haven't just asked it (the composer placeholder already guides,
-   * so re-asking every turn would nag).
+   * After a knowledge answer while a field is still pending, re-anchor it —
+   * but not straight away. The composer placeholder already guides, so the
+   * first detour passes quietly; after REOFFER_AFTER_DETOURS answers the
+   * pending question is asked again (which resets the detour counter).
    */
   function reofferCapture() {
     const step = companion?.nextStep;
     if (!step || !captureStartedRef.current) return;
-    if (promptedFieldRef.current === step.field) return;
+    if (detoursSincePromptRef.current < REOFFER_AFTER_DETOURS) return;
+    // Once per field: a visitor who ignored the re-ask has answered — no more
+    // nagging; the composer placeholder keeps quietly guiding.
+    if (reofferedFieldsRef.current.has(step.field)) return;
+    reofferedFieldsRef.current.add(step.field);
     promptForStep(step);
   }
 
@@ -373,18 +410,21 @@ export function PeptideChat() {
     setInput('');
     try {
       const result = await submitField.mutateAsync({ kind: 'field', field: step.field, value, note });
+      track({ event: 'capture_field_submitted', field: step.field });
       setMessages((prev) => [
         ...prev,
-        { kind: 'text', role: 'user', content: answerLabel(step, value) },
-        { kind: 'text', role: 'assistant', content: ackFor(step, value, result) },
+        { kind: 'capture', role: 'user', content: answerLabel(step, value) },
+        { kind: 'capture', role: 'assistant', content: ackFor(step, value, result) },
       ]);
       const next = result.nextStep?.field ? result.nextStep : null;
       if (next) {
         promptForStep(next);
       } else {
-        // Capture complete — remember when, so "one more chat" can be measured.
+        // Capture complete — remember when, so "one more chat" can be measured,
+        // and check the offer now: a visitor already past the threshold (or one
+        // who showed intent) shouldn't need one more question to see it.
         exchangesAtCaptureDoneRef.current = exchangeCountRef.current;
-        promptedFieldRef.current = null;
+        maybeOfferConversion();
         scrollToEnd();
       }
     } catch (error) {
@@ -392,8 +432,8 @@ export function PeptideChat() {
         // Keep it conversational: show what they typed, then a gentle re-ask.
         setMessages((prev) => [
           ...prev,
-          { kind: 'text', role: 'user', content: value },
-          { kind: 'text', role: 'assistant', content: `${error.message} Mind trying again?` },
+          { kind: 'capture', role: 'user', content: value },
+          { kind: 'capture', role: 'assistant', content: `${error.message} Mind trying again?` },
         ]);
       } else {
         console.warn('capture: submit failed', error);
@@ -405,16 +445,16 @@ export function PeptideChat() {
     setInput('');
     try {
       const result = await submitField.mutateAsync({ kind: 'skip', field: step.field });
+      track({ event: 'capture_skipped', field: step.field });
       const next = result.nextStep?.field ? result.nextStep : null;
       setMessages((prev) => [
         ...prev,
-        { kind: 'text', role: 'assistant', content: 'No problem.' },
+        { kind: 'capture', role: 'assistant', content: 'No problem.' },
       ]);
       if (next) {
         promptForStep(next);
       } else {
         exchangesAtCaptureDoneRef.current = exchangeCountRef.current;
-        promptedFieldRef.current = null;
         maybeOfferConversion();
       }
     } catch (error) {
@@ -426,19 +466,50 @@ export function PeptideChat() {
    * Route a composer submission: is it an answer to the pending field, or a
    * question? Disambiguated per field so the visitor can just type naturally.
    */
-  function routeCaptureOrAsk(text: string) {
-    if (!text || pending) return;
+  function routeCaptureOrAsk(text: string, opts: { viaVoice?: boolean } = {}) {
+    if (!text || pending || submitField.isPending) return;
     const step = companion?.nextStep;
     if (!step || !captureStartedRef.current) {
-      void send(text);
+      void send(text, opts);
       return;
     }
     if (isSkip(text)) {
       void skipCapture(step);
       return;
     }
+    // Intent outranks capture. "I want to sign up" typed at the name step must
+    // never become the visitor's name (and at the email step it isn't worth a
+    // Bedrock call) — it's the conversion moment, so offer the journey and
+    // leave the field pending. Questions fall through ("how much does it
+    // cost?" deserves its answer first), and so does anything with an @ —
+    // signup@example.com is an email answer, not intent.
+    if (isBuyingSignal(text) && !looksLikeQuestion(text) && !text.includes('@')) {
+      buyingSignalRef.current = true;
+      setInput('');
+      setMessages((prev) => [...prev, { kind: 'capture', role: 'user', content: text }]);
+      if (!maybeOfferConversion()) {
+        // The offer was suppressed (already on screen, or they've already
+        // started) — the highest-intent message a visitor can send must never
+        // hang with no reply. Consume the signal: it's been responded to.
+        buyingSignalRef.current = false;
+        const alreadyStarted =
+          companion?.profile.status === 'ready' || companion?.profile.status === 'converted';
+        setMessages((prev) => [
+          ...prev,
+          {
+            kind: 'capture',
+            role: 'assistant',
+            content: alreadyStarted
+              ? 'You’re already set up — head to Get started whenever you like.'
+              : 'Whenever you’re ready, “Start my journey” above will take you straight there. Happy to keep answering questions in the meantime.',
+          },
+        ]);
+      }
+      scrollToEnd();
+      return;
+    }
     if (step.field === 'name') {
-      if (looksLikeQuestion(text)) void send(text);
+      if (looksLikeQuestion(text)) void send(text, opts);
       else void submitCapture(step, text);
       return;
     }
@@ -446,7 +517,7 @@ export function PeptideChat() {
       // An email has an @; anything without one is a question we answer, leaving
       // email pending. A malformed address (has @) is caught server-side.
       if (text.includes('@')) void submitCapture(step, text);
-      else void send(text);
+      else void send(text, opts);
       return;
     }
     // goal
@@ -456,16 +527,16 @@ export function PeptideChat() {
       return;
     }
     if (looksLikeQuestion(text)) {
-      void send(text);
+      void send(text, opts);
       return;
     }
     // Not a care area and not a question — nudge toward the chips.
     setInput('');
     setMessages((prev) => [
       ...prev,
-      { kind: 'text', role: 'user', content: text },
+      { kind: 'capture', role: 'user', content: text },
       {
-        kind: 'text',
+        kind: 'capture',
         role: 'assistant',
         content: 'Tap one of the options below, or tell me a bit more about what you want to change.',
       },
@@ -473,25 +544,38 @@ export function PeptideChat() {
     scrollToEnd();
   }
 
-  /** The conversion offer, shown at the earliest of the three triggers, once. */
-  function maybeOfferConversion() {
-    if (ctaShownRef.current) return;
+  /**
+   * The conversion offer, shown at the earliest of the three triggers. Not
+   * strictly once any more: a *fresh* buying signal re-offers, but never
+   * within CTA_REOFFER_EXCHANGES of the last offer — an offer that scrolled
+   * past unnoticed shouldn't be the only one the visitor ever gets.
+   */
+  function maybeOfferConversion(): boolean {
     const status = companion?.profile.status;
-    if (status === 'ready' || status === 'converted') {
-      ctaShownRef.current = true;
-      return;
-    }
+    if (status === 'ready' || status === 'converted') return false;
+
     const captureDone = !companion?.nextStep;
     const oneMoreAfterCapture =
       exchangesAtCaptureDoneRef.current !== null &&
       exchangeCountRef.current > exchangesAtCaptureDoneRef.current;
-    const trigger =
-      buyingSignalRef.current ||
-      (captureDone && oneMoreAfterCapture) ||
-      exchangeCountRef.current >= CONVERSION_EXCHANGE_THRESHOLD;
-    if (!trigger) return;
+    const trigger = buyingSignalRef.current
+      ? ('buying_signal' as const)
+      : captureDone && oneMoreAfterCapture
+        ? ('capture_complete' as const)
+        : exchangeCountRef.current >= CONVERSION_EXCHANGE_THRESHOLD
+          ? ('exchange_threshold' as const)
+          : null;
+    if (!trigger) return false;
 
-    ctaShownRef.current = true;
+    const shownAt = ctaShownAtExchangeRef.current;
+    if (shownAt !== null) {
+      if (trigger !== 'buying_signal') return false;
+      if (exchangeCountRef.current - shownAt < CTA_REOFFER_EXCHANGES) return false;
+    }
+
+    ctaShownAtExchangeRef.current = exchangeCountRef.current;
+    buyingSignalRef.current = false; // consumed — a re-offer needs a fresh signal
+    track({ event: 'conversion_cta_shown', trigger });
     const copy = companion?.copy;
     setMessages((prev) => [
       ...prev,
@@ -503,11 +587,13 @@ export function PeptideChat() {
       },
     ]);
     scrollToEnd();
+    return true;
   }
 
   async function startJourney() {
     try {
       const result = await submitField.mutateAsync({ kind: 'ready' });
+      track({ event: 'conversion_cta_clicked' });
       router.push(result.handoff?.href ?? '/get-started');
     } catch (error) {
       console.warn('capture: start journey failed', error);
@@ -524,9 +610,8 @@ export function PeptideChat() {
     if (!companion.nextStep) {
       captureStartedRef.current = true;
       exchangesAtCaptureDoneRef.current = 0;
-      if (companion.profile.status === 'ready' || companion.profile.status === 'converted') {
-        ctaShownRef.current = true;
-      }
+      // ready/converted visitors never see the offer again — maybeOfferConversion
+      // checks the profile status directly, so nothing to seed here.
     }
   }, [companion]);
 
@@ -571,7 +656,10 @@ export function PeptideChat() {
         <div className="mb-3">
           <GoalChips
             step={pendingStep}
-            busy={submitField.isPending}
+            // Also disabled while an answer streams: a capture turn appended
+            // mid-stream is exactly the interleaving updateAssistant guards
+            // against — better not to invite it from the UI at all.
+            busy={submitField.isPending || pending}
             onSelect={(value) => void submitCapture(pendingStep, value)}
             onSkip={() => void skipCapture(pendingStep)}
           />
@@ -632,7 +720,7 @@ export function PeptideChat() {
         <button
           type="button"
           onClick={() => void skipCapture(pendingStep)}
-          disabled={submitField.isPending}
+          disabled={submitField.isPending || pending}
           className="mt-2 font-mono text-[10px] tracking-[0.15em] text-muted/70 uppercase transition-colors hover:text-muted disabled:opacity-50"
         >
           Skip
@@ -739,16 +827,19 @@ export function PeptideChat() {
                 );
               }
 
-              // A text turn — the existing knowledge/user rendering.
+              // A text or capture turn — rendered identically; capture turns
+              // just never carry citations/errors and stay out of LLM history.
               const isSpeaking = speaker.speakingId === messageId;
               const text = message;
+              const isError = text.kind === 'text' && Boolean(text.error);
+              const citations = text.kind === 'text' ? text.citations : undefined;
               return (
                 <div key={i} className={align}>
                   {text.role === 'user' ? (
                     <div className="max-w-md rounded-card rounded-br-lg bg-ink px-4 py-3 text-canvas">
                       {text.content}
                     </div>
-                  ) : text.error ? (
+                  ) : isError ? (
                     <div className="max-w-2xl rounded-card bg-red-50 px-4 py-3 text-red-800">
                       {text.content}
                     </div>
@@ -764,7 +855,7 @@ export function PeptideChat() {
                     </div>
                   )}
 
-                  {text.role === 'assistant' && text.content && !text.error ? (
+                  {text.role === 'assistant' && text.content && !isError ? (
                     <div className="mt-2 flex items-center gap-2">
                       <button
                         type="button"
@@ -785,9 +876,9 @@ export function PeptideChat() {
                     </div>
                   ) : null}
 
-                  {brainUi.showCitations && text.citations && text.citations.length > 0 ? (
+                  {brainUi.showCitations && citations && citations.length > 0 ? (
                     <ul className="mt-3 flex flex-wrap gap-2">
-                      {text.citations.map((citation) => (
+                      {citations.map((citation) => (
                         <li
                           key={citation.index}
                           title={citation.citedText}

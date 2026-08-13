@@ -125,6 +125,9 @@ resource "aws_ecs_task_definition" "brain" {
       ]
       secrets = [
         { name = "DATABASE_URL", valueFrom = aws_secretsmanager_secret.database_url.arn },
+        # Companion lead sync (profile import only — no list subscription; the
+        # visitor gave an email to personalize the chat, not marketing consent).
+        { name = "KLAVIYO_API_KEY", valueFrom = aws_secretsmanager_secret.klaviyo_api_key.arn },
       ]
       logConfiguration = {
         logDriver = "awslogs"

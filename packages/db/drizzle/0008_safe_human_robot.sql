@@ -1,0 +1,1 @@
+ALTER TABLE "brain_profiles" ADD COLUMN "marketing_synced_at" timestamp with time zone;
