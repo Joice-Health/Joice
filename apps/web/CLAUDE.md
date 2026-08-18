@@ -8,6 +8,12 @@ web-specific detail.
 
 - `/waitlist` — public. Join form + referral confirmation (same route, two views switched by
   the persisted Zustand store). Owns the animated video background (`AmbientBackground`).
+  The whole thing sits behind the `waitlist` feature flag (seeded by migration, toggled in
+  `/admin/flags`). Flag off: the page and the public `/api/waitlist*` endpoints close, and the
+  page redirects to `/coming-soon`.
+- `/coming-soon`: public. The bare "Something special is coming." page shown while the waitlist
+  flag is off; redirects back to `/waitlist` once it is on. Must stay in `PUBLIC_PATHS` or the
+  preview gate bounces it to `/waitlist` and loops.
 - `/` and future site pages — final URLs, gated by `middleware.ts` until `SITE_LAUNCHED=true`;
   anonymous → redirected to `/waitlist` (public must never see a login).
 - `/team` — team password login; sets the HMAC cookie from `lib/team-auth.ts`.
@@ -24,6 +30,10 @@ the deploy workflow; setting task env does nothing for `NEXT_PUBLIC_*`).
 
 - **Data**: import hooks from `@joice/api-client` (`useJoinWaitlist`, `useWaitlistStats`,
   admin hooks). Never `fetch` the API by hand — the Hono RPC client is fully typed.
+- **Feature flags in server components**: `flagEnabled(FLAG_KEYS.x)` from `lib/flags.ts` (keys
+  in `@joice/core/schemas`). It keeps its own ~30s process cache and bypasses Next's fetch data
+  cache on purpose: under `next dev`/Bun that cache served a stale flag map indefinitely.
+  Client components use `usePublicFlags()`.
 - **Validation**: import Zod schemas from `@joice/core/schemas` (subpath!) — the `@joice/core`
   barrel drags the Postgres driver into the client bundle and breaks the build.
 - **Redirects in route handlers**: use relative `Location` headers

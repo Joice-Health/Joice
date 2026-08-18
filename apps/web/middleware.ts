@@ -10,6 +10,10 @@ import { TEAM_COOKIE, isValidTeamCookie, siteLaunched } from '@/lib/team-auth';
  *    sent to /waitlist so the admin surface is never revealed.
  * 2. Everything else — the preview gate: until SITE_LAUNCHED=true, the main
  *    site requires a valid team cookie; anonymous visitors land on /waitlist.
+ *    The waitlist itself is a feature flag: when it is off, /waitlist hands
+ *    them on to /coming-soon, which is why that path is public too (otherwise
+ *    the gate would bounce it back to /waitlist and loop). The flag is read by
+ *    the page, not here, so middleware stays free of API calls.
  *
  * If Clerk isn't configured (no publishable key), the site still runs: /admin
  * is simply unreachable and only the preview gate applies.
@@ -18,7 +22,7 @@ import { TEAM_COOKIE, isValidTeamCookie, siteLaunched } from '@/lib/team-auth';
 const isAdminRoute = createRouteMatcher(['/admin(.*)']);
 const isAdminSignInRoute = createRouteMatcher(['/admin/sign-in(.*)']);
 
-const PUBLIC_PATHS = ['/waitlist', '/team'];
+const PUBLIC_PATHS = ['/waitlist', '/coming-soon', '/team'];
 
 const clerkConfigured = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 

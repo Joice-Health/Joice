@@ -72,6 +72,9 @@ Rules that keep this working:
 ## Access model (three tiers)
 
 1. **Public**: `/waitlist` (+ `?ref=` referral links) — the only public surface until launch.
+   The waitlist itself sits behind the `waitlist` feature flag (seeded on by migration, toggled
+   in `/admin/flags`); off, `/waitlist` and the public `/api/waitlist*` endpoints close and
+   visitors land on `/coming-soon` ("Something special is coming").
 2. **Team preview**: everything else redirects anonymous visitors to `/waitlist` via
    `apps/web/middleware.ts`. Team logs in at `/team` with `TEAM_PASSWORD` (HMAC cookie,
    no session store). `SITE_LAUNCHED=true` removes this gate entirely.

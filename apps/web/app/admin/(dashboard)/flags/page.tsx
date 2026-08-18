@@ -81,7 +81,8 @@ export default function AdminFlagsPage() {
 
       <Card>
         <p className="mb-4 text-sm text-muted">
-          Changes go live within ~30 seconds — the API caches flag reads briefly.
+          Changes go live within about a minute: the API caches flag reads for ~30s and
+          server-rendered pages re-read them on the same cadence.
         </p>
 
         {query.isError ? (

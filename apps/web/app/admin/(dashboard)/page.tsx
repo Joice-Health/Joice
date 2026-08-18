@@ -1,12 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { useAdminWaitlist, useFeatureFlags, useWaitlistStats } from '@joice/api-client';
+import { useAdminWaitlist, useFeatureFlags } from '@joice/api-client';
 import { Badge, Card, EmptyState, PageHeader, Table, Td, Th } from '@/components/admin/ui';
 
 export default function AdminDashboardPage() {
-  const stats = useWaitlistStats();
   const flags = useFeatureFlags();
+  // Also the source of the signup total: the public /api/waitlist/stats is
+  // behind the waitlist flag, and the dashboard must keep counting when the
+  // waitlist is closed.
   const recent = useAdminWaitlist({ page: 1, limit: 5, sort: 'newest' });
 
   const enabledFlags = flags.data?.items.filter((f) => f.enabled).length;
@@ -18,9 +20,7 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card>
           <p className="text-sm text-muted">Waitlist signups</p>
-          <p className="mt-1 text-3xl font-semibold text-ink">
-            {stats.data?.totalCount ?? '—'}
-          </p>
+          <p className="mt-1 text-3xl font-semibold text-ink">{recent.data?.total ?? '—'}</p>
         </Card>
         <Card>
           <p className="text-sm text-muted">Feature flags on</p>

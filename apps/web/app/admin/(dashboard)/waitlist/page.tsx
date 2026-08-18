@@ -1,11 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@clerk/nextjs';
 import { Button, Input } from '@joice/ui';
-import { useAdminWaitlist, useUpdateWaitlistEntry } from '@joice/api-client';
+import { FLAG_KEYS } from '@joice/core/schemas';
+import { useAdminWaitlist, useFeatureFlags, useUpdateWaitlistEntry } from '@joice/api-client';
 import { apiUrl } from '@/lib/env';
 import {
+  Badge,
   Card,
   EmptyState,
   ErrorState,
@@ -44,6 +47,12 @@ export default function AdminWaitlistPage() {
   });
   const updateEntry = useUpdateWaitlistEntry();
 
+  // Whether the public page is live right now. Code reads a missing flag as
+  // off, so a deleted row shows "off" here too. Toggled on /admin/flags.
+  const flags = useFeatureFlags();
+  const waitlistLive =
+    flags.data?.items.find((f) => f.key === FLAG_KEYS.waitlist)?.enabled === true;
+
   /** CSV export streams outside the RPC client, so attach the token manually. */
   async function exportCsv() {
     setExporting(true);
@@ -68,6 +77,16 @@ export default function AdminWaitlistPage() {
   return (
     <>
       <PageHeader title="Waitlist">
+        {flags.data ? (
+          <Link
+            href="/admin/flags"
+            title="Toggle in Feature flags"
+            className="mr-2 inline-flex items-center gap-2 text-sm text-muted hover:text-ink"
+          >
+            Public page
+            <Badge tone={waitlistLive ? 'on' : 'off'}>{waitlistLive ? 'live' : 'off'}</Badge>
+          </Link>
+        ) : null}
         <Button variant="glass" onClick={exportCsv} disabled={exporting}>
           {exporting ? 'Exporting…' : 'Export CSV'}
         </Button>

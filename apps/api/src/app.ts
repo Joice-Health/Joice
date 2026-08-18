@@ -4,9 +4,10 @@ import { requestId, type RequestIdVariables } from 'hono/request-id';
 import { secureHeaders } from 'hono/secure-headers';
 import { HTTPException } from 'hono/http-exception';
 import { zValidator } from '@hono/zod-validator';
-import { joinWaitlistSchema, referralCodeParamSchema } from '@joice/core';
+import { FLAG_KEYS, joinWaitlistSchema, referralCodeParamSchema } from '@joice/core';
 import { allowedOrigins } from './env';
 import { rateLimit, clientIp } from './middleware/rate-limit';
+import { requireFlag } from './middleware/feature-gate';
 import { hashIp } from './hash';
 import { checkHealth } from './health';
 import { requestLog } from './middleware/request-log';
@@ -41,6 +42,18 @@ app.onError((err, c) => {
 });
 
 /**
+ * The public waitlist is a feature flag (seeded by migration, toggled in
+ * /admin/flags). Off, the page redirects to "Something special is coming" and
+ * these three endpoints answer 404 together, so nobody joins through the API
+ * while the door is shut. Admin waitlist routes are unaffected.
+ */
+const waitlistOpen = requireFlag(
+  featureFlags,
+  FLAG_KEYS.waitlist,
+  "The waitlist isn't open right now.",
+);
+
+/**
  * Routes are defined in a single chain so `typeof routes` carries the full
  * request/response shape — that's what @joice/api-client consumes via Hono RPC.
  * `/stats` is registered before `/:code` so it isn't swallowed by the param route.
@@ -55,6 +68,7 @@ const routes = app
   .post(
     '/api/waitlist',
     rateLimit({ windowMs: 60_000, max: 10 }),
+    waitlistOpen,
     zValidator('json', joinWaitlistSchema),
     async (c) => {
       const { email, firstName, lastName, ref } = c.req.valid('json');
@@ -63,11 +77,12 @@ const routes = app
       return c.json(entry, 201);
     },
   )
-  .get('/api/waitlist/stats', async (c) => {
+  .get('/api/waitlist/stats', waitlistOpen, async (c) => {
     return c.json(await waitlist.getStats());
   })
   .get(
     '/api/waitlist/:code',
+    waitlistOpen,
     zValidator('param', referralCodeParamSchema),
     async (c) => {
       const { code } = c.req.valid('param');

@@ -1,3 +1,6 @@
+import { redirect } from 'next/navigation';
+import { FLAG_KEYS } from '@joice/core/schemas';
+import { flagEnabled } from '@/lib/flags';
 import { AmbientBackground } from '@/components/ui/ambient-background';
 import { WaitlistExperience } from '@/components/waitlist/waitlist-experience';
 
@@ -6,6 +9,10 @@ export default async function WaitlistPage({
 }: {
   searchParams: Promise<{ ref?: string; reset?: string }>;
 }) {
+  // The whole waitlist is a feature flag (toggled in /admin/flags). While it
+  // is off there is nothing here to render, only the door: /coming-soon.
+  if (!(await flagEnabled(FLAG_KEYS.waitlist))) redirect('/coming-soon');
+
   const { ref, reset } = await searchParams;
 
   return (

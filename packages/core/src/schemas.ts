@@ -53,3 +53,19 @@ export const waitlistStatsSchema = z.object({
 });
 
 export type WaitlistStats = z.infer<typeof waitlistStatsSchema>;
+
+/**
+ * Feature flag keys the code reads. Each is seeded by a migration so it shows
+ * up in /admin/flags on first deploy; toggling it there is the runtime switch.
+ * Reference these instead of string literals so the API gate, the page, and
+ * the admin console can't drift apart on spelling.
+ */
+export const FLAG_KEYS = {
+  /**
+   * The public waitlist: `/waitlist`, joining, referral lookups, the counter.
+   * Off: the page redirects to /coming-soon and the API answers 404.
+   */
+  waitlist: 'waitlist',
+} as const;
+
+export type FlagKey = (typeof FLAG_KEYS)[keyof typeof FLAG_KEYS];
