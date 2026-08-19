@@ -318,3 +318,37 @@ export const actionErrorSchema = z.object({
   questionKey: z.string().optional(),
 });
 export type ActionError = z.infer<typeof actionErrorSchema>;
+
+/* ------------------------------------------------------------------------- */
+/* The member's own view (GET /api/me/profile)                               */
+/* ------------------------------------------------------------------------- */
+
+export const profileTraitViewSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  value: z.string(),
+  source: z.enum(['clinician', 'onboarding', 'companion', 'system', 'derived']),
+  observedAt: z.string(),
+});
+
+/** What a member sees about themselves on /welcome: names, goal, segment, traits, and their intake state. */
+export const memberProfileViewSchema = z.object({
+  memberId: z.string().uuid(),
+  email: z.string().nullable(),
+  firstName: z.string().nullable(),
+  goal: z.string().nullable(),
+  goalLabel: z.string().nullable(),
+  segment: z.string().nullable(),
+  /** Marketing and personal tier traits only; health arrives with the PHI keys. */
+  traits: z.array(profileTraitViewSchema),
+  /** The member's intake session, when there is one. */
+  intake: sessionStateSchema.nullable(),
+});
+export type MemberProfileView = z.infer<typeof memberProfileViewSchema>;
+
+export const claimResultSchema = z.object({
+  memberId: z.string().uuid(),
+  alreadyClaimed: z.boolean(),
+  state: sessionStateSchema,
+});
+export type ClaimResult = z.infer<typeof claimResultSchema>;

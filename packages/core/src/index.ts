@@ -11,6 +11,7 @@ export * from './waitlist-service';
 export * from './marketing';
 export * from './admin';
 export * from './profile/profile-service';
+export * from './profile/profile-view';
 export * from './onboarding/admin-schemas';
 export * from './onboarding/marketing-port';
 export * from './onboarding/session-store';

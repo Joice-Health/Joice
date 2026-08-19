@@ -75,6 +75,16 @@ export const GOAL_VALUES = [
   'not-sure',
 ] as const;
 
+/** Display labels for the goal vocabulary (the care areas; consolidated in story 4.5). */
+export const GOAL_LABELS: Readonly<Record<(typeof GOAL_VALUES)[number], string>> = {
+  'weight-metabolic': 'Weight and metabolic',
+  'body-comp-recovery': 'Body comp and recovery',
+  'beauty-skin': 'Beauty and skin',
+  energy: 'Energy',
+  'stress-sleep': 'Stress and sleep',
+  'not-sure': 'Not sure yet',
+};
+
 export const AGE_BANDS = ['under_18', '18_24', '25_34', '35_44', '45_54', '55_64', '65_plus'] as const;
 export const SERVICE_AREA_STATUSES = ['open', 'notify', 'closed'] as const;
 export type ServiceAreaStatus = (typeof SERVICE_AREA_STATUSES)[number];

@@ -38,11 +38,16 @@ export {
   useGoBack,
   useRestartOnboarding,
   useSubmitNotify,
+  useClaimOnboarding,
+  useMyProfile,
 } from './onboarding';
 export type {
   ActionError,
   AnswerInput,
   CarryOverInput,
+  ClaimInput,
+  ClaimResult,
+  MemberProfileView,
   GateView,
   NotifyRequestInput,
   ProgressView,

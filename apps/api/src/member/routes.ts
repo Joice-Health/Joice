@@ -1,7 +1,9 @@
 import { Hono } from 'hono';
 import { clerkMiddleware } from '@hono/clerk-auth';
+import { memberProfileView } from '@joice/core';
 import { env } from '../env';
 import { rateLimit } from '../middleware/rate-limit';
+import { onboarding, profiles } from '../services';
 import { requireMember } from './index';
 import type { MemberEnv } from './auth';
 
@@ -25,4 +27,19 @@ export const memberRoutes = new Hono<MemberEnv>()
       emailVerified: c.get('memberEmailVerified'),
       firstName: c.get('memberFirstName'),
     });
+  })
+
+  /** The member's profile as they may see it (marketing + personal tiers) with their intake state. */
+  .get('/profile', async (c) => {
+    const memberId = c.get('memberId');
+    const [profile, intake] = await Promise.all([profiles.getForMember(memberId), onboarding.stateForMember(memberId)]);
+    return c.json(
+      memberProfileView({
+        memberId,
+        email: c.get('memberEmail'),
+        firstName: c.get('memberFirstName'),
+        profile,
+        intake,
+      }),
+    );
   });

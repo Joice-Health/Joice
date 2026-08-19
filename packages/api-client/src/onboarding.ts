@@ -5,6 +5,9 @@ import type {
   ActionError,
   AnswerInput,
   CarryOverInput,
+  ClaimInput,
+  ClaimResult,
+  MemberProfileView,
   NotifyRequestInput,
   SessionState,
   SkipInput,
@@ -22,6 +25,7 @@ import { useApiClient } from './provider';
 
 export const onboardingKeys = {
   session: ['onboarding', 'session'] as const,
+  me: ['onboarding', 'me'] as const,
 };
 
 /** The `onboarding` flag is off: the page should show the lead summary instead. */
@@ -111,4 +115,47 @@ export function useRestartOnboarding() {
 /** "Tell me when my state opens." Only valid on a notify gate. */
 export function useSubmitNotify() {
   return useStateMutation<NotifyRequestInput>((client, input) => client.api.onboarding.session.notify.$post({ json: input }));
+}
+
+/* ------------------------------------------------------------------------- */
+/* Member: claim and the profile (needs the member providers: Clerk token)   */
+/* ------------------------------------------------------------------------- */
+
+/**
+ * Link this browser's intake session to the signed-in member. Idempotent for
+ * the same member; 409 `not_claimable` when the email is unverified or the
+ * session was gated; 403 `forbidden` when it belongs to another account; 404
+ * `no_session` when there is nothing to claim (a direct sign-up).
+ */
+export function useClaimOnboarding() {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: ClaimInput = {}): Promise<ClaimResult> => {
+      const res = await client.api.onboarding.session.claim.$post({ json: input });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
+        throw new OnboardingActionError((body.code as ActionError['code']) ?? 'no_session', body.error ?? `Claim failed (${res.status})`, undefined, res.status);
+      }
+      return res.json() as Promise<ClaimResult>;
+    },
+    onSuccess: (result) => {
+      queryClient.setQueryData<SessionState>(onboardingKeys.session, result.state);
+      queryClient.invalidateQueries({ queryKey: onboardingKeys.me });
+    },
+  });
+}
+
+/** The member's own profile view (traits, segment, intake state). Creates the member record on first call. */
+export function useMyProfile(options?: Partial<UseQueryOptions<MemberProfileView>>) {
+  const client = useApiClient();
+  return useQuery({
+    queryKey: onboardingKeys.me,
+    queryFn: async (): Promise<MemberProfileView> => {
+      const res = await client.api.me.profile.$get();
+      if (!res.ok) throw new Error(`Failed to load your profile (${res.status})`);
+      return res.json() as Promise<MemberProfileView>;
+    },
+    ...options,
+  });
 }
