@@ -22,6 +22,11 @@ web-specific detail.
   also falls back when the API answers 404 (flag flipped mid-session). Behind the team gate until
   launch like every site page. Design and rules: `docs/onboarding/00-plan.md`,
   `docs/onboarding/01-overview.md`.
+- `/sign-up`, `/sign-in`, `/welcome`: the member tree (`(member)` route group with its own
+  ClerkProvider; the api client carries the member token). `/welcome` claims the intake and
+  the companion lead on first render and shows the profile; middleware requires a session for
+  it and no-Clerk builds redirect member pages to `/get-started`. See
+  `docs/onboarding/04-sessions-and-registration.md`.
 - `/team` — team password login; sets the HMAC cookie from `lib/team-auth.ts`.
 - `/admin/*` — Clerk-gated dashboard (`admin/(dashboard)/` route group); sign-in at
   `/admin/sign-in` (in-app page, not Clerk's hosted portal). Non-admin users are bounced to
