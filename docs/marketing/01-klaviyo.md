@@ -171,6 +171,25 @@ Deliberately excluded: **`ip_hash`** (never leaves the database), raw
 covers it), the derived `position` (a moving count, not a stored fact), and
 `metadata`.
 
+### Onboarding (the intake flow)
+
+The intake has its own port (`packages/core/src/onboarding/marketing-port.ts`)
+and adapter (`packages/core/src/marketing/onboarding-klaviyo-adapter.ts`), wired
+in `apps/api/src/services.ts`. It upserts by email only, never sends an
+`external_id`, and writes `onboarding_*` properties:
+
+| Checkpoint | Metric | Properties | List subscription |
+|---|---|---|---|
+| "Tell me when my state opens" (a notify gate) | `Service Area Requested` | `onboarding_state`, `onboarding_state_requested_at`, `onboarding_goal` when known | **never**: this is not marketing consent |
+| Intake finished and the account exists (claim) | `Onboarding Completed` | `onboarding_goal`, `onboarding_segment`, `onboarding_state`, `onboarding_completed_at`, `onboarding_marketing_consent` | only when the person ticked the marketing opt-in on the consent step (`consent_marketing`) |
+
+Both events carry a `unique_id` (`email:state`, `intake:<memberId>`) so a retried
+sync never double-fires a flow. Nothing health-shaped is ever sent: the intake
+asks marketing and personal traits only until the PHI keys are on, and the
+adapter sends goal, segment and state, never answers. Notify-me requests live
+in their own table (`service_area_requests`); they are not the referral waitlist
+and carry no brain lineage, so Klaviyo remains the only place the funnels meet.
+
 ## Configuration
 
 | Var | Where | What |
