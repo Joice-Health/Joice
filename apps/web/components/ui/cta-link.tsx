@@ -1,43 +1,17 @@
 import Link from 'next/link';
 import type { ComponentProps } from 'react';
-import { cn } from '@joice/ui';
+import { buttonClasses, type ButtonSize, type ButtonVariant } from '@joice/ui';
 
-type Variant = 'primary' | 'inverted';
-type Size = 'md' | 'lg';
-
-const variants: Record<Variant, string> = {
-  /* Brand stone gradient — mirrors @joice/ui Button's primary variant. */
-  primary: cn(
-    'text-white bg-gradient-to-b from-brand-500 to-brand-600',
-    'hover:from-brand-400 hover:to-brand-500',
-    'shadow-[0_14px_34px_-12px_rgba(90,85,75,0.5)] ring-1 ring-inset ring-white/25',
-  ),
-  /* Light-on-dark, for CTAs inside ink panels. */
-  inverted: 'bg-canvas text-ink shadow-[0_14px_34px_-12px_rgba(0,0,0,0.5)] hover:bg-white',
-};
-
-const sizes: Record<Size, string> = {
-  md: 'h-11 px-5 text-sm',
-  lg: 'h-14 px-7 text-base',
-};
-
+/**
+ * A link dressed as the house button (dotted pill, mono label). Same classes
+ * as `@joice/ui` Button so a link and a button beside each other match.
+ * Convention: forward actions end in ` +`, `LET'S BEGIN +`, `LEARN +`.
+ */
 export function CtaLink({
-  variant = 'primary',
+  variant = 'outline',
   size = 'md',
   className,
   ...props
-}: ComponentProps<typeof Link> & { variant?: Variant; size?: Size }) {
-  return (
-    <Link
-      className={cn(
-        'inline-flex items-center justify-center rounded-full font-medium',
-        'transition-all duration-200 outline-none',
-        'focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas',
-        variants[variant],
-        sizes[size],
-        className,
-      )}
-      {...props}
-    />
-  );
+}: ComponentProps<typeof Link> & { variant?: ButtonVariant; size?: ButtonSize }) {
+  return <Link className={buttonClasses({ variant, size, className })} {...props} />;
 }

@@ -1,37 +1,35 @@
+import { Index } from '@joice/ui';
 import { Eyebrow } from '@/components/ui/eyebrow';
 
 const STEPS = [
-  { n: '01', label: 'Intake', detail: 'Tell us where you are and where you want to be.' },
-  { n: '02', label: 'Clinician consult', detail: 'A licensed clinician reviews and prescribes.' },
-  { n: '03', label: 'Prescribe + access', detail: 'Protocols shipped, tracked, adjusted.' },
+  { label: 'Intake', detail: 'Tell us where you are and where you want to be.' },
+  { label: 'Clinician consult', detail: 'A licensed clinician reviews and prescribes.' },
+  { label: 'Prescribe + access', detail: 'Protocols shipped, tracked, adjusted.' },
 ];
 
+/** The three steps, in order, the one list where the index carries meaning. */
 export function HowItWorks({ eyebrow = 'How it works' }: { eyebrow?: string }) {
   return (
-    <section className="py-16 sm:py-20">
-      <Eyebrow>{eyebrow}</Eyebrow>
-      <div className="mt-6 grid gap-4 md:grid-cols-3">
-        {STEPS.map((step) => (
-          <div
-            key={step.n}
-            className="relative overflow-hidden rounded-card bg-surface p-6 pt-5 shadow-[0_18px_44px_-28px_rgba(40,35,25,0.45)]"
+    <section className="py-16 sm:py-24">
+      <Eyebrow as="h2" className="text-center">
+        {eyebrow}
+      </Eyebrow>
+      <ol className="mx-auto mt-10 max-w-3xl border-t border-line">
+        {STEPS.map((step, i) => (
+          <li
+            key={step.label}
+            className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 border-b border-line py-5 sm:grid-cols-[6rem_1fr_1.3fr] sm:items-baseline sm:gap-x-8"
           >
-            <span
-              aria-hidden
-              className="pointer-events-none absolute -right-2 -top-6 font-mono text-[7rem] font-bold leading-none text-brand-100"
-            >
-              {step.n}
+            <span className="mono-label text-muted">
+              <Index n={i + 1} />
             </span>
-            <div className="relative">
-              <Eyebrow>Step {step.n}</Eyebrow>
-              <h3 className="mt-3 text-xl font-semibold tracking-tight text-ink">{step.label}</h3>
-              <p className="mt-2 max-w-[16rem] text-sm leading-relaxed text-muted">
-                {step.detail}
-              </p>
-            </div>
-          </div>
+            <h3 className="text-xl text-ink">{step.label}</h3>
+            <p className="col-start-2 text-base leading-relaxed text-muted sm:col-start-3">
+              {step.detail}
+            </p>
+          </li>
         ))}
-      </div>
+      </ol>
     </section>
   );
 }

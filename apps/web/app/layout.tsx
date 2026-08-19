@@ -1,17 +1,36 @@
 import type { Metadata, Viewport } from 'next';
-import { Yantramanav, Geist_Mono } from 'next/font/google';
+import localFont from 'next/font/local';
 import Script from 'next/script';
 import { Providers } from './providers';
 import './globals.css';
 
 const GTM_ID = 'GTM-TKJRXFML';
 
-const yantramanav = Yantramanav({
-  variable: '--font-yantramanav',
-  subsets: ['latin'],
-  weight: ['300', '400', '500', '700'],
+/**
+ * The three Dinamo faces, Light only (the only cuts we license). Text and
+ * labels are set in Ginto and Gaisyr Mono; Ginto Nord Condensed is the
+ * uppercase display voice. `theme.css` maps them to font-sans/display/mono.
+ */
+const ginto = localFont({
+  src: [
+    { path: '../public/fonts/ABCGinto-Light.woff2', weight: '300', style: 'normal' },
+    { path: '../public/fonts/ABCGinto-LightItalic.woff2', weight: '300', style: 'italic' },
+  ],
+  variable: '--font-ginto',
+  display: 'swap',
 });
-const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] });
+const gintoNord = localFont({
+  src: '../public/fonts/ABCGintoNordCondensed-Light.woff2',
+  weight: '300',
+  variable: '--font-ginto-nord',
+  display: 'swap',
+});
+const gaisyr = localFont({
+  src: '../public/fonts/ABCGaisyrMono-Light.woff2',
+  weight: '300',
+  variable: '--font-gaisyr',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'Joice · The future of peptide medicine',
@@ -25,12 +44,12 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#fbfbf8',
+  themeColor: '#f5f0e9',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${yantramanav.variable} ${geistMono.variable}`}>
+    <html lang="en" className={`${ginto.variable} ${gintoNord.variable} ${gaisyr.variable}`}>
       <body className="antialiased">
         <noscript>
           <iframe

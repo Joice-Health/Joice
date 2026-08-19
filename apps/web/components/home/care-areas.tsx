@@ -1,36 +1,55 @@
 import Link from 'next/link';
+import { Bracket, Index } from '@joice/ui';
 import { Eyebrow } from '@/components/ui/eyebrow';
+import { ImageSlot } from '@/components/ui/image-slot';
 import { CARE_AREAS } from '@/lib/site-content';
 
+/** Hue per area for the placeholder tiles, so the list is not one repeated square. */
+const TILE_HUES = [128, 100, 60, 90, 160];
+
+/**
+ * "What do [ you ] value?", the deck's list: an index, the area set large in
+ * the condensed face, and a square tile (drop photos at public/areas/<slug>.jpg).
+ */
 export function CareAreas() {
   return (
-    <section className="pb-16 sm:pb-20">
+    <section className="border-t border-line py-16 sm:py-24">
       <div className="flex items-baseline justify-between">
-        <Eyebrow>Explore by care area</Eyebrow>
-        <Link
-          href="/explore"
-          className="font-mono text-[11px] uppercase tracking-wider text-muted transition-colors hover:text-ink"
-        >
-          All areas →
+        <Eyebrow as="h2">
+          What do{' '}
+          <span className="normal-case">
+            <Bracket>you</Bracket>
+          </span>{' '}
+          value?
+        </Eyebrow>
+        <Link href="/explore" className="mono-label text-muted transition-colors hover:text-ink">
+          All areas +
         </Link>
       </div>
-      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+      <ol className="mt-10 border-t border-line">
         {CARE_AREAS.map((area, i) => (
-          <Link
-            key={area.slug}
-            href={`/explore/${area.slug}`}
-            className="group flex min-h-32 flex-col justify-between rounded-card bg-surface p-4 shadow-[0_18px_44px_-28px_rgba(40,35,25,0.45)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_26px_56px_-28px_rgba(40,35,25,0.6)]"
-          >
-            <span className="font-mono text-[10px] tracking-[0.15em] text-muted">0{i + 1}</span>
-            <span className="text-sm font-medium leading-snug text-ink">
-              {area.name}
-              <span className="ml-1 inline-block text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-ink">
-                →
+          <li key={area.slug} className="border-b border-line">
+            <Link
+              href={`/explore/${area.slug}`}
+              className="group grid grid-cols-[auto_1fr_auto] items-center gap-5 py-4 sm:gap-8 sm:py-5"
+            >
+              <span className="mono-label text-muted">
+                <Index n={i + 1} />
               </span>
-            </span>
-          </Link>
+              <span className="display justify-self-end text-right text-2xl text-ink transition-colors group-hover:text-brand-700 sm:text-5xl">
+                {area.name}
+              </span>
+              <ImageSlot
+                src={`areas/${area.slug}.jpg`}
+                alt=""
+                sizes="112px"
+                hue={TILE_HUES[i % TILE_HUES.length]}
+                className="h-16 w-16 rounded-sm sm:h-24 sm:w-24 sm:rounded"
+              />
+            </Link>
+          </li>
         ))}
-      </div>
+      </ol>
     </section>
   );
 }

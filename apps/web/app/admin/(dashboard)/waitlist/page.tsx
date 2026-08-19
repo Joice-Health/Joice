@@ -87,7 +87,7 @@ export default function AdminWaitlistPage() {
             <Badge tone={waitlistLive ? 'on' : 'off'}>{waitlistLive ? 'live' : 'off'}</Badge>
           </Link>
         ) : null}
-        <Button variant="glass" onClick={exportCsv} disabled={exporting}>
+        <Button variant="outline" onClick={exportCsv} disabled={exporting}>
           {exporting ? 'Exporting…' : 'Export CSV'}
         </Button>
       </PageHeader>

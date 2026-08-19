@@ -1,6 +1,9 @@
 import { Eyebrow } from './eyebrow';
 
-/** Standard L2-page opener: eyebrow → display title → supporting line. */
+/**
+ * L2-page opener, centred like the deck: mono eyebrow → condensed uppercase
+ * title → one supporting line in the text face.
+ */
 export function PageIntro({
   eyebrow,
   title,
@@ -11,12 +14,10 @@ export function PageIntro({
   children?: React.ReactNode;
 }) {
   return (
-    <section className="py-16 sm:py-24">
-      <div className="animate-fade-up">
+    <section className="py-16 text-center sm:py-24">
+      <div className="mx-auto flex max-w-3xl flex-col items-center animate-fade-up">
         <Eyebrow>{eyebrow}</Eyebrow>
-        <h1 className="mt-4 max-w-2xl text-balance text-5xl leading-[1.02] tracking-[-0.03em] text-ink sm:text-6xl">
-          {title}
-        </h1>
+        <h1 className="display mt-6 text-balance text-5xl text-ink sm:text-7xl">{title}</h1>
         {children ? (
           <p className="mt-6 max-w-xl text-pretty text-lg leading-relaxed text-muted">
             {children}

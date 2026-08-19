@@ -131,7 +131,7 @@ export default function AdminBrainPage() {
         >
           Reset to defaults
         </Button>
-        <Button onClick={save} disabled={update.isPending}>
+        <Button variant="solid" onClick={save} disabled={update.isPending}>
           {update.isPending ? 'Saving…' : 'Save changes'}
         </Button>
       </PageHeader>
@@ -389,7 +389,7 @@ export default function AdminBrainPage() {
                   placeholder="e.g. pregnancy"
                   className="h-9 max-w-48 text-sm"
                 />
-                <Button variant="glass" size="md" onClick={addTopic} className="h-9 px-3 text-sm">
+                <Button variant="outline" size="md" onClick={addTopic} className="h-9 px-3 text-sm">
                   Add
                 </Button>
               </div>
@@ -561,7 +561,7 @@ export default function AdminBrainPage() {
         </Card>
 
         <div className="flex items-center gap-3">
-          <Button onClick={save} disabled={update.isPending}>
+          <Button variant="solid" onClick={save} disabled={update.isPending}>
             {update.isPending ? 'Saving…' : 'Save changes'}
           </Button>
           {savedAt && !update.isPending && !update.isError ? (

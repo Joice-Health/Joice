@@ -1,7 +1,7 @@
 import { WaterBackground } from './water-background';
 
 /**
- * Full-bleed looping video behind everything — the layer the frosted-glass
+ * Full-bleed looping video behind everything, the layer the frosted-glass
  * surfaces refract against. Rendered through a WebGL water shader that ripples
  * on mouse move (falls back to the plain video when WebGL/motion is unavailable).
  */

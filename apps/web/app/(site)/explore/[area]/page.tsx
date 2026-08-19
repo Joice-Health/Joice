@@ -3,8 +3,8 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PageIntro } from '@/components/ui/page-intro';
 import { Eyebrow } from '@/components/ui/eyebrow';
-import { ProductCard } from '@/components/ui/product-card';
-import { ArticleCard } from '@/components/ui/article-card';
+import { ProductRow } from '@/components/ui/product-row';
+import { ArticleRow } from '@/components/ui/article-row';
 import { GetStartedCta } from '@/components/ui/get-started-cta';
 import { ARTICLES, CARE_AREAS, getCareArea, getProductsByArea } from '@/lib/site-content';
 
@@ -37,39 +37,33 @@ export default async function CareAreaPage({ params }: { params: Promise<{ area:
       </PageIntro>
 
       {/* Products in this area */}
-      <section className="border-t border-line/60 py-16 sm:py-20">
+      <section className="border-t border-line py-16 sm:py-20">
         <div className="flex items-baseline justify-between">
-          <Eyebrow>Protocols in this area</Eyebrow>
-          <Link
-            href="/explore"
-            className="font-mono text-[11px] uppercase tracking-wider text-muted transition-colors hover:text-ink"
-          >
+          <Eyebrow as="h2">Protocols in this area</Eyebrow>
+          <Link href="/explore" className="mono-label text-muted transition-colors hover:text-ink">
             ← All care areas
           </Link>
         </div>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {products.map((product) => (
-            <ProductCard key={product.slug} product={product} />
+        <ul className="mt-8 border-t border-line">
+          {products.map((product, i) => (
+            <ProductRow key={product.slug} product={product} hue={[128, 96, 60][i % 3]} />
           ))}
-        </div>
+        </ul>
       </section>
 
       {/* Related education */}
       <section className="pb-16 sm:pb-20">
         <div className="flex items-baseline justify-between">
-          <Eyebrow>Related education</Eyebrow>
-          <Link
-            href="/learn"
-            className="font-mono text-[11px] uppercase tracking-wider text-muted transition-colors hover:text-ink"
-          >
-            All of Learn →
+          <Eyebrow as="h2">Related education</Eyebrow>
+          <Link href="/learn" className="mono-label text-muted transition-colors hover:text-ink">
+            All of Learn +
           </Link>
         </div>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        <ul className="mt-8 border-t border-line">
           {ARTICLES.slice(0, 2).map((article) => (
-            <ArticleCard key={article.slug} article={article} />
+            <ArticleRow key={article.slug} article={article} />
           ))}
-        </div>
+        </ul>
       </section>
 
       <GetStartedCta />

@@ -1,59 +1,63 @@
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
-import Link from 'next/link';
-import Image from 'next/image';
+import { Bracket } from '@joice/ui';
 import { Eyebrow } from '@/components/ui/eyebrow';
 import { CtaLink } from '@/components/ui/cta-link';
+import { ImageSlot } from '@/components/ui/image-slot';
 
-/** Server-side check so a missing hero asset shows a quiet slot, not a broken image. */
-function heroImageExists(): boolean {
-  return existsSync(join(process.cwd(), 'public', 'hero.jpg'));
-}
-
+/**
+ * The thesis. A mono label, one light sentence, one dotted pill, then the
+ * photo panel with its soft top corners. The panel carries the brand line in
+ * scattered white mono, so the slot means something before the photo lands
+ * (drop it at apps/web/public/hero.jpg).
+ */
 export function Hero() {
   return (
-    <section className="grid items-center gap-10 py-16 sm:py-24 lg:grid-cols-[1.15fr_1fr]">
-      <div className="animate-fade-up">
-        <Eyebrow>Clinician-guided peptide care</Eyebrow>
-        <h1 className="mt-4 text-balance text-5xl leading-[1.02] tracking-[-0.03em] text-ink sm:text-6xl">
-          Built to keep you yourself.
+    <section className="pt-14 sm:pt-24">
+      <div className="mx-auto flex max-w-3xl flex-col items-center text-center animate-fade-up">
+        <Eyebrow as="p" className="text-sm">
+          Preserving{' '}
+          <span className="normal-case">
+            <Bracket>you</Bracket>
+          </span>
+        </Eyebrow>
+        <h1 className="mt-8 text-balance text-3xl leading-[1.15] text-ink sm:text-5xl">
+          Health and longevity to protect the you inside your head.
         </h1>
-        <p className="mt-6 max-w-md text-pretty text-lg leading-relaxed text-muted">
-          Protocols set by clinicians, sourced and tested with proof, priced near cost — on
-          purpose.
+        <p className="mt-6 max-w-lg text-pretty text-lg leading-relaxed text-muted">
+          Clinician-guided peptide care. Protocols set by clinicians, sourced and tested with
+          proof, priced near cost, on purpose.
         </p>
-        <div className="mt-9 flex items-center gap-5">
+        <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
           <CtaLink href="/get-started" size="lg">
-            Get Started
+            Let&apos;s begin +
           </CtaLink>
-          <Link
-            href="/how-it-works"
-            className="text-sm font-medium text-ink/80 underline-offset-4 transition-colors hover:text-ink hover:underline"
-          >
-            How it works →
-          </Link>
+          <CtaLink href="/how-it-works" variant="ghost" size="lg">
+            How it works +
+          </CtaLink>
         </div>
       </div>
 
-      {/* Hero image — drop the real asset at apps/web/public/hero.jpg */}
-      <div className="relative aspect-4/3 overflow-hidden rounded-card shadow-[0_40px_80px_-32px_rgba(40,30,10,0.45)]">
-        {heroImageExists() ? (
-          <Image
-            src="/hero.jpg"
-            alt="Joice"
-            fill
-            priority
-            sizes="(min-width: 1024px) 40vw, 100vw"
-            className="object-cover"
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center bg-brand-100/60">
-            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
-              Add public/hero.jpg
-            </span>
-          </div>
-        )}
-      </div>
+      <ImageSlot
+        src="hero.jpg"
+        alt=""
+        priority
+        sizes="(min-width: 1152px) 1152px, 100vw"
+        className="mt-14 aspect-[4/5] rounded-t-card text-white sm:mt-20 sm:aspect-[21/9]"
+      >
+        <p className="mono-label absolute inset-x-0 top-[22%] mx-auto grid w-[min(80%,26rem)] gap-5 text-sm text-white sm:top-[28%] sm:text-base">
+          <span className="justify-self-start">
+            The you
+          </span>
+          <span className="justify-self-center normal-case">
+            <Bracket>inside</Bracket>
+          </span>
+          <span className="justify-self-end">your head</span>
+        </p>
+        <div className="absolute inset-x-0 bottom-8 flex justify-center sm:bottom-10">
+          <CtaLink href="/ask" size="lg" className="text-white">
+            Ask Joice +
+          </CtaLink>
+        </div>
+      </ImageSlot>
     </section>
   );
 }

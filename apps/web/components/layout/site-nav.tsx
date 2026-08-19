@@ -1,36 +1,45 @@
 import Link from 'next/link';
+import { Bracket } from '@joice/ui';
 import { BrandMark } from '@/components/ui/brand-mark';
-import { CtaLink } from '@/components/ui/cta-link';
 
 const NAV_LINKS = [
   { label: 'Explore', href: '/explore' },
   { label: 'Ask Joice', href: '/ask' },
-  { label: 'How It Works', href: '/how-it-works' },
+  { label: 'How it works', href: '/how-it-works' },
   { label: 'Learn', href: '/learn' },
-  { label: 'Our Story', href: '/story' },
+  { label: 'Our story', href: '/story' },
 ];
 
-/** Sticky glass nav shared by all main-site pages. */
+/**
+ * Editorial nav: links left, the wordmark dead centre, one bracketed action
+ * right. Sticky on the cream with a hairline underneath, no panel.
+ */
 export function SiteNav() {
   return (
-    <header className="glass sticky top-4 z-20 flex items-center justify-between rounded-full px-5 py-3 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.7),0_10px_28px_-14px_rgba(31,38,32,0.25)]">
-      <Link href="/" aria-label="Joice home">
-        <BrandMark />
-      </Link>
-
-      <nav className="hidden items-center gap-7 md:flex" aria-label="Primary">
+    <header className="sticky top-0 z-20 grid grid-cols-[1fr_auto_1fr] items-center border-b border-line bg-canvas py-5">
+      <nav className="hidden items-center gap-6 md:flex" aria-label="Primary">
         {NAV_LINKS.map((link) => (
           <Link
             key={link.href}
             href={link.href}
-            className="text-sm font-medium text-ink/80 transition-colors hover:text-ink"
+            className="mono-label text-muted transition-colors hover:text-ink"
           >
             {link.label}
           </Link>
         ))}
       </nav>
+      <span aria-hidden className="md:hidden" />
 
-      <CtaLink href="/get-started">Get Started</CtaLink>
+      <Link href="/" aria-label="Joice home" className="justify-self-center">
+        <BrandMark />
+      </Link>
+
+      <Link
+        href="/get-started"
+        className="mono-label justify-self-end text-ink transition-colors hover:text-brand-700"
+      >
+        <Bracket>Get started</Bracket>
+      </Link>
     </header>
   );
 }

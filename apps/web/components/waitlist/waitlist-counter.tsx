@@ -8,13 +8,13 @@ export function WaitlistCounter() {
   if (!data || data.totalCount < 1) return null;
 
   return (
-    <span className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-muted">
+    <span className="mono-label inline-flex items-center gap-2 text-muted">
       <span className="relative flex h-2 w-2">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-60" />
-        <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-600 opacity-60" />
+        <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-600" />
       </span>
       <span>
-        <span className="font-semibold text-ink tabular-nums">
+        <span className="tabular-nums text-ink">
           {data.totalCount.toLocaleString()}
         </span>{' '}
         {data.totalCount === 1 ? 'person' : 'people'} already in line

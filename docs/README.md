@@ -31,6 +31,12 @@ want the shape of the system before the detail.
 |---|---|
 | [How Joice deploys](ci-cd/README.md) | Push-to-main pipeline: change detection with `turbo ls --affected`, what each `scripts/ci/*.sh` does, the migrate/roll/restore steps, Turborepo caching in CI, and the open simplification candidates |
 
+## Design
+
+| Doc | What it covers |
+|---|---|
+| [01 — Design system](design/01-design-system.md) | The palette, the three Dinamo faces and their roles, the bracket and dotted-pill devices, what is still placeholder |
+
 ## Marketing (Klaviyo)
 
 | Doc | What it covers |

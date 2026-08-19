@@ -30,7 +30,7 @@ export function SuggestionChips({
           type="button"
           disabled={busy}
           onClick={() => onAsk(question)}
-          className="rounded-full bg-surface px-4 py-2 text-sm text-ink shadow-[0_10px_28px_-20px_rgba(40,35,25,0.6)] transition-all hover:-translate-y-0.5 hover:bg-brand-400/12 disabled:opacity-50"
+          className="rounded-full bg-surface px-4 py-2 text-sm text-ink transition-all hover:bg-brand-400/12 disabled:opacity-50"
         >
           {question}
         </button>
@@ -59,7 +59,7 @@ export function GoalChips({
             type="button"
             disabled={busy}
             onClick={() => onSelect(choice.value)}
-            className="rounded-full bg-surface px-4 py-2 text-sm text-ink shadow-[0_10px_28px_-20px_rgba(40,35,25,0.6)] transition-all hover:-translate-y-0.5 hover:bg-brand-400/12 disabled:opacity-50"
+            className="rounded-full bg-surface px-4 py-2 text-sm text-ink transition-all hover:bg-brand-400/12 disabled:opacity-50"
           >
             {choice.label}
           </button>
@@ -68,7 +68,7 @@ export function GoalChips({
           type="button"
           onClick={onSkip}
           disabled={busy}
-          className="rounded-full px-3 py-2 font-mono text-[10px] tracking-[0.15em] text-muted/70 uppercase transition-colors hover:text-muted disabled:opacity-50"
+          className="rounded-full px-3 py-2 font-mono text-[11px] tracking-mono text-muted/70 uppercase transition-colors hover:text-muted disabled:opacity-50"
         >
           Skip
         </button>

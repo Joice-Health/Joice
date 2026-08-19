@@ -19,12 +19,12 @@ export function AnswerMarkdown({ children }: { children: string }) {
         remarkPlugins={[remarkGfm]}
         components={{
           // Headings inside a chat bubble should read as strong labels, not page titles.
-          h1: ({ children }) => <p className="font-semibold text-ink">{children}</p>,
-          h2: ({ children }) => <p className="font-semibold text-ink">{children}</p>,
-          h3: ({ children }) => <p className="font-semibold text-ink">{children}</p>,
-          h4: ({ children }) => <p className="font-semibold text-ink">{children}</p>,
+          h1: ({ children }) => <p className="text-ink">{children}</p>,
+          h2: ({ children }) => <p className="text-ink">{children}</p>,
+          h3: ({ children }) => <p className="text-ink">{children}</p>,
+          h4: ({ children }) => <p className="text-ink">{children}</p>,
           p: ({ children }) => <p>{children}</p>,
-          strong: ({ children }) => <strong className="font-semibold text-ink">{children}</strong>,
+          strong: ({ children }) => <strong className="text-ink">{children}</strong>,
           em: ({ children }) => <em className="italic">{children}</em>,
           ul: ({ children }) => <ul className="list-disc space-y-1 pl-5">{children}</ul>,
           ol: ({ children }) => <ol className="list-decimal space-y-1 pl-5">{children}</ol>,
@@ -61,7 +61,7 @@ export function AnswerMarkdown({ children }: { children: string }) {
             </div>
           ),
           th: ({ children }) => (
-            <th className="border-b border-ink/10 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted">
+            <th className="border-b border-ink/10 px-3 py-2 text-xs uppercase tracking-wide text-muted">
               {children}
             </th>
           ),

@@ -39,9 +39,7 @@ export function WaitlistForm({ referredBy }: { referredBy: string | null }) {
 
   return (
     <form onSubmit={handleSubmit} className="w-full" noValidate>
-      <h2 className="text-lg font-semibold tracking-tight text-ink">
-        Lock in your founding member rate — for life.
-      </h2>
+      <h2 className="text-lg text-ink">Lock in your founding member rate, for life.</h2>
 
       <div className="mt-4 flex flex-col gap-3">
         <div className="grid grid-cols-2 gap-3">
@@ -75,17 +73,17 @@ export function WaitlistForm({ referredBy }: { referredBy: string | null }) {
           aria-invalid={Boolean(error)}
           disabled={join.isPending}
         />
-        <Button type="submit" size="lg" disabled={join.isPending} className="w-full">
+        <Button type="submit" variant="solid" size="lg" disabled={join.isPending} className="w-full">
           {join.isPending ? 'Joining…' : 'Join the waitlist'}
         </Button>
       </div>
 
-      <p className="mt-3 text-center font-mono text-[11px] uppercase tracking-wider text-muted">
+      <p className="mono-label mt-3 text-center text-muted">
         Open now, to the first to join.
       </p>
 
       {error ? (
-        <p className="mt-3 text-sm text-red-600" role="alert">
+        <p className="mt-3 text-sm text-red-700" role="alert">
           {error}
         </p>
       ) : null}

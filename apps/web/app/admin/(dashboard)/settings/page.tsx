@@ -93,7 +93,7 @@ export default function AdminSettingsPage() {
             </p>
           ) : null}
           <div>
-            <Button type="submit" disabled={upsert.isPending}>
+            <Button type="submit" variant="solid" disabled={upsert.isPending}>
               {upsert.isPending ? 'Saving…' : 'Save setting'}
             </Button>
           </div>

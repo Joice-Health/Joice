@@ -65,7 +65,7 @@ export default function AdminAdminsPage() {
                     </Td>
                     <Td className="text-right">
                       <Button
-                        variant="glass"
+                        variant="outline"
                         disabled={setRole.isPending || (isSelf && isAdmin)}
                         title={isSelf && isAdmin ? 'You cannot revoke your own access' : undefined}
                         onClick={() =>

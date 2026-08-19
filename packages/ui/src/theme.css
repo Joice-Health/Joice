@@ -1,42 +1,57 @@
 /**
- * Joice design tokens — Tailwind v4 CSS-first theme.
- * Light & clinical-clean with a soft ambient light field and frosted-glass surfaces.
+ * Joice design tokens, Tailwind v4 CSS-first theme.
+ *
+ * Cream paper, dark-olive ink, one olive stripe. Three Dinamo faces, all Light:
+ *   text     ABC Ginto Light               sentence case, +1% tracking
+ *   display  ABC Ginto Nord Condensed Light uppercase, +3% tracking
+ *   label    ABC Gaisyr Mono Light          uppercase, +5% tracking
+ * Structure is drawn with hairlines and dotted outlines, not shadows or glass.
+ * The house device is the square bracket: [ you ], [ 01 ], [ sign-up ].
  * Imported by apps after `@import "tailwindcss";`.
  */
 @theme {
-  /* Brand — clinical stone: grey-first with a whisper of warm brown */
-  --color-brand-50: oklch(0.96 0.005 60);
-  --color-brand-100: oklch(0.93 0.008 60);
-  --color-brand-200: oklch(0.87 0.012 60);
-  --color-brand-300: oklch(0.79 0.018 60);
-  --color-brand-400: oklch(0.7 0.024 60);
-  --color-brand-500: oklch(0.6 0.028 60);
-  --color-brand-600: oklch(0.51 0.026 60);
-  --color-brand-700: oklch(0.43 0.022 60);
-  --color-brand-800: oklch(0.36 0.018 60);
-  --color-brand-900: oklch(0.29 0.014 60);
+  /* Brand, the olive. #877C00 sits at 600; the ramp fans out from it.
+   * Olive is an accent, not a fill for text: on cream it is 3.8:1, so it
+   * carries the announcement bar, focus rings, dots and rules, and brand-700
+   * (5:1) is the smallest olive that may carry small text. */
+  --color-brand-50: oklch(0.97 0.02 103);
+  --color-brand-100: oklch(0.94 0.04 103);
+  --color-brand-200: oklch(0.88 0.07 103);
+  --color-brand-300: oklch(0.8 0.1 103);
+  --color-brand-400: oklch(0.7 0.12 103);
+  --color-brand-500: oklch(0.63 0.125 103);
+  --color-brand-600: oklch(0.578 0.122 103.3); /* #877C00 */
+  --color-brand-700: oklch(0.51 0.11 103);
+  --color-brand-800: oklch(0.44 0.09 103);
+  --color-brand-900: oklch(0.36 0.06 103);
 
-  /* Neutrals — warm off-white canvas + near-black ink */
-  --color-canvas: oklch(0.985 0.004 95);
-  --color-surface: oklch(1 0 0);
-  /* Very dark grey — intentionally never pure black. */
-  --color-ink: oklch(0.28 0.006 165);
-  --color-muted: oklch(0.52 0.01 160);
-  --color-line: oklch(0.92 0.005 160);
+  /* Neutrals, the palette card: [ 01 ] white, [ 02 ] stone, cream, dark olive. */
+  --color-canvas: oklch(0.957 0.011 76.6); /* #F5F0E9 cream paper */
+  --color-surface: oklch(1 0 0); /* #FFFFFF */
+  /* Dark olive-grey, the ink and the dark panel. Intentionally never pure black. */
+  --color-ink: oklch(0.421 0.026 113.3); /* #4D4F3F */
+  /* Warm grey, fills, rules, disabled states. 2.1:1 on cream: never text. */
+  --color-stone: oklch(0.732 0.012 89.8); /* #ABA8A0 */
+  /* Secondary text: between ink and stone, 4.8:1 on cream. */
+  --color-muted: oklch(0.52 0.02 105);
+  /* Hairlines are drawn in stone. */
+  --color-line: oklch(0.732 0.012 89.8);
 
-  /* Ambient aura colors (the light field behind the glass) */
-  --color-aura-warm: oklch(0.9 0.09 70);
-  --color-aura-sage: oklch(0.85 0.11 165);
-  --color-aura-cool: oklch(0.88 0.07 215);
+  /* Membership-card gradient (waitlist share card), the olive turned to gold. */
+  --color-card-from: oklch(0.72 0.13 95);
+  --color-card-to: oklch(0.9 0.06 90);
 
-  /* Premium share-card accent (warm, echoes the reference card) */
-  --color-card-from: oklch(0.76 0.17 50);
-  --color-card-to: oklch(0.93 0.07 85);
+  --font-sans: var(--font-ginto), 'Helvetica Neue', Arial, sans-serif;
+  --font-display: var(--font-ginto-nord), 'Arial Narrow', 'Helvetica Neue', sans-serif;
+  --font-mono: var(--font-gaisyr), 'Courier New', ui-monospace, monospace;
 
-  --font-sans: var(--font-yantramanav), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  /* Tracking per face, from the type specimen. */
+  --tracking-sans: 0.01em;
+  --tracking-display: 0.03em;
+  --tracking-mono: 0.05em;
 
-  --radius-card: 1.75rem;
+  /* Large image panels get soft top corners; everything small is a pill. */
+  --radius-card: 2rem;
 
   /* Motion */
   --animate-fade-up: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -73,21 +88,53 @@
   }
 }
 
-/* Reusable frosted-glass surface. */
+/* Mono label, eyebrows, nav, buttons, indices, microcopy. */
+@utility mono-label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  letter-spacing: var(--tracking-mono);
+  text-transform: uppercase;
+}
+
+/* Display, the charismatic voice: short uppercase statements in the condensed face. */
+@utility display {
+  font-family: var(--font-display);
+  letter-spacing: var(--tracking-display);
+  text-transform: uppercase;
+  line-height: 0.95;
+}
+
+/* Flat panel: white paper on the cream, framed by a hairline. */
+@utility panel {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-line);
+}
+
+/* Frosted panel: the flat panel with a little of what is behind it showing
+ * through. Only earns its keep over media (the waitlist water). */
 @utility glass {
-  background-color: color-mix(in oklch, white 55%, transparent);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid color-mix(in oklch, white 65%, transparent);
+  background-color: color-mix(in oklch, var(--color-surface) 78%, transparent);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border: 1px solid color-mix(in oklch, var(--color-line) 70%, transparent);
 }
 
 @layer base {
   html {
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    /* Only Light cuts ship; never let the browser fake a bold or oblique. */
+    font-synthesis: none;
   }
   body {
     background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-weight: 300;
+    letter-spacing: var(--tracking-sans);
+  }
+  ::selection {
+    background-color: var(--color-brand-200);
     color: var(--color-ink);
   }
   @media (prefers-reduced-motion: reduce) {

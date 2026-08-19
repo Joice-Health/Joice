@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { buttonClasses } from '@joice/ui';
 
 /**
  * Floating "Companion" entry point, shared by all main-site pages. Opens the
  * companion at /ask, where the pre-onboarding capture + knowledge chat live.
- * Hidden on /ask itself — a pill linking to the page you're on would sit over
+ * Hidden on /ask itself, a pill linking to the page you're on would sit over
  * the composer's Ask button on a phone.
  */
 export function CompanionPill() {
@@ -16,13 +17,17 @@ export function CompanionPill() {
   return (
     <Link
       href="/ask"
-      className="glass fixed bottom-5 right-5 z-30 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium text-ink shadow-[inset_0_1px_0_0_rgba(255,255,255,0.7),0_14px_34px_-14px_rgba(31,38,32,0.4)] transition-all duration-200 hover:bg-white/75"
+      className={buttonClasses({
+        variant: 'outline',
+        size: 'md',
+        className: 'fixed bottom-5 right-5 z-30 bg-canvas text-ink',
+      })}
     >
-      <span className="relative flex h-2 w-2">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-400 opacity-60" />
-        <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-500" />
+      <span className="relative flex h-1.5 w-1.5">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-600 opacity-60" />
+        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand-600" />
       </span>
-      Companion · ask anything
+      Ask Joice +
     </Link>
   );
 }

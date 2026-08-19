@@ -24,7 +24,7 @@ export function WaitlistExperience({
 
   // The persisted store rehydrates from localStorage on the client only. We render
   // the join view on the server AND on the first client render (treating the user
-  // as new), then swap to their saved card after mount — so the hero is still SSR'd
+  // as new), then swap to their saved card after mount, so the hero is still SSR'd
   // and there's no hydration mismatch. Returning users see a brief join-view flash.
   useEffect(() => setMounted(true), []);
   useEffect(() => {
@@ -36,9 +36,6 @@ export function WaitlistExperience({
     <>
       <header className="mb-12 flex w-full items-center justify-between">
         <BrandMark />
-        {/* <span className="glass rounded-full px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-muted shadow-[inset_0_1px_0_0_rgba(255,255,255,0.6)]">
-          Private beta
-        </span> */}
       </header>
 
       {showCard ? <SuccessView entry={entry} /> : <JoinView referredBy={referredBy} />}
@@ -51,17 +48,15 @@ const PILLARS = ['Built around you.', 'Sourced, tested, with proof.', 'Near cost
 function JoinView({ referredBy }: { referredBy: string | null }) {
   return (
     <section className="flex w-full flex-1 flex-col justify-center animate-fade-up">
-      <span className="mb-4 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-brand-700">
-        Coming soon
-      </span>
+      <span className="mono-label mb-4 text-ink">Coming soon</span>
 
       {referredBy ? (
-        <span className="mb-4 inline-flex w-fit items-center gap-2 rounded-full bg-brand-400/15 px-3.5 py-1.5 text-xs font-medium text-brand-800 backdrop-blur-xl ring-1 ring-inset ring-brand-300/40 ring-offset-0 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]">
+        <span className="mono-label mb-4 inline-flex w-fit items-center gap-2 rounded-full border border-dotted border-ink px-3.5 py-1.5 text-ink">
           ✦ A friend invited you
         </span>
       ) : null}
 
-      <h1 className="text-balance text-[2.75rem] leading-[1.02] tracking-[-0.03em] text-ink sm:text-6xl">
+      <h1 className="text-balance text-[2.75rem] leading-[1.02] text-ink sm:text-6xl">
         The you in your head.
       </h1>
       <p className="mt-4 text-lg italic text-muted">The body drifts. The person doesn&apos;t.</p>
@@ -73,11 +68,11 @@ function JoinView({ referredBy }: { referredBy: string | null }) {
         <WaitlistForm referredBy={referredBy} />
       </div>
 
-      <ul className="mt-10 space-y-3 border-t border-line/60 pt-8">
+      <ul className="mt-10 space-y-3 border-t border-line pt-8">
         {PILLARS.map((pillar) => (
           <li key={pillar} className="flex items-center gap-3">
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500" />
-            <span className="font-semibold text-ink">{pillar}</span>
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-600" />
+            <span className="text-ink">{pillar}</span>
           </li>
         ))}
       </ul>
@@ -103,18 +98,18 @@ function SuccessView({ entry }: { entry: WaitlistEntryView }) {
   return (
     <section className="flex w-full flex-1 flex-col animate-fade-up">
       <div className="">
-        <h1 className="text-[2rem] tracking-[-0.03em] text-ink sm:text-[2.5rem]">
+        <h1 className="text-[2rem] text-ink sm:text-[2.5rem]">
           You&apos;re in.
         </h1>
         <p className="text-base leading-relaxed text-muted">
-          Your founding member rate is locked - for life.
+          Your founding member rate is locked, for life.
         </p>
       </div>
 
-      <div className="mb-4 border-t border-line/60 pt-6">
-        <h2 className="text-lg font-semibold tracking-tight text-ink">Share your place</h2>
+      <div className="mb-4 border-t border-line pt-6">
+        <h2 className="text-lg text-ink">Share your place</h2>
         <p className="mt-2 max-w-md text-pretty text-base leading-relaxed text-muted">
-          Share the founding rate with the people you care about — and for everyone who becomes
+          Share the founding rate with the people you care about, and for everyone who becomes
           a member, you get a month free.
         </p>
         {live.referralCount > 0 ? (

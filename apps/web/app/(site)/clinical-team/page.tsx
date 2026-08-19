@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 /**
- * Clinical team page (/clinical-team) — team-gated with the rest of the main
+ * Clinical team page (/clinical-team), team-gated with the rest of the main
  * site until SITE_LAUNCHED. Copy/roster are placeholder until the content pass.
  */
 export default function ClinicalTeamPage() {

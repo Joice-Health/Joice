@@ -12,9 +12,9 @@ export default async function TeamLoginPage({
 
   return (
     <main className="relative mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center px-6 py-10">
-      <div className="w-full rounded-card glass p-8 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.7),0_24px_60px_-24px_rgba(40,30,10,0.35)] animate-fade-up">
+      <div className="panel w-full rounded-card p-8 animate-fade-up">
         <BrandMark />
-        <h1 className="mt-6 text-xl font-semibold tracking-tight text-ink">Team preview</h1>
+        <h1 className="mt-6 text-xl text-ink">Team preview</h1>
         <p className="mt-2 text-sm leading-relaxed text-muted">
           Enter the team password to view the site in progress.
         </p>
@@ -28,13 +28,13 @@ export default async function TeamLoginPage({
             autoFocus
             required
           />
-          <Button type="submit" size="lg" className="w-full">
+          <Button type="submit" variant="solid" size="lg" className="w-full">
             Enter
           </Button>
         </form>
 
         {error ? (
-          <p className="mt-3 text-sm text-red-600" role="alert">
+          <p className="mt-3 text-sm text-red-700" role="alert">
             That password isn&apos;t right.
           </p>
         ) : null}

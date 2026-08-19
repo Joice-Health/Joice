@@ -1,27 +1,17 @@
 import { Eyebrow } from '@/components/ui/eyebrow';
 import { CtaLink } from '@/components/ui/cta-link';
 
-/** The page's one dark, high-contrast moment. */
+/** The closing statement, in the condensed display voice, on the paper. */
 export function GetStartedCta() {
   return (
-    <section className="relative overflow-hidden rounded-card bg-ink px-6 py-16 text-center sm:py-20">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-25"
-        style={{
-          background:
-            'radial-gradient(60% 80% at 50% 120%, var(--color-card-from) 0%, transparent 70%)',
-        }}
-      />
-      <div className="relative">
-        <Eyebrow className="text-card-to">Ready when you are</Eyebrow>
-        <p className="mx-auto mt-4 max-w-xl text-balance text-3xl leading-snug tracking-[-0.02em] text-canvas sm:text-4xl">
-          The new standard of you.
-        </p>
-        <CtaLink href="/get-started" variant="inverted" size="lg" className="mt-8">
-          Get Started
-        </CtaLink>
-      </div>
+    <section className="border-t border-line py-20 text-center sm:py-28">
+      <Eyebrow as="p">Ready when you are</Eyebrow>
+      <p className="display mx-auto mt-6 max-w-4xl text-balance text-6xl text-ink sm:text-8xl">
+        The new standard of you.
+      </p>
+      <CtaLink href="/get-started" size="lg" className="mt-10">
+        Let&apos;s begin +
+      </CtaLink>
     </section>
   );
 }

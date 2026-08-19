@@ -7,17 +7,36 @@
 @layer base {
   body {
     font-family: var(--font-sans);
+    /* Full-bleed bands use the 100vw trick; never let that become a horizontal scroll. */
+    overflow-x: clip;
   }
 }
 
 /* ---------------------------------------------------------------------------
- * Ask Joice — "dawn"
+ * Organic field, the placeholder behind every photo slot until the real
+ * photography lands. The deck's imagery is microscopy: soft green cells on a
+ * dark ground. `--h` shifts the hue so neighbouring slots differ a little.
+ * ------------------------------------------------------------------------- */
+.organic-field {
+  --h: 128;
+  --h2: calc(var(--h) + 18);
+  --h3: calc(var(--h) - 20);
+  background-color: oklch(0.3 0.05 var(--h));
+  background-image:
+    radial-gradient(60% 55% at 28% 30%, oklch(0.62 0.13 var(--h) / 0.75) 0%, transparent 70%),
+    radial-gradient(45% 50% at 74% 68%, oklch(0.55 0.11 var(--h2) / 0.7) 0%, transparent 72%),
+    radial-gradient(35% 35% at 62% 22%, oklch(0.7 0.1 var(--h3) / 0.45) 0%, transparent 70%),
+    radial-gradient(70% 60% at 50% 100%, oklch(0.2 0.04 var(--h)) 0%, transparent 70%);
+}
+
+/* ---------------------------------------------------------------------------
+ * Ask Joice, "dawn"
  *
  * A real sunrise is half cool: pale blue-grey sky above, warm light only at the
- * horizon. That cool/warm split is the page's whole idea — cool reads as
- * clinical rigor, warm as hope — and it keeps the palette from becoming the
- * usual all-orange wellness gradient. The amber is the brand hue (~60) with its
- * chroma raised, so the sunrise is an intensification of Joice, not a new color.
+ * horizon. That cool/warm split is the page's whole idea (cool reads as
+ * clinical rigor, warm as hope) and it keeps the palette from becoming the
+ * usual all-orange wellness gradient. The light is the brand olive (~hue 100)
+ * turned to gold, so the sunrise is an intensification of Joice, not a new color.
  *
  * `--level` is written from the live AnalyserNode (0–1) while the member speaks
  * or the assistant answers: the sun's corona and the horizon glow are driven by
@@ -26,9 +45,9 @@
 .dawn {
   --dawn-sky: oklch(0.96 0.012 240);
   --dawn-haze: oklch(0.975 0.008 80);
-  --dawn-horizon: oklch(0.93 0.05 70);
-  --dawn-ember: oklch(0.78 0.11 62);
-  --dawn-ember-deep: oklch(0.58 0.11 52);
+  --dawn-horizon: oklch(0.93 0.05 92);
+  --dawn-ember: oklch(0.78 0.12 92);
+  --dawn-ember-deep: oklch(0.58 0.11 88);
   --dawn-cool: oklch(0.55 0.03 245);
   --level: 0;
 
@@ -37,7 +56,7 @@
 }
 
 /* The sky: cool before first light, warming as it descends toward the horizon.
- * Full-bleed — the page sits inside the site's max-width container, so the
+ * Full-bleed, the page sits inside the site's max-width container, so the
  * light has to break out of it to reach the viewport edges. */
 .dawn::before {
   content: '';
@@ -81,7 +100,7 @@
   transition: background 240ms ease-out;
 }
 
-/* The bloom sitting on the line — first light spreading along the horizon. */
+/* The bloom sitting on the line, first light spreading along the horizon. */
 .horizon::after {
   content: '';
   position: absolute;
@@ -118,20 +137,20 @@
   border-radius: 9999px;
   background: radial-gradient(
     circle at 50% 50%,
-    oklch(1 0.02 90) 0%,
-    oklch(0.96 0.06 78) 34%,
+    oklch(1 0.02 95) 0%,
+    oklch(0.96 0.06 92) 34%,
     var(--dawn-ember) 72%,
     color-mix(in oklch, var(--dawn-ember), var(--dawn-ember-deep) 55%) 100%
   );
   box-shadow:
     0 0 calc(40px + var(--level) * 90px)
       color-mix(in oklch, var(--dawn-ember), transparent calc(45% - var(--level) * 30%)),
-    0 0 calc(14px + var(--level) * 26px) oklch(0.97 0.05 82 / 0.55);
+    0 0 calc(14px + var(--level) * 26px) oklch(0.97 0.05 92 / 0.55);
   transform: scale(calc(1 + var(--level) * 0.06));
   transition: transform 120ms ease-out;
 }
 
-/* Corona rings — they breathe at rest and expand with the voice. */
+/* Corona rings, they breathe at rest and expand with the voice. */
 .sun-ring {
   position: absolute;
   inset: 0;

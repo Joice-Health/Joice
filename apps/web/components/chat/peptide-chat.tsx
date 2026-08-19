@@ -339,7 +339,7 @@ export function PeptideChat() {
       });
     };
 
-    // Voice question → spoken answer (typed questions stay text-only). Speech
+    // Voice question + spoken answer (typed questions stay text-only). Speech
     // is fed sentence-by-sentence as the text arrives, so it starts talking
     // almost immediately instead of after the whole answer is written.
     if (opts.viaVoice) await speaker.startStream(`msg-${assistantIndex}`);
@@ -717,7 +717,7 @@ export function PeptideChat() {
   }
 
   // No form on load — the voice hero shows, and capture begins only after the
-  // first real answer (see send's finally → beginCapture). This effect just
+  // first real answer (see send's finally + beginCapture). This effect just
   // seeds the counters for a return visitor whose capture is already done, so
   // the conversion triggers behave and questions aren't re-asked.
   useEffect(() => {
@@ -903,14 +903,14 @@ export function PeptideChat() {
           className={cn(
             'min-h-11 flex-1 resize-none bg-transparent text-ink outline-none',
             'placeholder:text-muted/70 disabled:opacity-50',
-            started ? 'py-2' : 'rounded-card bg-surface/70 px-5 py-3.5 shadow-[0_1px_0_0_rgba(255,255,255,0.9)_inset]',
+            started ? 'py-2' : 'rounded-card bg-surface/70 px-5 py-3.5',
           )}
         />
         <button
           type="submit"
           disabled={busy || recorder.recording || input.trim().length === 0}
           className={cn(
-            'h-11 shrink-0 rounded-full px-5 text-sm font-medium transition-colors outline-none',
+            'h-11 shrink-0 rounded-full px-5 text-sm transition-colors outline-none',
             'bg-ink text-canvas hover:bg-ink/90',
             'focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas',
             'disabled:cursor-not-allowed disabled:bg-ink/25',
@@ -926,7 +926,7 @@ export function PeptideChat() {
           type="button"
           onClick={() => void skipCapture(pendingStep)}
           disabled={submitField.isPending || pending}
-          className="mt-2 font-mono text-[10px] tracking-[0.15em] text-muted/70 uppercase transition-colors hover:text-muted disabled:opacity-50"
+          className="mt-2 font-mono text-[11px] tracking-mono text-muted/70 uppercase transition-colors hover:text-muted disabled:opacity-50"
         >
           Skip
         </button>
@@ -939,7 +939,7 @@ export function PeptideChat() {
           type="button"
           onClick={startFresh}
           disabled={pending}
-          className="mt-2 ml-4 font-mono text-[10px] tracking-[0.15em] text-muted/70 uppercase transition-colors hover:text-muted disabled:opacity-50"
+          className="mt-2 ml-4 font-mono text-[11px] tracking-mono text-muted/70 uppercase transition-colors hover:text-muted disabled:opacity-50"
         >
           Start a new conversation
         </button>
@@ -956,7 +956,7 @@ export function PeptideChat() {
           started ? 'pt-10 pb-6' : 'pt-14 pb-6 sm:pt-20',
         )}
       >
-        <span className="font-mono text-[10px] font-bold tracking-[0.28em] text-brand-700 uppercase">
+        <span className="font-mono text-[10px] tracking-[0.28em] text-brand-700 uppercase">
           Ask Joice
         </span>
 
@@ -964,7 +964,7 @@ export function PeptideChat() {
           <>
             <h1 className="mt-6 max-w-3xl text-balance text-5xl leading-[0.98] font-extralight tracking-[-0.035em] text-ink sm:text-7xl">
               Ask it{' '}
-              <span className="font-medium text-[var(--dawn-ember-deep)] italic">out loud</span>.
+              <span className="text-[var(--dawn-ember-deep)] italic">out loud</span>.
             </h1>
             <p className="mt-6 max-w-md text-pretty leading-relaxed text-muted">
               {brainUi.emptyStateHint}
@@ -1019,7 +1019,7 @@ export function PeptideChat() {
         className={cn(
           'w-full max-w-3xl transition-all duration-500',
           started &&
-            'rounded-card bg-surface/85 shadow-[0_1px_0_0_rgba(255,255,255,0.9)_inset,0_30px_70px_-40px_rgba(60,45,25,0.35)] backdrop-blur-xl',
+            'rounded-card bg-surface/85 backdrop-blur-xl',
         )}
       >
         {started ? (
@@ -1041,7 +1041,7 @@ export function PeptideChat() {
                     : () => router.push('/get-started');
                 return (
                   <div key={i} className={align}>
-                    <div className="max-w-md rounded-card bg-linear-to-br from-card-from to-card-to p-5 shadow-[0_20px_50px_-30px_rgba(60,45,25,0.6)]">
+                    <div className="max-w-md rounded-card bg-linear-to-br from-card-from to-card-to p-5">
                       <p className="text-pretty leading-relaxed text-ink">{message.content}</p>
                       <Button size="lg" className="mt-4" onClick={onClick}>
                         {message.ctaLabel}
@@ -1156,7 +1156,7 @@ export function PeptideChat() {
           ['Honest', 'If the research doesn’t cover it, it says so.'],
         ].map(([label, detail]) => (
           <li key={label} className="bg-canvas/80 px-5 py-4 backdrop-blur-sm">
-            <span className="font-mono text-[10px] font-bold tracking-[0.22em] text-[var(--dawn-ember-deep)] uppercase">
+            <span className="font-mono text-[10px] tracking-[0.22em] text-[var(--dawn-ember-deep)] uppercase">
               {label}
             </span>
             <p className="mt-1.5 text-sm leading-relaxed text-muted">{detail}</p>

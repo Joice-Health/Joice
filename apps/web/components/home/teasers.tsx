@@ -1,49 +1,47 @@
 import Link from 'next/link';
 import { Eyebrow } from '@/components/ui/eyebrow';
+import { CtaLink } from '@/components/ui/cta-link';
+import { ARTICLES } from '@/lib/site-content';
 
 /** Side-by-side brand story + education (Learn) teasers. */
 export function Teasers() {
   return (
-    <div className="grid gap-4 pb-16 sm:pb-20 lg:grid-cols-2">
-      <section className="relative overflow-hidden rounded-card p-6 shadow-[0_18px_44px_-28px_rgba(40,35,25,0.45)] sm:p-8">
-        <div className="absolute inset-0 bg-gradient-to-br from-card-to/40 via-surface to-surface" />
-        <div className="relative">
-          <Eyebrow>Our story</Eyebrow>
-          <p className="mt-5 text-pretty text-2xl italic leading-snug tracking-[-0.01em] text-ink">
-            The body drifts. The person doesn&apos;t.
-          </p>
-          <p className="mt-3 max-w-md text-base leading-relaxed text-muted">
-            Why we built Joice, and the standard we hold every protocol to.
-          </p>
-          <Link
-            href="/story"
-            className="mt-6 inline-block font-mono text-[11px] uppercase tracking-wider text-ink underline-offset-4 hover:underline"
-          >
-            Read the story →
-          </Link>
-        </div>
+    <div className="grid gap-x-16 gap-y-12 py-16 sm:py-24 lg:grid-cols-2">
+      <section>
+        <Eyebrow as="h2">Our story</Eyebrow>
+        <p className="mt-5 text-pretty text-2xl italic leading-snug text-ink sm:text-3xl">
+          The body drifts. The person doesn&apos;t.
+        </p>
+        <p className="mt-4 max-w-md text-base leading-relaxed text-muted">
+          Why we built Joice, and the standard we hold every protocol to.
+        </p>
+        <CtaLink href="/story" className="mt-7">
+          Read the story +
+        </CtaLink>
       </section>
 
-      <section className="rounded-card bg-surface p-6 shadow-[0_18px_44px_-28px_rgba(40,35,25,0.45)] sm:p-8">
-        <Eyebrow>Learn</Eyebrow>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          {[0, 1].map((i) => (
-            <Link
-              key={i}
-              href="/learn"
-              className="group rounded-2xl bg-canvas p-5 shadow-[0_12px_32px_-24px_rgba(40,35,25,0.5)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_20px_44px_-24px_rgba(40,35,25,0.6)]"
-            >
-              <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted">
-                Article
-              </span>
-              <span className="mt-8 block h-2 w-3/4 rounded-full bg-line" aria-hidden />
-              <span className="mt-2 block h-2 w-1/2 rounded-full bg-line" aria-hidden />
-              <span className="mt-5 block font-mono text-[11px] uppercase tracking-wider text-muted transition-colors group-hover:text-ink">
-                Read →
-              </span>
-            </Link>
-          ))}
+      <section>
+        <div className="flex items-baseline justify-between">
+          <Eyebrow as="h2">Learn</Eyebrow>
+          <Link href="/learn" className="mono-label text-muted transition-colors hover:text-ink">
+            All articles +
+          </Link>
         </div>
+        <ul className="mt-5 border-t border-line">
+          {ARTICLES.slice(0, 3).map((article) => (
+            <li key={article.slug} className="border-b border-line">
+              <Link
+                href={`/learn/${article.slug}`}
+                className="group grid gap-1 py-4 sm:grid-cols-[7rem_1fr] sm:items-baseline sm:gap-6"
+              >
+                <span className="mono-label text-muted">{article.topic}</span>
+                <span className="text-lg leading-snug text-ink transition-colors group-hover:text-brand-700">
+                  {article.title}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
       </section>
     </div>
   );

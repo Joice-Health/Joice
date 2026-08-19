@@ -30,7 +30,7 @@ export function LeadSummary() {
   }, []);
 
   return (
-    <div className="glass mt-10 rounded-card p-6 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.7),0_24px_60px_-24px_rgba(40,30,10,0.35)] sm:p-8">
+    <div className="panel mt-10 rounded-card p-6 sm:p-8">
       {hasLead ? (
         <div className="text-center">
           <p className="text-pretty text-lg leading-relaxed text-ink">
@@ -42,16 +42,16 @@ export function LeadSummary() {
           {profile?.email ? (
             <>
               <p className="mx-auto mt-3 max-w-md text-pretty text-sm leading-relaxed text-muted">
-                Intake opens soon — a few quick questions, your labs if you have them, then a
+                Intake opens soon: a few quick questions, your labs if you have them, then a
                 licensed clinician takes it from there.
               </p>
-              <p className="mt-6 rounded-2xl bg-brand-400/12 px-5 py-4 text-sm leading-relaxed text-brand-800">
-                Your details are saved under{' '}
-                <span className="font-medium">{profile.email}</span>. You&rsquo;re set for the
+              <p className="mt-6 rounded-2xl border border-line bg-canvas px-5 py-4 text-sm leading-relaxed text-ink">
+                Your details are saved under <span className="font-mono">{profile.email}</span>.
+                You&rsquo;re set for the
                 moment intake opens. In the meantime, the companion is right where you left it.
               </p>
               <Button size="lg" className="mt-6 w-full" onClick={() => router.push('/ask')}>
-                Keep exploring with the companion
+                Keep exploring with the companion +
               </Button>
             </>
           ) : (
@@ -61,7 +61,7 @@ export function LeadSummary() {
                 ready the moment it does.
               </p>
               <Button size="lg" className="mt-6 w-full" onClick={() => router.push('/ask')}>
-                Leave my email with the companion
+                Leave my email with the companion +
               </Button>
             </>
           )}
@@ -72,20 +72,18 @@ export function LeadSummary() {
             Start with a conversation.
           </p>
           <p className="mx-auto mt-3 max-w-md text-pretty text-sm leading-relaxed text-muted">
-            Tell the companion what you&rsquo;d change first — energy, recovery, sleep — and
+            Tell the companion what you&rsquo;d change first (energy, recovery, sleep) and
             it&rsquo;ll point you at the research and save your place for intake.
           </p>
           <Button size="lg" className="mt-6 w-full" onClick={() => router.push('/ask')}>
-            Talk to the companion
+            Talk to the companion +
           </Button>
         </div>
       )}
 
-      {/* Labs / concerns upload slot — arrives with the intake flow. */}
-      <div className="mt-6 rounded-2xl border border-dashed border-line bg-canvas/60 p-6 text-center">
-        <span className="font-mono text-[11px] uppercase tracking-wider text-muted">
-          Labs / concerns upload — coming with the intake flow
-        </span>
+      {/* Labs / concerns upload slot, arrives with the intake flow. */}
+      <div className="mt-6 rounded-2xl border border-dashed border-line p-6 text-center">
+        <span className="mono-label text-muted">Labs / concerns upload: coming with the intake flow</span>
       </div>
     </div>
   );

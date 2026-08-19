@@ -48,10 +48,18 @@ the deploy workflow; setting task env does nothing for `NEXT_PUBLIC_*`).
 ## Styling
 
 Tailwind v4, CSS-first: tokens in `packages/ui/src/theme.css`, imported via `globals.css`
-(which also `@source`'s the ui package for class detection). House style: Yantramanav sans,
-Geist Mono for eyebrows/microcopy (`font-mono text-[10px] uppercase tracking-[0.2em]`), soft
-drop shadows instead of borders on cards, `rounded-card` radius, `glass` utility for frosted
-panels, brand stone palette (no pure black — use `ink`). The warm `card-from/to` gradient is
-the membership-card identity — use it sparingly. Buttons: prefer `@joice/ui` `Button`
-(`primary` = stone gradient, `glass`/`glassBrand` variants); for link-CTAs, replicate the
-same classes on a `Link` (see `app/page.tsx` `ctaDark`).
+(which also `@source`'s the ui package for class detection). The system is described in the
+root CLAUDE.md and `docs/design/01-design-system.md`. In practice:
+
+- Labels: `<Eyebrow>` (mono uppercase, ink) or the `mono-label` utility on a span/link. Big
+  uppercase statements: the `display` utility. Body: nothing, the body face is the default.
+- Buttons and link-CTAs: `@joice/ui` `Button` and `components/ui/cta-link.tsx` share
+  `buttonClasses()`; `outline` (default, dotted pill), `solid` (the one strong action, e.g. a
+  form submit), `stone`, `ghost`. Forward actions end in ` +`. Never write button classes by
+  hand.
+- Structure: hairline `border-t border-line` sections and `border-b border-line` list rows
+  (`ProductRow`, `ArticleRow`), not cards. Photos go through `ImageSlot` so a missing file
+  shows the designed slot. Full-bleed bands (`components/home/values.tsx`) use the `w-screen`
+  trick; `body` has `overflow-x: clip` for that.
+- Fonts are `next/font/local` in `app/layout.tsx`; only Light cuts exist, and `html` has
+  `font-synthesis: none`, so weight classes are inert on purpose.

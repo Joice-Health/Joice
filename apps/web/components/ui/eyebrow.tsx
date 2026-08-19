@@ -1,21 +1,18 @@
 import { cn } from '@joice/ui';
 
-/** Mono uppercase section label — the house eyebrow style. */
+/**
+ * Mono uppercase label, the house eyebrow. Ink by default; pass `text-muted`
+ * for a secondary one. Brackets inside it (`<Bracket>you</Bracket>`) keep
+ * their own case if you wrap them in `normal-case`.
+ */
 export function Eyebrow({
   className,
   children,
+  as: Tag = 'span',
 }: {
   className?: string;
   children: React.ReactNode;
+  as?: 'span' | 'h2' | 'h3' | 'p';
 }) {
-  return (
-    <span
-      className={cn(
-        'font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-brand-700',
-        className,
-      )}
-    >
-      {children}
-    </span>
-  );
+  return <Tag className={cn('mono-label block text-ink', className)}>{children}</Tag>;
 }

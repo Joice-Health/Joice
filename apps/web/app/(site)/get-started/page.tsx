@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 };
 
 /**
- * Get Started destination — where the companion hands off a captured lead. The
+ * Get Started destination, where the companion hands off a captured lead. The
  * intake decision tree is a separate downstream workstream; this confirms the
  * lead (see LeadSummary) and holds its place.
  */
@@ -17,19 +17,19 @@ export default function GetStartedPage() {
     <div className="mx-auto w-full max-w-2xl py-16 sm:py-24">
       <div className="text-center">
         <Eyebrow>Get started</Eyebrow>
-        <h1 className="mt-4 text-balance text-4xl leading-[1.05] tracking-[-0.03em] text-ink sm:text-5xl">
+        <h1 className="display mt-6 text-balance text-5xl text-ink sm:text-7xl">
           Tell us where you are.
         </h1>
-        <p className="mx-auto mt-5 max-w-md text-pretty text-lg leading-relaxed text-muted">
-          A few questions, your concerns, labs if you have them — then a licensed clinician
+        <p className="mx-auto mt-6 max-w-md text-pretty text-lg leading-relaxed text-muted">
+          A few questions, your concerns, labs if you have them. Then a licensed clinician
           takes it from there.
         </p>
       </div>
 
       <LeadSummary />
 
-      <p className="mt-6 text-center font-mono text-[11px] uppercase tracking-wider text-muted">
-        Conversation → intake → clinician consult · flow in progress
+      <p className="mono-label mt-6 text-center text-muted">
+        Conversation + intake + clinician consult · flow in progress
       </p>
     </div>
   );

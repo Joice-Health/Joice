@@ -133,14 +133,29 @@ record in `infra/dns.tf` — do not remove it.
 
 ## Design system
 
-Tokens live in `packages/ui/src/theme.css` (Tailwind v4 CSS-first `@theme`): `brand-*` is a
-clinical stone (grey-brown, deliberately desaturated — never pure green/black), `ink` is very
-dark grey (**never pure black text**), `canvas`/`surface`/`line`/`muted` neutrals, warm
-`card-from/card-to` gradient reserved for the membership-card identity. Sans font is
-Yantramanav (no 600 weight — `font-semibold` renders as 700); mono is Geist Mono, used for
-eyebrow labels/uppercase microcopy. Prefer soft drop shadows over borders on cards; the `glass`
-utility (frosted panels) needs something visual behind it. The animated water/video background
-(`water-background.tsx`) belongs to `/waitlist` only.
+The system comes from the Dinamo type deck and the "Joice option 5" palette; the full spec
+with the reasoning is `docs/design/01-design-system.md`. Tokens live in
+`packages/ui/src/theme.css` (Tailwind v4 CSS-first `@theme`); primitives in `packages/ui`.
+
+- **Colour**: `canvas` cream paper (#F5F0E9), `ink` dark olive-grey (#4D4F3F, never pure
+  black), `stone` warm grey (#ABA8A0: fills, rules, disabled; never text), `muted` for
+  secondary text, `surface` white. `brand-*` is the olive ramp with #877C00 at 600. Olive is
+  an accent, not a body colour: it carries the announcement bar, focus rings, dots. The
+  `card-from/card-to` gold gradient is reserved for the membership card.
+- **Type**: three Dinamo faces, all Light 300, served from `apps/web/public/fonts` via
+  `next/font/local` in `apps/web/app/layout.tsx`. `font-sans` ABC Ginto (text, +1% tracking),
+  `display` utility = ABC Ginto Nord Condensed uppercase (+3%, short charismatic statements),
+  `mono-label` utility = ABC Gaisyr Mono uppercase 11px (+5%: eyebrows, nav, buttons, indices).
+  `font-synthesis: none` is on `html`, so `font-bold`/`font-semibold` render as Light: do not
+  use weight for emphasis, use size, case, or a bracket.
+- **Devices**: square brackets mark a variable in the system, `[ you ]`, `[ 01 ]`,
+  `[ get started ]` (`Bracket`/`Index` from `@joice/ui`); the button is a dotted-outline pill
+  with a mono label whose forward actions end in ` +` (`buttonClasses`, `Button`, `CtaLink`);
+  structure is hairlines (`border-line`) and open lists, not cards, shadows or glass. Large
+  image panels take `rounded-t-card`; everything small is a pill. `ImageSlot` renders the
+  organic green field until a photo lands under `public/`.
+- The animated water/video background (`water-background.tsx`) belongs to `/waitlist` only,
+  where the `glass` utility (frosted panel with a hairline) still earns its keep.
 
 ## Compliance posture
 

@@ -3,25 +3,27 @@ import { CtaLink } from '@/components/ui/cta-link';
 
 export function ClinicalTeam() {
   return (
-    <section className="glass rounded-card p-6 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.7),0_24px_60px_-32px_rgba(40,35,25,0.4)] sm:p-8">
-      <Eyebrow>Clinical team</Eyebrow>
-      <div className="mt-4 flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-5">
+    <section className="border-b border-line py-12 sm:py-16">
+      <div className="flex flex-col gap-8 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <Eyebrow as="h2">Clinical team</Eyebrow>
+          <p className="mt-3 max-w-md text-xl leading-snug text-ink sm:text-2xl">
+            Meet the clinicians who set our protocols.
+          </p>
+        </div>
+        <div className="flex items-center gap-6">
           <div className="flex -space-x-3">
             {[0, 1, 2, 3].map((i) => (
               <span
                 key={i}
-                className="h-12 w-12 rounded-full border-2 border-surface bg-gradient-to-br from-card-to to-brand-200"
+                className="h-11 w-11 rounded-full border-2 border-canvas bg-stone/50"
               />
             ))}
           </div>
-          <p className="max-w-sm text-lg leading-snug text-ink">
-            “Meet the clinicians who set our protocols”
-          </p>
+          <CtaLink href="/clinical-team" className="shrink-0">
+            Meet the team +
+          </CtaLink>
         </div>
-        <CtaLink href="/clinical-team" className="shrink-0">
-          Meet the team →
-        </CtaLink>
       </div>
     </section>
   );

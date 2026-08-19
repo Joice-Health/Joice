@@ -1,36 +1,37 @@
+import { Index } from '@joice/ui';
 import { Eyebrow } from '@/components/ui/eyebrow';
 
 /**
- * Clinician/expert profile cards. Placeholder slots until the real roster +
- * headshots land (content pass): skeleton name bar, credentials, role.
+ * Clinician/expert profiles. Placeholder rows until the real roster and
+ * headshots land (content pass): headshot slot, name bar, credentials, role.
  */
 const PROFILES = [0, 1, 2, 3];
 
 export function Profiles() {
   return (
-    <section className="border-t border-line/60 py-16 sm:py-20">
-      <Eyebrow>Clinician & expert profiles</Eyebrow>
-      <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <section className="border-t border-line py-16 sm:py-20">
+      <Eyebrow as="h2">Clinician & expert profiles</Eyebrow>
+      <ol className="mt-8 grid border-t border-line sm:grid-cols-2">
         {PROFILES.map((i) => (
-          <div
+          <li
             key={i}
-            className="flex flex-col items-center rounded-card bg-surface px-5 py-8 text-center shadow-[0_18px_44px_-28px_rgba(40,35,25,0.45)]"
+            className="flex items-center gap-6 border-b border-line py-6 sm:odd:pr-8 sm:even:pl-8"
           >
             {/* Headshot slot */}
-            <span className="h-20 w-20 rounded-full bg-gradient-to-br from-card-to to-brand-200" />
-            {/* Name */}
-            <span className="mt-5 block h-2.5 w-28 rounded-full bg-line" aria-hidden />
-            <span className="sr-only">Clinician name coming soon</span>
-            {/* Credentials + role */}
-            <span className="mt-4 font-mono text-[10px] uppercase tracking-[0.15em] text-muted">
-              Credentials
-            </span>
-            <span className="mt-1 font-mono text-[10px] uppercase tracking-[0.15em] text-muted">
-              Role
-            </span>
-          </div>
+            <span className="h-16 w-16 shrink-0 rounded-full border border-line bg-stone/40" />
+            <div className="min-w-0 flex-1">
+              <span className="mono-label text-muted">
+                <Index n={i + 1} />
+              </span>
+              {/* Name */}
+              <span className="mt-2 block h-2.5 w-28 rounded-full bg-line" aria-hidden />
+              <span className="sr-only">Clinician name coming soon</span>
+              {/* Credentials + role */}
+              <span className="mono-label mt-3 block text-muted">Credentials · Role</span>
+            </div>
+          </li>
         ))}
-      </div>
+      </ol>
     </section>
   );
 }

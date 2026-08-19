@@ -23,7 +23,7 @@ export default async function ComingSoonPage() {
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-xl flex-col items-center justify-center px-6 py-10 text-center animate-fade-up">
       <BrandMark />
-      <p className="mt-8 text-balance text-2xl leading-snug tracking-tight text-ink sm:text-3xl">
+      <p className="mt-8 text-balance text-2xl leading-snug text-ink sm:text-3xl">
         Something special is coming.
       </p>
     </main>

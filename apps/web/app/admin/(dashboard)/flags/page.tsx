@@ -46,7 +46,7 @@ export default function AdminFlagsPage() {
   return (
     <>
       <PageHeader title="Feature flags">
-        <Button variant="glassBrand" onClick={() => setShowForm((v) => !v)}>
+        <Button variant="solid" onClick={() => setShowForm((v) => !v)}>
           {showForm ? 'Cancel' : 'New flag'}
         </Button>
       </PageHeader>
@@ -71,7 +71,7 @@ export default function AdminFlagsPage() {
               aria-label="Flag description"
               className="h-11 max-w-sm text-sm"
             />
-            <Button type="submit" disabled={createFlag.isPending}>
+            <Button type="submit" variant="solid" disabled={createFlag.isPending}>
               {createFlag.isPending ? 'Creating…' : 'Create flag'}
             </Button>
           </form>

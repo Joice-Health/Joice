@@ -3,6 +3,10 @@ import { cn } from './cn';
 
 export type InputProps = InputHTMLAttributes<HTMLInputElement>;
 
+/**
+ * Field: white pill on the cream, framed by a solid hairline. Solid, not
+ * dotted, dotted outlines mean "press me", solid ones mean "type here".
+ */
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   { className, ...props },
   ref,
@@ -11,11 +15,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     <input
       ref={ref}
       className={cn(
-        'h-14 w-full rounded-full px-5 text-base text-ink glass',
-        'shadow-[inset_0_1px_0_0_rgba(255,255,255,0.65),0_10px_28px_-16px_rgba(31,38,32,0.3)]',
-        'placeholder:text-muted/60 outline-none transition-all duration-200',
-        'focus-visible:border-brand-300 focus-visible:bg-white/80 focus-visible:ring-2 focus-visible:ring-brand-300/50',
-        'disabled:cursor-not-allowed disabled:opacity-60',
+        'h-12 w-full rounded-full border border-line bg-surface px-5 text-base text-ink',
+        'placeholder:text-muted outline-none transition-colors duration-200',
+        'focus-visible:border-ink focus-visible:ring-2 focus-visible:ring-brand-600/40',
+        'aria-invalid:border-red-700',
+        'disabled:cursor-not-allowed disabled:bg-canvas disabled:text-muted',
         className,
       )}
       {...props}
