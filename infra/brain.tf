@@ -127,9 +127,13 @@ resource "aws_ecs_task_definition" "brain" {
         # Clerk secret, which this task deliberately cannot read (iam.tf).
         { name = "CLERK_PUBLISHABLE_KEY", value = var.clerk_publishable_key },
         { name = "CLERK_JWT_KEY", value = var.clerk_jwt_key },
+        # The api, reached over the canonical URL until Service Connect (story 4.7).
+        { name = "API_URL_INTERNAL", value = local.canonical_url },
       ]
       secrets = [
         { name = "DATABASE_URL", valueFrom = aws_secretsmanager_secret.database_url.arn },
+        # Presented to the api on /api/internal/* for member profile reads.
+        { name = "INTERNAL_API_TOKEN", valueFrom = aws_secretsmanager_secret.internal_api_token.arn },
         # Companion lead sync (profile import only — no list subscription; the
         # visitor gave an email to personalize the chat, not marketing consent).
         { name = "KLAVIYO_API_KEY", valueFrom = aws_secretsmanager_secret.klaviyo_api_key.arn },

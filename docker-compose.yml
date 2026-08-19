@@ -53,6 +53,8 @@ services:
       # Klaviyo waitlist sync — both empty disables it (signups just don't sync).
       KLAVIYO_API_KEY: ${KLAVIYO_API_KEY:-}
       KLAVIYO_LIST_ID: ${KLAVIYO_LIST_ID:-}
+      # Bearer for /api/internal/* (the brain's profile reads). Shared with the brain below.
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-joice-dev-internal-token}
       # The admin console edits the brain's settings, so it needs the same
       # model/voice defaults the brain resolves against.
       RAG_MODEL: ${RAG_MODEL:-us.anthropic.claude-sonnet-4-5-20250929-v1:0}
@@ -84,6 +86,9 @@ services:
       CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY:-pk_test_placeholder}
       CLERK_JWT_KEY: ${CLERK_JWT_KEY:-}
       CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-}
+      # Reach the api for member profiles; same token as the api's INTERNAL_API_TOKEN.
+      API_URL_INTERNAL: http://api:4000
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-joice-dev-internal-token}
       # Bedrock/Transcribe/Polly — needs AWS creds to answer for real; without
       # them these endpoints fail and the rest of the site still works.
       RAG_MODEL: ${RAG_MODEL:-us.anthropic.claude-sonnet-4-5-20250929-v1:0}

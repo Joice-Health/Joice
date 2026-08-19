@@ -57,6 +57,12 @@ const envSchema = z.object({
     .default('false')
     .transform((v) => v === 'true' || v === '1'),
   /**
+   * Bearer token for /api/internal/* (the brain reading a member's profile
+   * and writing observations). Shared with the brain task by Terraform
+   * (random_password in infra/secrets.tf); empty makes the routes answer 503.
+   */
+  INTERNAL_API_TOKEN: z.string().default(''),
+  /**
    * Git SHA of the image, baked in at build time and reported by /health.
    * "dev" locally, where the running code is whatever is bind-mounted.
    */

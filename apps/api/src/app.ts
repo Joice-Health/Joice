@@ -15,6 +15,7 @@ import { featureFlags, waitlist } from './services';
 import { adminRoutes } from './admin/routes';
 import { onboardingRoutes } from './onboarding/routes';
 import { memberRoutes } from './member/routes';
+import { internalRoutes } from './internal/routes';
 
 const app = new Hono<{ Variables: RequestIdVariables }>();
 
@@ -58,6 +59,12 @@ const waitlistOpen = requireFlag(
   FLAG_KEYS.waitlist,
   "The waitlist isn't open right now.",
 );
+
+/**
+ * Service-to-service routes, OUTSIDE the typed chain below: not browser APIs,
+ * and they must not leak into the RPC types. Bearer-token gated.
+ */
+app.route('/api/internal', internalRoutes);
 
 /**
  * Routes are defined in a single chain so `typeof routes` carries the full
