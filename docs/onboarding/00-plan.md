@@ -690,7 +690,7 @@ packages/core/src/profile/profile-service.ts    NEW  recordObservations (append)
 packages/core/src/rules/conditions.ts           NEW  Condition zod (recursive) + op vocabulary
 packages/core/src/rules/evaluate.ts             NEW  evaluateCondition(cond, traits) -> { value, why }
 packages/core/src/rules/validate.ts             NEW  validateCondition(cond, registry, customTypes) -> issues (op valid for type, unknown trait)
-packages/core/src/onboarding/us-states.ts       NEW  US_STATES (51), browser-safe
+packages/utils/src/us-states.ts                 NEW  US_STATES (51) in a new dependency-free @joice/utils package (helpers usable anywhere)
 packages/core/src/onboarding/schemas.ts         NEW  flow definition zod (sections, question bank, options, gates, segment rules, completion), session state, actions, notify
 packages/core/src/onboarding/default-flow.ts    NEW  DEFAULT_INTAKE_FLOW as code (test asserts it equals the seed SQL JSON)
 packages/core/src/onboarding/validate-flow.ts   NEW  validateFlowDefinition(def, { phiEnabled, registry }) -> { ok, errors, warnings }; logicHash()
@@ -705,7 +705,7 @@ packages/core/src/onboarding/events-service.ts  NEW  recordEvent (no values), fu
 packages/core/src/onboarding/admin-schemas.ts   NEW  versions, publish, rollback, simulate, service areas, settings, funnel, requests
 packages/core/src/onboarding/marketing-port.ts  NEW  OnboardingMarketingPort (+ noop)
 packages/core/src/marketing/onboarding-klaviyo-adapter.ts NEW  onboarding_* props, importProfile + trackEvent only
-packages/core/src/schemas.ts                    MOD  FLAG_KEYS.onboarding / .onboardingHealth; re-export traits, conditions, onboarding schemas, us-states
+packages/core/src/schemas.ts                    MOD  FLAG_KEYS.onboarding / .onboardingHealth; re-export traits, conditions, onboarding schemas
 packages/core/src/index.ts, src/admin/index.ts  MOD  export services + admin schemas
 packages/core/src/admin/user-service.ts         MOD  markDeletedFromClerk(clerkUserId)
 packages/core/src/**/*.test.ts                  NEW  per §6
@@ -908,7 +908,7 @@ below track progress across teams.
 | # | Story | Area | Size | Acceptance |
 |---|---|---|---|---|
 | 0.0 | Cut `onboarding/intake` from `main`; land `docs/onboarding/00-plan.md` (this brief) and the `docs/README.md` index entry; create the Shortcut epic + stories | docs, process | S | Branch on origin; epic links to the doc |
-| 0.1 | Trait registry with tiers (`packages/core/src/profile/traits.ts`), exported from `@joice/core/schemas`; includes `custom.*` rule | core | S | Typed map; zod for values; tests for tier lookup and custom keys |
+| 0.1 | Trait registry with tiers (`packages/core/src/profile/traits.ts`), exported from `@joice/core/schemas`; includes `custom.*` rule; US states list in a new `@joice/utils` package (dependency-free helpers usable anywhere) | core, utils | S | Typed map; zod for values; tests for tier lookup and custom keys |
 | 0.2 | Condition DSL: schema, evaluator with trace, registry validator | core | M | All ops × types tested; setting refs resolve; invalid op rejected |
 | 0.3 | Flow definition zod schema + publish validator + logic hash | core | M | Sample definition validates; each validator rule has a failing test |
 | 0.4 | Engine `next()` + progress + path invalidation | core | M | Table tests from §3.5; pure, no db |
