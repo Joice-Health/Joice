@@ -1,8 +1,11 @@
 import { Hono } from 'hono';
+import { clerkMiddleware } from '@hono/clerk-auth';
 import { zValidator } from '@hono/zod-validator';
 import {
   FLAG_KEYS,
+  OnboardingServiceError,
   answerSchema,
+  claimSchema,
   notifyRequestSchema,
   skipSchema,
   startSessionSchema,
@@ -10,6 +13,8 @@ import {
 } from '@joice/core';
 import { env } from '../env';
 import { hashIp } from '../hash';
+import { requireMember } from '../member';
+import type { MemberVariables } from '../member/auth';
 import { requireFlag } from '../middleware/feature-gate';
 import {
   createOnboardingSessionMiddleware,
@@ -19,6 +24,7 @@ import { clientIp, rateLimit } from '../middleware/rate-limit';
 import { featureFlags, onboarding } from '../services';
 
 export type OnboardingEnv = { Variables: OnboardingSessionVariables };
+type ClaimEnv = { Variables: OnboardingSessionVariables & MemberVariables };
 
 /**
  * The public intake API: the visitor's session, driven by the engine on the
@@ -33,6 +39,38 @@ export type OnboardingEnv = { Variables: OnboardingSessionVariables };
  */
 const onboardingOpen = requireFlag(featureFlags, FLAG_KEYS.onboarding, "Intake isn't open yet.");
 const session = createOnboardingSessionMiddleware({ production: env.NODE_ENV === 'production' });
+
+/**
+ * Claim: link this browser's intake session to the signed-in member. Its own
+ * sub-router because it alone needs Clerk on top of the cookie. Verified email
+ * only (409 otherwise), idempotent for the same member, refused for another
+ * (403), refused for a gated session (409). `requireMember` creates the
+ * member's record if this is their first call after sign-up.
+ */
+const claimRoutes = new Hono<ClaimEnv>()
+  .use('*', rateLimit({ windowMs: 60_000, max: 10 }))
+  .use('*', clerkMiddleware({ secretKey: env.CLERK_SECRET_KEY, publishableKey: env.CLERK_PUBLISHABLE_KEY }))
+  .use('*', requireMember)
+  .post('/', zValidator('json', claimSchema), async (c) => {
+    try {
+      const { state, alreadyClaimed } = await onboarding.claim({
+        anonymousSessionId: c.get('onboardingSessionId'),
+        member: {
+          id: c.get('memberId'),
+          email: c.get('memberEmail') ?? '',
+          emailVerified: c.get('memberEmailVerified'),
+          firstName: c.get('memberFirstName'),
+        },
+      });
+      return c.json({ memberId: c.get('memberId'), alreadyClaimed, state }, 200);
+    } catch (err) {
+      if (err instanceof OnboardingServiceError) {
+        const status = err.code === 'no_session' ? 404 : err.code === 'forbidden' ? 403 : 409;
+        return c.json({ error: err.message, code: err.code }, status);
+      }
+      throw err;
+    }
+  });
 
 function fail(c: { json: (body: unknown, status: 400 | 404 | 409) => Response }, result: Extract<ActionResult, { ok: false }>) {
   const status = result.code === 'no_session' ? 404 : result.code === 'gated' || result.code === 'not_gated' ? 409 : 400;
@@ -127,4 +165,6 @@ export const onboardingRoutes = new Hono<OnboardingEnv>()
       if (!result.ok) return fail(c, result);
       return c.json(result.state, 201);
     },
-  );
+  )
+
+  .route('/session/claim', claimRoutes);
