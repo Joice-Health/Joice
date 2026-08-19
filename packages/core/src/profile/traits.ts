@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { US_STATE_CODES } from '@joice/utils';
+import { GOAL_VALUES, US_STATE_CODES } from '@joice/utils';
 
 /**
  * The trait registry: the schema of a person, as the platform understands it.
@@ -59,31 +59,10 @@ export interface TraitDef {
   readonly unit?: string;
 }
 
-/**
- * The care areas a visitor can be here for, plus the honest "not sure". Same
- * slugs as `CARE_AREAS` in `packages/brain/src/profile/schemas.ts` and
- * `apps/web/lib/site-content.ts`; story 4.5 of the onboarding epic makes both
- * import from here. There is deliberately no cognition or longevity area until
- * a protocol exists behind one.
- */
-export const GOAL_VALUES = [
-  'weight-metabolic',
-  'body-comp-recovery',
-  'beauty-skin',
-  'energy',
-  'stress-sleep',
-  'not-sure',
-] as const;
-
-/** Display labels for the goal vocabulary (the care areas; consolidated in story 4.5). */
-export const GOAL_LABELS: Readonly<Record<(typeof GOAL_VALUES)[number], string>> = {
-  'weight-metabolic': 'Weight and metabolic',
-  'body-comp-recovery': 'Body comp and recovery',
-  'beauty-skin': 'Beauty and skin',
-  energy: 'Energy',
-  'stress-sleep': 'Stress and sleep',
-  'not-sure': 'Not sure yet',
-};
+// The goal vocabulary is the care areas + "not sure", canonical in
+// @joice/utils (care-areas.ts) and shared by the site, the companion and the
+// intake. Re-exported so existing consumers of @joice/core/schemas keep working.
+export { GOAL_LABELS, GOAL_VALUES } from '@joice/utils';
 
 export const AGE_BANDS = ['under_18', '18_24', '25_34', '35_44', '45_54', '55_64', '65_plus'] as const;
 export const SERVICE_AREA_STATUSES = ['open', 'notify', 'closed'] as const;

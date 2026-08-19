@@ -4,3 +4,4 @@
  * zod, the database, React or the AWS SDK, it does not belong here.
  */
 export * from './us-states';
+export * from './care-areas';

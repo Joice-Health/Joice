@@ -6,6 +6,8 @@
  * counsel/business review).
  */
 
+import { CARE_AREAS as CANONICAL_CARE_AREAS } from '@joice/utils';
+
 export interface CareArea {
   slug: string;
   name: string;
@@ -27,33 +29,22 @@ export interface Article {
   excerpt: string;
 }
 
-export const CARE_AREAS: CareArea[] = [
-  {
-    slug: 'weight-metabolic',
-    name: 'Weight & metabolic',
-    blurb: 'Metabolic health, appetite regulation, and sustainable weight protocols.',
-  },
-  {
-    slug: 'body-comp-recovery',
-    name: 'Body comp / recovery',
-    blurb: 'Lean mass, tissue repair, and recovery support.',
-  },
-  {
-    slug: 'beauty-skin',
-    name: 'Beauty / skin',
-    blurb: 'Skin quality, collagen support, and healthy aging.',
-  },
-  {
-    slug: 'energy',
-    name: 'Energy',
-    blurb: 'Cellular energy, daytime drive, and resilience.',
-  },
-  {
-    slug: 'stress-sleep',
-    name: 'Stress & sleep',
-    blurb: 'Deeper sleep, calmer baseline, better mornings.',
-  },
-];
+// Slugs and names are canonical in @joice/utils (care-areas.ts), shared with
+// the companion's capture and the intake's goal question; the blurbs are site
+// copy and live here.
+const CARE_AREA_BLURBS: Record<string, string> = {
+  'weight-metabolic': 'Metabolic health, appetite regulation, and sustainable weight protocols.',
+  'body-comp-recovery': 'Lean mass, tissue repair, and recovery support.',
+  'beauty-skin': 'Skin quality, collagen support, and healthy aging.',
+  energy: 'Cellular energy, daytime drive, and resilience.',
+  'stress-sleep': 'Deeper sleep, calmer baseline, better mornings.',
+};
+
+export const CARE_AREAS: CareArea[] = CANONICAL_CARE_AREAS.map((a) => ({
+  slug: a.slug,
+  name: a.label,
+  blurb: CARE_AREA_BLURBS[a.slug] ?? '',
+}));
 
 export const PRODUCTS: Product[] = [
   {
