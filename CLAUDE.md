@@ -99,7 +99,7 @@ The intake flow on `/get-started` (design brief: `docs/onboarding/00-plan.md`; m
 - Every onboarding change lands on the `onboarding/intake` branch with its docs
   (`docs/onboarding/*`) and the relevant CLAUDE.md in the same PR.
 
-## Access model (three tiers)
+## Access model (four tiers)
 
 1. **Public**: `/waitlist` (+ `?ref=` referral links) — the only public surface until launch.
    The waitlist itself sits behind the `waitlist` feature flag (seeded on by migration, toggled
@@ -110,7 +110,13 @@ The intake flow on `/get-started` (design brief: `docs/onboarding/00-plan.md`; m
 2. **Team preview**: everything else redirects anonymous visitors to `/waitlist` via
    `apps/web/middleware.ts`. Team logs in at `/team` with `TEAM_PASSWORD` (HMAC cookie,
    no session store). `SITE_LAUNCHED=true` removes this gate entirely.
-3. **Admin** (`/admin/*`, `/api/admin/*`): Clerk auth. Admin = Clerk user with
+3. **Member** (`/sign-up`, `/sign-in`, `/welcome`, `/api/me/*`, the claim): Clerk, any
+   signed-in user, no role. The `users` row is created on the member's first authenticated
+   call after sign-up (`requireMember`), never by a webhook; `publicMetadata.memberId`
+   (our users.id) is stamped then and rides the session-token `metadata` claim, which is
+   also how the brain recognises members (public JWT key, no Clerk secret on that task).
+   Behind the team gate until launch like the rest of the site.
+4. **Admin** (`/admin/*`, `/api/admin/*`): Clerk auth. Admin = Clerk user with
    `publicMetadata.role === 'admin'`, surfaced through a session-token claim
    (Clerk Dashboard → Sessions → customize with `{ "metadata": "{{user.public_metadata}}" }`).
    If `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` is absent, middleware hides `/admin` completely.
