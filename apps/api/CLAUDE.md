@@ -34,8 +34,8 @@ schemas from `@joice/core`, call the service, return JSON.
 | `/api/waitlist*`, `/api/flags` | `src/app.ts` | public, rate-limited, waitlist behind its flag | yes |
 | `/api/onboarding/*` | `src/onboarding/routes.ts` | anonymous cookie session, behind the `onboarding` flag, rate-limited per route | yes (`.route('/api/onboarding', ...)`) |
 | `/api/admin/*` | `src/admin/routes.ts` | Clerk + `requireAdmin` | yes (`.route('/api/admin', ...)`) |
-| `/api/me/*`, `/api/onboarding/session/claim` | (Phase 2) | Clerk + `requireMember` | yes |
-| `/api/webhooks/clerk`, `/api/internal/*` | (Phases 2 and 4) | svix signature / internal bearer token | **no**: registered on the app outside the chain, they are not browser APIs |
+| `/api/me/*`, `/api/onboarding/session/claim` | (Phase 2) | Clerk + `requireMember`, which also creates the member's `users` row on its first call after sign-up (no webhook) | yes |
+| `/api/internal/*` | (Phase 4) | internal bearer token | **no**: registered on the app outside the chain, not a browser API |
 
 The intake routes (`src/onboarding/routes.ts`): `GET`/`POST /session`,
 `/session/answer`, `/skip`, `/back`, `/restart`, `/notify`. The engine runs on this side;

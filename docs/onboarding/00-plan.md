@@ -25,7 +25,7 @@ repo call the intake decision tree "a separate downstream workstream". Nothing d
 | Already in the repo | Where | How onboarding uses it |
 |---|---|---|
 | Deterministic server-side capture machine: `nextStep` is a pure function of the stored row; `POST` returns the next state | `packages/brain/src/profile/{schemas,service}.ts`, `apps/brain/src/app.ts:435-470` | The engine shape we copy (and generalise) |
-| `users` table keyed by Clerk id, `upsertFromClerk()` waiting for a webhook | `packages/db/src/schema/identity.ts`, `packages/core/src/admin/user-service.ts:66-90` | Registration target |
+| `users` table keyed by Clerk id, `upsertFromClerk()` waiting for a caller | `packages/db/src/schema/identity.ts`, `packages/core/src/admin/user-service.ts:66-90` | Registration target |
 | Admin-configurable, audited, cached config (one `app_settings` row, zod-validated, safeParse + defaults) | `packages/brain/src/config/service.ts`, `/api/admin/brain` | Pattern for every admin-editable object here |
 | Feature flags seeded by migration, `requireFlag` gate, `flagEnabled()` / `usePublicFlags()` | `packages/core/src/admin/feature-flag-service.ts`, `apps/api/src/middleware/feature-gate.ts`, `apps/web/lib/flags.ts` | `onboarding` flag opens the door |
 | Audit log service | `packages/core/src/admin/audit-service.ts` | Every publish / gate edit |
@@ -218,7 +218,6 @@ flowchart LR
     PUB["/api/onboarding/* public, flag-gated, rate-limited"]
     MEM["/api/onboarding/session/claim, /api/me/* member"]
     ADM["/api/admin/onboarding/* Clerk admin"]
-    WH["/api/webhooks/clerk svix"]
   end
   subgraph client[packages/api-client]
     HK["onboarding.ts hooks + admin hooks"]
@@ -364,7 +363,8 @@ Notes:
   key and flow version (audit, re-ask, "what did they say before"); `profiles.traits` is the
   fold (recomputed on write, cheap). No bus, no projector service.
 - Member identity across services is `users.id` (what `brain_profiles.member_id` already
-  expects), stamped into Clerk `publicMetadata.memberId` at webhook/claim time so every
+  expects), stamped into Clerk `publicMetadata.memberId` the first time the member calls us
+  after sign-up (no webhook: the sign-up response is the trigger) so every
   service reads it from the session-token `metadata` claim that is already configured.
 - `date_of_birth` for a visitor under the minimum age is never written; only the gate outcome.
 - `onboarding_events` holds no answer values, only keys and outcomes (funnel).
@@ -528,9 +528,9 @@ sequenceDiagram
   end
   A-->>W: { step: complete }
   W->>C: <SignUp/> (email verified by Clerk)
-  C-->>A: POST /api/webhooks/clerk user.created (svix signed)
-  A->>A: users.upsertFromClerk() + stamp publicMetadata.memberId = users.id
+  C-->>W: sign-up complete, session token
   W->>A: POST /session/claim (Authorization: Clerk session token, requireMember)
+  A->>A: requireMember: users.upsertFromClerk() from the verified token + stamp publicMetadata.memberId = users.id
   A->>A: link session + profile to member (verified email only), observations re-stamped
   W->>B: POST /api/brain/profile/claim (Clerk token + brain cookie)
   B->>B: profileService.claim(sessionId, memberId), conversations.claim()
@@ -543,8 +543,10 @@ sequenceDiagram
   platform identity is not brain identity. Retention is enforced on the row, not the cookie.
 - `requireMember` middleware: `clerkMiddleware` + `getAuth(c).userId` present (no admin claim
   needed); resolves `memberId` (`users.id`) from the token's `metadata.memberId`, else the
-  `users` row, else a lazy `upsertFromClerk` + metadata stamp (covers the webhook-arrives-late
-  race); exposes `memberId`, `memberClerkUserId`, `memberEmail`.
+  `users` row, else creates it: `upsertFromClerk` from the verified token (email, names from
+  Clerk's backend API) + `publicMetadata.memberId` stamp. **No webhook**: the member record is
+  created on the first authenticated call after sign-up, which the web makes from the sign-up
+  response (claim, or `/api/me/profile`). Exposes `memberId`, `memberClerkUserId`, `memberEmail`.
 - Claim links only when the Clerk email is verified; an unverified sign-up is told to verify.
 - Anonymous sessions: idle 30 days → `abandoned`; unclaimed 90 days → answers and observations
   purged, by a scheduled task like `apps/brain/scripts/retention.ts` (`ONBOARDING_SESSION_TTL_DAYS`).
@@ -718,10 +720,8 @@ apps/api/src/member/auth.ts                     NEW  requireMember: Clerk token 
 apps/api/src/onboarding/routes.ts               NEW  public + member onboarding sub-router
 apps/api/src/member/routes.ts                   NEW  /api/me/profile
 apps/api/src/internal/routes.ts                 NEW  /api/internal/profile/:memberId, /api/internal/observations (outside the RPC types)
-apps/api/src/webhooks/clerk.ts                  NEW  svix-verified user.created/updated/deleted (outside the RPC types)
 apps/api/src/admin/onboarding-routes.ts         NEW  admin sub-router; apps/api/src/admin/routes.ts MOD .route('/onboarding', ...)
-apps/api/src/app.ts                             MOD  CORS credentials: true; .route('/api/onboarding'), .route('/api/me'); internal + webhook on app
-apps/api/package.json                           MOD  + svix
+apps/api/src/app.ts                             MOD  CORS credentials: true; .route('/api/onboarding'), .route('/api/me'); internal routes on app
 
 packages/api-client/src/client.ts               MOD  createApiClient sends credentials: 'include' (cookie in dev; no-op same-origin in prod)
 packages/api-client/src/onboarding.ts           NEW  onboardingKeys; useOnboardingSession, useStartOnboarding, useAnswerQuestion, useSkipQuestion, useGoBack, useRestartOnboarding, useSubmitNotify, useClaimOnboarding, useMyProfile; AnswerError
@@ -772,7 +772,6 @@ docs/onboarding/01-overview.md, 02-admin-guide.md, 03-data-and-compliance.md NEW
 | POST | `/api/onboarding/session/notify` | rateLimit 5/min, flag, cookie, zValidator(notifyRequestSchema) | Only when the step is a `notify` gate; `service_area_requests` upsert (email + state unique), Klaviyo event; 201 |
 | POST | `/api/onboarding/session/claim` | rateLimit 10/min, flag, cookie, clerkMiddleware, requireMember | Link session + profile to `users.id` (verified email only), event `claimed`, returns claim result |
 | GET | `/api/me/profile` | rateLimit 60/min, clerkMiddleware, requireMember | Member's profile view for `/welcome` (`memberRoutes` mounted at `/api/me`) |
-| POST | `/api/webhooks/clerk` | rateLimit, svix signature (raw body) | `user.created/updated` → `upsertFromClerk` + stamp `publicMetadata.memberId` once; `user.deleted` → `markDeletedFromClerk`; 503 when the secret is unset |
 | GET | `/api/internal/profile/:memberId` | rateLimit 600/min, requireInternalToken | First name, goal, segment, traits summary (marketing + personal tiers) for the brain |
 | POST | `/api/internal/observations` | rateLimit 600/min, requireInternalToken, zValidator | Brain-sourced observations → append + reproject |
 | GET | `/api/admin/onboarding/flows` | admin chain | Flows + published pointer |
@@ -789,7 +788,7 @@ docs/onboarding/01-overview.md, 02-admin-guide.md, 03-data-and-compliance.md NEW
 | POST | `/api/brain/profile/claim` | brain requester + Clerk bearer | Attach lead + threads to `memberId` from the token's `metadata.memberId` |
 
 Public, member and admin routes join the typed chain (sub-routers via `.route()`), so
-`AppType` carries them. The webhook and `/api/internal/*` are registered on the app outside
+`AppType` carries them. `/api/internal/*` is registered on the app outside
 the chain (like the brain's voice socket): they are not browser APIs and must not leak into
 the RPC types.
 
@@ -856,7 +855,8 @@ onboardingSettingsSchema = { minimumAge: int 13..21 }; funnelQuerySchema = { ver
   engine evaluates the gate before persisting DOB: persist happens only on `continue`).
 - Claim: requires `emailVerified` on the Clerk token's primary email; resolves `memberId`
   (`users.id`) from the token's `metadata.memberId`, else the `users` row, else a lazy
-  `upsertFromClerk` + `publicMetadata.memberId` stamp (covers a late webhook); moves `profiles`
+  `upsertFromClerk` + `publicMetadata.memberId` stamp (the member record is created here, on
+  the first call after sign-up; there is no webhook); moves `profiles`
   and `onboarding_sessions` to `member_id`, re-stamps observations, marks `registered`, fires
   Klaviyo completion (subscribe only if `consent_marketing`), idempotent on repeat.
 - `requireInternalToken`: `Authorization: Bearer` compared with `crypto.timingSafeEqual`, 503
@@ -879,12 +879,12 @@ onboardingSettingsSchema = { minimumAge: int 13..21 }; funnelQuerySchema = { ver
 flowchart LR
   B0[Day one<br/>branch onboarding/intake<br/>docs/onboarding/00-plan.md<br/>Shortcut epic] --> P0
   P0[Phase 0<br/>Foundations<br/>schema, registry, DSL, engine, service, API, hooks<br/>docs 02, 03 + CLAUDE.md] --> P1[Phase 1<br/>Slice on /get-started<br/>eligibility, gates, carry-over, goal, complete, resume<br/>docs 01, 07, 08]
-  P1 --> P2[Phase 2<br/>Registration<br/>Clerk member auth, webhook, claim, /welcome<br/>doc 04 + infra README]
+  P1 --> P2[Phase 2<br/>Registration<br/>Clerk member auth, member record on sign-up, claim, /welcome<br/>doc 04 + infra README]
   P1 --> P3[Phase 3<br/>Admin<br/>editor, simulator, versions, service areas, funnel<br/>docs 05, 09]
   P2 --> P4[Phase 4<br/>Content + profile<br/>goal sections, segments, brain member context<br/>doc 06]
   P3 --> P4
   P4 --> P5[Phase 5<br/>Gated on Before-PHI<br/>health traits, labs upload, protocol rules<br/>doc 10]
-  I[Infra track for Shaun<br/>env keys, webhook secret, Service Connect, retention task] -.-> P2
+  I[Infra track for Shaun<br/>env keys, Clerk dashboard, Service Connect, retention task] -.-> P2
   I -.-> P4
   I -.-> P5
   P1 -. merge to main, dark behind flag .-> M[(main)]
@@ -938,13 +938,13 @@ below track progress across teams.
 | # | Story | Area | Size | Acceptance |
 |---|---|---|---|---|
 | 2.1 | Member-facing Clerk: `(account)` route group with its own `ClerkProvider`, `/sign-up`, `/sign-in` in-app pages, middleware handling | web | M | Marketing pages stay Clerk-free; admin unaffected |
-| 2.2 | `POST /api/webhooks/clerk` (svix) → `users.upsertFromClerk` + stamp `publicMetadata.memberId` (= `users.id`); `user.deleted` → `markDeletedFromClerk`; `CLERK_WEBHOOK_SECRET` | api, infra | M | Bad signature 400; replay idempotent; metadata stamped once |
+| 2.2 | Member record on sign-up, no webhook: `requireMember` middleware (Clerk token → `memberId` = `users.id` from the `metadata.memberId` claim, else the `users` row, else `upsertFromClerk` from the verified token + Clerk backend lookup + `publicMetadata.memberId` stamp); the web calls the api from the sign-up response | api, core | M | First authenticated call creates the row once; stamp idempotent; no `svix`, no webhook secret |
 | 2.3 | `requireMember` middleware (claim → row → lazy upsert) + `POST /api/onboarding/session/claim` (verified email only, re-stamp observations, `registered` status) + `GET /api/me/profile` | api, core | M | Second session cannot claim into the member; idempotent |
 | 2.4 | Brain: optional Clerk bearer in `identifyRequester` (`memberId` from `metadata.memberId`) + `POST /api/brain/profile/claim` + `DELETE /api/brain/profile`; brain env gets Clerk keys | brain, infra | M | `brain_profiles.member_id`, conversations claimed; anonymous path unchanged |
 | 2.5 | `/welcome`: claims both sessions on first load, profile summary (traits, segment), what happens next, companion CTA | web | M | Survives sign-out/sign-in; direct sign-up without a session gets "Start your intake +" |
 | 2.6 | Consent section (terms, privacy, marketing opt-in) as traits; Klaviyo subscribe only on opt-in | core, web | S | Consent rows timestamped and versioned |
 | 2.7 | Retention sweep task for unclaimed sessions (script + `infra/` scheduled task, Shaun applies) | api, infra | S | Dry-run mode; only unclaimed older than TTL |
-| 2.8 | Docs: `04-sessions-and-registration.md` (sequence diagram, cookie, claim, webhook, `memberId` stamping, retention); `apps/brain/CLAUDE.md` (bearer requester, claim/delete routes); `infra/README.md` (Clerk dashboard steps, webhook secret, retention task); root `CLAUDE.md` access model member tier; `.env.example` | docs | S | Clerk setup reproducible from `infra/README.md` |
+| 2.8 | Docs: `04-sessions-and-registration.md` (sequence diagram, cookie, claim, member record on sign-up, `memberId` stamping, retention); `apps/brain/CLAUDE.md` (bearer requester, claim/delete routes); `infra/README.md` (Clerk dashboard steps, retention task); root `CLAUDE.md` access model member tier; `.env.example` | docs | S | Clerk setup reproducible from `infra/README.md` |
 
 ### Phase 3: Admin (epic "Onboarding admin")
 
@@ -987,8 +987,8 @@ below track progress across teams.
 ### Infra track (Shaun)
 
 - Phase 2: `CLERK_WEBHOOK_SECRET` (Clerk dashboard → Terraform secret → api task env), Clerk
-  public sign-up enabled, email verification on, webhook endpoint
-  `https://joicehealth.com/api/webhooks/clerk` (user.created/updated/deleted); Clerk keys on
+  public sign-up enabled, email verification on (no webhook: the member record is created on
+  the first authenticated call after sign-up); Clerk keys on
   the brain task; `ONBOARDING_SESSION_TTL_DAYS`; retention scheduled task.
 - Phase 4: `INTERNAL_API_TOKEN` (`random_password`, injected into api and brain),
   `API_URL_INTERNAL` on the brain task; optional Service Connect hardening (4.7).
@@ -1014,7 +1014,7 @@ packages). New tests follow the hand-rolled stub-db pattern
 | Flow service: publish validates, archives previous, moves pointer, audits `onboarding.publish`; rollback audits; cache TTL | `packages/core/src/onboarding/flow-service.test.ts` |
 | Projector: observations fold, provenance precedence (onboarding > companion > derived), segment rules by priority | `packages/core/src/profile/projector.test.ts` |
 | Service areas: status vocab, audit action names; Klaviyo adapter: `onboarding_*` props, no list subscribe | `service-area-service.test.ts`, `marketing/onboarding-klaviyo-adapter.test.ts` |
-| API: `requireInternalToken` (503 unset, 401 wrong, 200 right), `requireMember` fallback order, webhook (svix fixture; bad sig 400; idempotent), onboarding cookie attrs | `apps/api/src/middleware/*.test.ts`, `apps/api/src/member/auth.test.ts`, `apps/api/src/webhooks/clerk.test.ts` |
+| API: `requireInternalToken` (503 unset, 401 wrong, 200 right), `requireMember` fallback order and first-call creation, onboarding cookie attrs | `apps/api/src/middleware/*.test.ts`, `apps/api/src/member/auth.test.ts` |
 | Brain: member suffix only with `memberId`; port failure tolerated; `DELETE /api/brain/profile` requester-scoped; `POST /api/brain/profile/claim` needs a bearer; platform-client timeout → empty context | `packages/brain/src/generation/*.test.ts`, `apps/brain/src/ports/platform-client.test.ts`, `apps/brain/src/middleware/requester.test.ts` |
 
 **Engine test matrix** (fixture `DEFAULT_INTAKE_FLOW`, `minimumAge` 18, service areas `{CA: open, NY: notify, TX: closed}`, now 2026-08-19):
@@ -1058,7 +1058,7 @@ packages). New tests follow the hand-rolled stub-db pattern
    "complete"; close tab, reopen → resumes at the same question; `curl` the API without the
    cookie gets a new session; 11 rapid POSTs → 429.
 3. *Registration*: complete the flow → `/sign-up` → verify email → land on `/welcome` with the
-   summary; `users` row exists (webhook) and `onboarding_sessions.member_id`, `profiles.member_id`
+   summary; `users` row exists (created by the first call after sign-up) and `onboarding_sessions.member_id`, `profiles.member_id`
    set; `brain_profiles.member_id` set (claim); sign out, sign in → `/welcome` still shows the
    profile; a second anonymous session cannot claim into that member.
 4. *Admin*: edit copy → publish → live session sees the new copy without losing its place; add a
@@ -1094,20 +1094,20 @@ at code, one "why" paragraph per decision (the style of `docs/rag/*`).
 | `01-overview.md` | What intake is, the visitor journey (flowchart), the three tiers (public, member, admin), what exists today vs later, file-by-file index like `docs/rag/01-overview.md` | Phase 1 |
 | `02-flow-model.md` | The definition format (sections, question bank, options, gates, segment rules, copy), the condition DSL with every operator and the why-trace, the engine's algorithm and invariants (state diagram), versioning and the logic hash, validator rules table | Phase 0 |
 | `03-data-model.md` | ERD, every table column by column with writer, the profile fold and provenance precedence, derived traits, the trait registry and tiers, migration and seed conventions, expand/contract notes | Phase 0 |
-| `04-sessions-and-registration.md` | Cookie, resume, claim, Clerk sign-up, webhook, `memberId` stamping, the brain claim, sequence diagram, retention sweep | Phase 2 |
+| `04-sessions-and-registration.md` | Cookie, resume, claim, Clerk sign-up, the member record created on the first call after sign-up, `memberId` stamping, the brain claim, sequence diagram, retention sweep | Phase 2 |
 | `05-admin-guide.md` | For non-engineers: how to add a question, bind a trait, write a "show when", lock meanings, simulate a persona, publish and roll back, edit service areas and the minimum age, read the funnel; screenshots slots | Phase 3 |
 | `06-brain-integration.md` | Carry-over (client-composed, confirmed), `/api/internal/*` contract, `MemberContextPort` / `ObservationSinkPort`, the member suffix, what crosses and what never does, Service Connect hardening | Phase 4 |
 | `07-compliance.md` | Sensitivity tiers, the two keys (`PHI_READY` + flag), minors purge, notice and consent traits, retention numbers, analytics rules, the notify-me / waitlist / brain separation, open counsel questions; mirrors `docs/rag/07-compliance.md` | Phase 1, updated each phase |
-| `08-local-development.md` | Compose walkthrough, flag flip, curl script for the session API, Clerk dev instance + webhook tunnel, simulator usage, seeds reset | Phase 1 |
-| `09-troubleshooting.md` | Symptom → cause → fix: cookie not sent in dev, 404 with flag off, 422 on publish with the report codes, claim 409, webhook 400, stale flow cache | Phase 3 |
+| `08-local-development.md` | Compose walkthrough, flag flip, curl script for the session API, Clerk dev instance, simulator usage, seeds reset | Phase 1 |
+| `09-troubleshooting.md` | Symptom → cause → fix: cookie not sent in dev, 404 with flag off, 422 on publish with the report codes, claim 409, stale flow cache | Phase 3 |
 | `10-protocol-readiness.md` | What traits and segment exist, the `protocol_rules` sketch, how a protocol rule is authored and simulated later | Phase 5 |
 
 ### 7.2 CLAUDE.md updates (the instructions future sessions follow)
 
 | File | Add / change |
 |---|---|
-| root `CLAUDE.md` | Architecture tree gains `packages/core/src/{onboarding,profile,rules}` and `packages/db/src/schema/onboarding.ts` (owner: core via api); "Access model" gains the member tier (`/get-started` flag, `/sign-up`, `/sign-in`, `/welcome`, `requireMember`) and the `onboarding` / `onboarding_health` flags; env section gains `CLERK_WEBHOOK_SECRET`, `INTERNAL_API_TOKEN`, `PHI_READY`, `ONBOARDING_SESSION_TTL_DAYS` and which are runtime vs build; a new "Onboarding rules that keep this working" block: definitions are versioned and sessions pin a version; the engine is pure and lives in core; traits are code with tiers, questions bind to them; publish refuses health traits without both keys; DOB is never persisted on the age stop; `onboarding_events` and GTM never carry values; notify-me never joins the waitlist or the brain; `/api/internal/*` and the webhook stay outside the RPC chain; the brain reaches the profile only over HTTP; compliance posture paragraph updated (tiers) |
-| `apps/api/CLAUDE.md` | Route groups (`/api/onboarding`, `/api/me`, `/api/admin/onboarding`, `/api/internal`, `/api/webhooks/clerk`) and which join the typed chain; `requireMember` vs `requireAdmin`; `requireInternalToken`; the onboarding cookie and CORS `credentials`; svix raw-body rule; "never log the bearer"; services constructed in `services.ts` |
+| root `CLAUDE.md` | Architecture tree gains `packages/core/src/{onboarding,profile,rules}` and `packages/db/src/schema/onboarding.ts` (owner: core via api); "Access model" gains the member tier (`/get-started` flag, `/sign-up`, `/sign-in`, `/welcome`, `requireMember`) and the `onboarding` / `onboarding_health` flags; env section gains `INTERNAL_API_TOKEN`, `PHI_READY`, `ONBOARDING_SESSION_TTL_DAYS` and which are runtime vs build; a new "Onboarding rules that keep this working" block: definitions are versioned and sessions pin a version; the engine is pure and lives in core; traits are code with tiers, questions bind to them; publish refuses health traits without both keys; DOB is never persisted on the age stop; `onboarding_events` and GTM never carry values; notify-me never joins the waitlist or the brain; `/api/internal/*` stays outside the RPC chain; the brain reaches the profile only over HTTP; compliance posture paragraph updated (tiers) |
+| `apps/api/CLAUDE.md` | Route groups (`/api/onboarding`, `/api/me`, `/api/admin/onboarding`, `/api/internal`) and which join the typed chain; `requireMember` vs `requireAdmin` (and that `requireMember` creates the member record on first call); `requireInternalToken`; the onboarding cookie and CORS `credentials`; "never log the bearer"; services constructed in `services.ts` |
 | `apps/web/CLAUDE.md` | Route map gains `/get-started` (flag on → runner, off → lead summary), `(member)` group with its own `ClerkProvider`, `/sign-up`, `/sign-in`, `/welcome`; hooks to use (`useOnboardingSession` etc., never fetch by hand); `credentials: 'include'` note; analytics rule restated for `onboarding_*`; admin pages list gains `/admin/onboarding/*` |
 | `apps/brain/CLAUDE.md` | Requester may carry a Clerk bearer → `memberId` = `users.id` from `metadata.memberId`; `POST /api/brain/profile/claim` and `DELETE /api/brain/profile`; `platform-client.ts` adapters and the "empty context on failure" rule; the member suffix goes after the cache point and never to the browser |
 | `packages/core` (new `CLAUDE.md`, short) | Service factory pattern, `/schemas` subpath rule, where onboarding/profile/rules live, "the engine has no db", test style |
@@ -1118,7 +1118,7 @@ at code, one "why" paragraph per decision (the style of `docs/rag/*`).
 |---|---|
 | root `README.md` | Feature list gains intake + member accounts; pointer to `docs/onboarding/` |
 | `docs/README.md` | New section "Onboarding" with the ten docs and a "new here? read 01, 02, 05" pointer |
-| `infra/README.md` | New variables/secrets (`CLERK_WEBHOOK_SECRET`, `INTERNAL_API_TOKEN`, `PHI_READY`), Clerk dashboard steps (sign-ups, webhook endpoint), retention task, Service Connect note; Before-PHI checklist gains the onboarding lines (health traits unlock, labs bucket) |
+| `infra/README.md` | New variables/secrets (`INTERNAL_API_TOKEN`, `PHI_READY`), Clerk dashboard steps (sign-ups, email verification), retention task, Service Connect note; Before-PHI checklist gains the onboarding lines (health traits unlock, labs bucket) |
 | `docs/marketing/01-klaviyo.md` | `onboarding_*` properties and metrics (`Onboarding Completed`, `Service Area Requested`), no-list-subscribe rule for notify-me |
 | `docs/ci-cd/README.md` | Note that `packages/core` changes roll api and web, and that the migrate task runs on api image change (already true; state it for the onboarding migrations) |
 | `.env.example` | Every new variable with a one-line comment |
@@ -1141,7 +1141,7 @@ at code, one "why" paragraph per decision (the style of `docs/rag/*`).
   follows the repo's existing long-lived-branch habit (`brain-v2`, `admin-system`,
   `rag-brain-system`).
 - **Story branches**: `onboarding/<phase>-<story>-<slug>` (for example
-  `onboarding/0-4-engine`, `onboarding/2-2-clerk-webhook`), one PR each into
+  `onboarding/0-4-engine`, `onboarding/2-1-member-clerk`), one PR each into
   `onboarding/intake`, `bun run check` green, docs + `CLAUDE.md` updated in the same PR,
   reviewed before merge. Stories that touch `packages/db` also commit the generated migration.
 - **Merging to `main`**: per phase, once the phase's verification list (§6) passes locally
