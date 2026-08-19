@@ -309,7 +309,7 @@ const routes = app
     zValidator('json', chatRequestSchema),
     async (c) => {
       const { messages } = c.req.valid('json');
-      const recommendation = await recommendations.recommend(messages);
+      const recommendation = await recommendations.recommend(messages, { requester: c.get('requester') });
       // Known gap: recommend() doesn't surface token usage, so non-streaming
       // exchanges persist without counts. The chat UI always streams; this
       // path exists for non-chat surfaces and the typed-client flow.
@@ -333,7 +333,9 @@ const routes = app
         let partialAnswer = '';
         let completed = false;
         try {
-          for await (const event of recommendations.recommendStream(messages)) {
+          for await (const event of recommendations.recommendStream(messages, {
+            requester: c.get('requester'),
+          })) {
             if (aborted.aborted || stream.aborted || stream.closed) break;
             if (event.type === 'delta') {
               partialAnswer += event.text;

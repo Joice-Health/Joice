@@ -96,3 +96,29 @@ export function buildSystemPrompt(
 
   return sections.join('\n\n');
 }
+
+/**
+ * The member suffix: what the brain may know about who it is talking to,
+ * rendered AFTER the prompt-cache point (providers/bedrock.ts places
+ * systemSuffix behind the cachePoint) so the shared prefix stays cacheable.
+ * Server-side only; it never round-trips the browser. Personalisation, not
+ * medical judgment: the safety floor above it still forbids tailored dosing.
+ */
+export function buildMemberSuffix(ctx: {
+  firstName: string | null;
+  goalLabel: string | null;
+  segment: string | null;
+  traitsSummary: string[];
+}): string | undefined {
+  const lines: string[] = [];
+  if (ctx.firstName) lines.push(`Name: ${ctx.firstName}`);
+  if (ctx.goalLabel) lines.push(`Here for: ${ctx.goalLabel}`);
+  if (ctx.segment) lines.push(`Segment: ${ctx.segment}`);
+  lines.push(...ctx.traitsSummary.slice(0, 8));
+  if (lines.length === 0) return undefined;
+  return (
+    'Member context, for personalisation only. Do not restate it verbatim, do not present it as ' +
+    'medical assessment, and keep the safety rules above regardless:\n' +
+    lines.map((l) => `- ${l}`).join('\n')
+  );
+}
