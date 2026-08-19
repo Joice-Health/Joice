@@ -112,7 +112,7 @@ jobs:
       # web and api from one origin, so the browser calls a relative /api/... path.
       - name: Build and push web image
         if: steps.affected.outputs.web == 'true'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: apps/web/Dockerfile
@@ -133,7 +133,7 @@ jobs:
 
       - name: Build and push api image
         if: steps.affected.outputs.api == 'true'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: apps/api/Dockerfile
@@ -151,7 +151,7 @@ jobs:
 
       - name: Build and push brain image
         if: steps.affected.outputs.brain == 'true'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: apps/brain/Dockerfile
