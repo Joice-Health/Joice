@@ -1,5 +1,6 @@
 import type { MiddlewareHandler } from 'hono';
 import { getCookie, setCookie } from 'hono/cookie';
+import { getAuth } from '@hono/clerk-auth';
 import type { Requester } from '@joice/brain';
 import { env } from '../env';
 
@@ -11,10 +12,13 @@ import { env } from '../env';
  * from an IP or user agent, which would make it a fingerprint and a compliance
  * problem rather than a session handle.
  *
- * When member auth ships, this middleware verifies the Clerk token and sets
- * `memberId`; the session id keeps working alongside it so a thread started
- * before signing in can be claimed afterwards (`conversationService.claim`).
- * Nothing downstream needs to change — handlers already take a `Requester`.
+ * Member auth: `clerkMiddleware` (app.ts) verifies a bearer token when the
+ * browser sends one, and this middleware reads the member id from the
+ * token's `metadata.memberId` claim (our users.id, stamped by the api on the
+ * member's first call after sign-up). The session id keeps working alongside
+ * it so a thread or lead started before signing in can be claimed afterwards
+ * (`profileService.claim`, `conversationService.claim`). Nothing downstream
+ * needs to change: handlers already take a `Requester`.
  */
 
 const COOKIE = 'joice_brain_session';
@@ -46,6 +50,19 @@ export const identifyRequester: MiddlewareHandler<{ Variables: RequesterVariable
     });
   }
 
-  c.set('requester', { memberId: null, sessionId });
+  c.set('requester', { memberId: memberIdFromClerk(c), sessionId });
   return next();
 };
+
+/** The member id Clerk's session token carries, or null when anonymous or unverified. */
+function memberIdFromClerk(c: Parameters<MiddlewareHandler>[0]): string | null {
+  try {
+    const auth = getAuth(c);
+    if (!auth?.userId) return null;
+    const memberId = (auth.sessionClaims as { metadata?: { memberId?: unknown } } | undefined)?.metadata?.memberId;
+    return typeof memberId === 'string' && /^[0-9a-f-]{36}$/.test(memberId) ? memberId : null;
+  } catch {
+    // No clerkMiddleware ran (a route outside /api/brain/*, or a test app): anonymous.
+    return null;
+  }
+}

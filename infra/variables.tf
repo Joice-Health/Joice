@@ -108,6 +108,12 @@ variable "clerk_publishable_key" {
   default     = ""
 }
 
+variable "clerk_jwt_key" {
+  description = "Clerk instance JWT public key (PEM; Dashboard -> API keys -> JWT public key). Public, not a secret: lets the brain verify member session tokens networklessly without holding the Clerk secret."
+  type        = string
+  default     = ""
+}
+
 variable "clerk_secret_key" {
   description = "Clerk secret key (sk_...). Set in terraform.tfvars (gitignored); stored in Secrets Manager for the ECS tasks."
   type        = string

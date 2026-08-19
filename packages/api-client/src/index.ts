@@ -24,6 +24,7 @@ export {
   useCompanionProfile,
   useSubmitProfileField,
   useEraseCompanion,
+  useClaimCompanion,
   companionKeys,
   FieldError,
 } from './companion';

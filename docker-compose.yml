@@ -79,6 +79,11 @@ services:
       WEB_ORIGIN: http://localhost:3000,http://0.0.0.0:3000
       TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-0}
       NODE_ENV: production
+      # Recognise a member's bearer token (the companion claim on sign-up): the
+      # public JWT key in prod; locally the secret key from .env is the fallback.
+      CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY:-pk_test_placeholder}
+      CLERK_JWT_KEY: ${CLERK_JWT_KEY:-}
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-}
       # Bedrock/Transcribe/Polly — needs AWS creds to answer for real; without
       # them these endpoints fail and the rest of the site still works.
       RAG_MODEL: ${RAG_MODEL:-us.anthropic.claude-sonnet-4-5-20250929-v1:0}
