@@ -98,6 +98,12 @@ export function WelcomeClaim() {
           <p className="mt-6 max-w-xl text-pretty text-lg leading-relaxed text-muted">
             Your intake is saved to your account. Here is what you told us.
           </p>
+          {me?.goalLabel ? (
+            <p className="mono-label mt-3 text-muted">
+              Starting point: {me.goalLabel}
+              {me.segment ? ` · ${me.segment.replace(/-/g, ' ')}` : ''}
+            </p>
+          ) : null}
           {me && me.traits.length > 0 ? (
             <dl className="mt-10 border-t border-line">
               {me.traits

@@ -54,6 +54,11 @@ export function createUserService(db: Database, audit: AuditService) {
       return { items, total: totalRow?.value ?? 0, page, limit };
     },
 
+    async getById(id: string): Promise<User | undefined> {
+      const [user] = await db.select().from(users).where(eq(users.id, id)).limit(1);
+      return user;
+    },
+
     async getByClerkId(clerkUserId: string): Promise<User | undefined> {
       const [user] = await db
         .select()

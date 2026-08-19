@@ -198,6 +198,24 @@ export function useOnboardingFunnel(query: FunnelQueryInput) {
   });
 }
 
+export type AdminMemberProfile = InferResponseType<
+  OnboardingAdminApi['members'][':id']['profile']['$get'],
+  200
+>;
+
+/** A member's tier-bounded profile with provenance, for support. */
+export function useAdminMemberProfile(memberId: string | undefined) {
+  const client = useApiClient();
+  return useQuery({
+    queryKey: ['admin', 'onboarding', 'member-profile', memberId] as const,
+    enabled: Boolean(memberId),
+    queryFn: async () =>
+      unwrap<AdminMemberProfile>(
+        await client.api.admin.onboarding.members[':id'].profile.$get({ param: { id: memberId! } }),
+      ),
+  });
+}
+
 export function useServiceAreaRequests(query: ServiceAreaRequestsQueryInput) {
   const client = useApiClient();
   return useQuery({
