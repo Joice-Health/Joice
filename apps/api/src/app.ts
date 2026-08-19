@@ -14,6 +14,7 @@ import { requestLog } from './middleware/request-log';
 import { featureFlags, waitlist } from './services';
 import { adminRoutes } from './admin/routes';
 import { onboardingRoutes } from './onboarding/routes';
+import { memberRoutes } from './member/routes';
 
 const app = new Hono<{ Variables: RequestIdVariables }>();
 
@@ -102,6 +103,8 @@ const routes = app
   })
   // The intake flow: anonymous, cookie-keyed, behind the `onboarding` flag.
   .route('/api/onboarding', onboardingRoutes)
+  // A signed-in member about themselves; the first call creates their record.
+  .route('/api/me', memberRoutes)
   .route('/api/admin', adminRoutes);
 
 export type AppType = typeof routes;
