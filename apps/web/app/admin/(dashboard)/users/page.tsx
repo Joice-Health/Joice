@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Input } from '@joice/ui';
 import { useAdminUsers, useUpdateUserStatus } from '@joice/api-client';
@@ -73,7 +74,11 @@ export default function AdminUsersPage() {
               <tbody>
                 {query.data?.items.map((user) => (
                   <tr key={user.id}>
-                    <Td>{user.email}</Td>
+                    <Td>
+                      <Link href={`/admin/users/${user.id}`} className="text-ink underline-offset-2 hover:underline">
+                        {user.email}
+                      </Link>
+                    </Td>
                     <Td>{[user.firstName, user.lastName].filter(Boolean).join(' ') || '—'}</Td>
                     <Td>
                       <select

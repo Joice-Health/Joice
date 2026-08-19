@@ -19,13 +19,16 @@ import {
   type EngineContext,
 } from '@joice/core';
 import { z } from 'zod';
+import { memberProfileView } from '@joice/core';
 import {
   flows,
   onboarding,
   onboardingConfig,
   onboardingEvents,
+  profiles,
   serviceAreaRequests,
   serviceAreas,
+  userService,
 } from '../services';
 import type { AdminEnv } from './auth';
 
@@ -178,4 +181,32 @@ export const adminOnboardingRoutes = new Hono<AdminEnv>()
     const state = await onboarding.stateForMember(c.req.valid('param').id);
     if (!state) return c.json({ error: 'No intake for that member' }, 404);
     return c.json(state);
+  })
+
+  /**
+   * A member's profile as support may see it: the same tier-bounded view the
+   * member gets, plus provenance per trait. Health-tier traits stay out until
+   * the PHI keys are on, for admins too.
+   */
+  .get('/members/:id/profile', zValidator('param', uuidParamSchema), async (c) => {
+    const { id } = c.req.valid('param');
+    const [user, profile, intake] = await Promise.all([
+      userService.getById(id),
+      profiles.getForMember(id),
+      onboarding.stateForMember(id),
+    ]);
+    if (!user && !profile) return c.json({ error: 'Unknown member' }, 404);
+    const view = memberProfileView({
+      memberId: id,
+      email: user?.email ?? null,
+      firstName: user?.firstName ?? null,
+      profile,
+      intake,
+    });
+    return c.json({
+      ...view,
+      user: user
+        ? { clerkUserId: user.clerkUserId, status: user.status, createdAt: user.createdAt, lastName: user.lastName }
+        : null,
+    });
   });
