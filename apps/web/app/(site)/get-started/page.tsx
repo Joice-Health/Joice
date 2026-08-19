@@ -34,5 +34,7 @@ export default async function GetStartedPage() {
     </div>
   );
   if (!open) return fallback;
-  return <OnboardingFlow fallback={fallback} />;
+  // Accounts exist when Clerk is configured at build time (the member tree).
+  const accountsOpen = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+  return <OnboardingFlow fallback={fallback} accountsOpen={accountsOpen} />;
 }
