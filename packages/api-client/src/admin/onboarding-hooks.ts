@@ -21,7 +21,7 @@ export type AdminFlowVersionList = InferResponseType<
 >;
 export type AdminFlowVersion = InferResponseType<OnboardingAdminApi['versions'][':id']['$get'], 200>;
 export type SaveDraftInput = InferRequestType<OnboardingAdminApi['versions'][':id']['$put']>['json'];
-export type SaveDraftResult = InferResponseType<OnboardingAdminApi['versions'][':id']['$put'], 200>;
+export type SaveDraftResult = { version: AdminFlowVersion; report: ValidationReport };
 export type ValidationReportView = ValidationReport;
 export type SimulateInput = InferRequestType<OnboardingAdminApi['simulate']['$post']>['json'];
 export type SimulateResult = InferResponseType<OnboardingAdminApi['simulate']['$post'], 200>;
