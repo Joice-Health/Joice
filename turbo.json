@@ -23,8 +23,13 @@
     "NOTES_DIR"
   ],
   "tasks": {
+    // Markdown is documentation, not input to any task, so a README or CLAUDE.md
+    // edit does not bust the cache. Note that `turbo ls --affected` (used by
+    // deploy.yml to pick which apps to ship) is package-level and ignores these
+    // input globs.
     "build": {
       "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "!**/*.md"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**"]
     },
     "dev": {
@@ -32,13 +37,16 @@
       "persistent": true
     },
     "lint": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "!**/*.md"]
     },
     "type-check": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "!**/*.md"]
     },
     "test": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "!**/*.md"]
     },
     "db:generate": {
       "cache": false

@@ -1,3 +1,6 @@
+# Build context is the monorepo root for all three Dockerfiles. Keep it to what
+# the images need: source, manifests, lockfile. Nothing here is read by
+# `next build` or by the api/brain runtime.
 **/node_modules
 **/.next
 **/dist
@@ -5,7 +8,20 @@
 **/.git
 **/coverage
 **/*.log
-.env
-.env.local
 **/.DS_Store
-README.md
+
+# Secrets and local-only config. Runtime env comes from ECS / compose, never
+# from a file baked into the image.
+.env*
+**/*.tfstate*
+**/*.tfvars
+**/.terraform
+
+# Not part of any image: infrastructure (Terraform state and providers can be
+# gigabytes locally), docs, CI, editor and agent config.
+infra
+docs
+.github
+.claude
+**/*.md
+!apps/brain/fixtures/**

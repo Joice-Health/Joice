@@ -13,6 +13,7 @@
     "lint": "turbo run lint",
     "type-check": "turbo run type-check",
     "test": "turbo run test",
+    "check": "turbo run type-check lint test --continue",
     "db:generate": "turbo run db:generate",
     "db:migrate": "turbo run db:migrate",
     "format": "prettier --write \"**/*.{ts,tsx,md}\""

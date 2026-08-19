@@ -8,7 +8,7 @@ and the rest to the web service, so there is no CORS and the web image bakes
 ```
 Browser ─► CloudFront (TLS, edge cache for /_next/static + *.mp4)
              ├── default  ─► ALB ─► ECS web (Next.js :3000)
-             └── /api/*   ─► ALB ─► ECS api (Hono :4000, migrates on boot)
+             └── /api/*   ─► ALB ─► ECS api (Hono :4000; migrations run as a one-off task)
                                      └─► RDS Postgres 17 (private subnets, encrypted, TLS forced)
 ```
 
@@ -28,11 +28,15 @@ deployment circuit breaker tolerates it.
 
 Then wire CI: copy the printed `github_repo_variables` output into
 GitHub → repo → Settings → Secrets and variables → Actions → **Variables**
-(8 variables: `AWS_REGION`, `AWS_ROLE_ARN`, `CLOUDFRONT_URL`, `ECR_WEB`, `ECR_API`,
-`ECS_CLUSTER`, `ECS_SERVICE_WEB`, `ECS_SERVICE_API`).
+(14 variables: `AWS_REGION`, `AWS_ROLE_ARN`, `CLOUDFRONT_URL`, `ECR_WEB`, `ECR_API`,
+`ECR_BRAIN`, `ECS_CLUSTER`, `ECS_SERVICE_WEB`, `ECS_SERVICE_API`, `ECS_SERVICE_BRAIN`,
+`ECS_TASK_MIGRATE`, `SUBNET_IDS`, `BRAIN_SG_ID`, `CLERK_PUBLISHABLE_KEY`; the list in
+`outputs.tf` is authoritative).
 
-Push to `main` (or run the **Deploy to AWS** workflow manually) — it builds both
-images, pushes to ECR, and rolls the services with zero downtime.
+Push to `main` (or run the **Deploy to AWS** workflow manually with `scope=all`); it
+builds the images, pushes to ECR, runs the migrate task, and rolls the services with
+zero downtime. How the pipeline decides what to build and roll is documented in
+`CLAUDE.md` → Deployment.
 
 ## Alerting (`alarms.tf`)
 
@@ -70,12 +74,17 @@ Each also sends an OK notification, so a resolved incident closes itself out.
 - **Deploys:** every push to `main`, **gated on CI** — `.github/workflows/ci.yml`
   (type-check, lint, test) is called by `deploy.yml` as a `needs:` dependency, so
   a red check cannot ship. The api image never type-checks during its own build,
-  so this gate is the only thing catching a type error.
+  so this gate is the only thing catching a type error. Only the apps a commit
+  affects are built and rolled; see `CLAUDE.md` → Deployment for the rules and
+  for how to force a full deploy (`scope=all`).
 - **Which build is live:** `GET /health` reports `sha` (baked in as `BUILD_SHA`
   at image build time) alongside a real database probe. A 503 there is a task
-  that cannot serve, which is what lets the ECS circuit breaker roll back.
-- **Images** are tagged `:latest` + `:<sha>`; task definitions point at `:latest`
-  and CI forces a new deployment.
+  that cannot serve, which is what lets the ECS circuit breaker roll back. With
+  per-app deploys that sha is the commit that last changed the service; the
+  release as a whole is the `:<sha>` tag every repo carries.
+- **Images** are tagged `:latest` + `:<sha>` (unchanged images are retagged with
+  the new sha too); task definitions point at `:latest` and CI forces a new
+  deployment. On a failed rollout CI puts `:latest` back on the previous release.
   (Phase-1 upgrade: pin-by-digest task definition renders.)
 - **State is local** (`terraform.tfstate`, gitignored, contains the DB password).
   Before collaborators/CI applies: create a versioned S3 bucket, uncomment the
@@ -101,8 +110,9 @@ zones + the multi-SAN ACM cert + validation and alias records are all in `dns.tf
 2. While it waits: `terraform output nameservers` → set those NS at each domain's
    registrar. Validation completes once the NS cutover propagates (minutes to hours;
    re-run apply if it times out).
-3. Update the GitHub repo variable `CLOUDFRONT_URL=https://joicehealth.com` and re-run
-   the deploy workflow so share links/QRs bake the real domain.
+3. Update the GitHub repo variable `CLOUDFRONT_URL=https://joicehealth.com` and run
+   the deploy workflow manually with `scope=all` so share links/QRs bake the real
+   domain (nothing in git changed, so a plain re-run would not rebuild web).
 4. Optional: transfer the domain registrations themselves to Route53 (console →
    Route53 → Registered domains → Transfer). Not required — NS delegation is enough —
    and not manageable from Terraform.

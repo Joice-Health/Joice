@@ -1,13 +1,32 @@
+# Push to main deploys what changed.
+#
+# scripts/ci/affected-apps.sh compares HEAD with the last commit this workflow
+# deployed successfully and asks Turborepo which of web / api / brain that
+# touches (a workspace counts as changed when any file in it, or in a workspace
+# it depends on, changed). Only those images are built and only those services
+# are rolled. The others get this commit's sha stamped on the image they already
+# run, so every deployed commit has web/api/brain:<sha> in ECR and a release can
+# be named by one sha.
+#
+# Anything the detection is unsure about deploys all three, which is what this
+# workflow always did. Force that with a manual run and scope=all. That is also
+# the way to pick up a changed NEXT_PUBLIC_* repo Variable: those are baked in at
+# image build time, and no file in git changed.
+#
+# CI never touches infrastructure. It pushes images and rolls the existing
+# services; Terraform under infra/ is run locally.
 name: Deploy to AWS
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
-
-permissions:
-  id-token: write # OIDC federation to AWS
-  contents: read
+    inputs:
+      scope:
+        description: "changed = only apps affected since the last successful deploy; all = rebuild and roll everything"
+        type: choice
+        options: [changed, all]
+        default: changed
 
 concurrency:
   group: deploy
@@ -22,29 +41,77 @@ jobs:
   # deploys cleanly.
   checks:
     uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
 
-  build-and-deploy:
+  deploy:
     needs: checks
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      id-token: write # OIDC federation to AWS
+      contents: read
+      actions: read # affected-apps.sh reads this workflow's run history
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # affected-apps.sh diffs against the last deployed commit
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.9
+
+      - run: bun install --frozen-lockfile
+
+      - name: Which apps changed?
+        id: affected
+        env:
+          SCOPE: ${{ inputs.scope || 'changed' }}
+          GH_TOKEN: ${{ github.token }}
+          WORKFLOW_FILE: deploy.yml
+          BRANCH: main
+        run: bash scripts/ci/affected-apps.sh
+
+      - name: Resolve services to roll
+        id: services
+        if: steps.affected.outputs.any == 'true'
+        env:
+          WEB: ${{ steps.affected.outputs.web }}
+          API: ${{ steps.affected.outputs.api }}
+          BRAIN: ${{ steps.affected.outputs.brain }}
+          SVC_WEB: ${{ vars.ECS_SERVICE_WEB }}
+          SVC_API: ${{ vars.ECS_SERVICE_API }}
+          SVC_BRAIN: ${{ vars.ECS_SERVICE_BRAIN }}
+        run: |
+          list=""
+          if [ "$API" = true ]; then list="$list $SVC_API"; fi
+          if [ "$BRAIN" = true ]; then list="$list $SVC_BRAIN"; fi
+          if [ "$WEB" = true ]; then list="$list $SVC_WEB"; fi
+          echo "list=${list# }" >> "$GITHUB_OUTPUT"
 
       - name: Configure AWS credentials (OIDC)
+        if: steps.affected.outputs.any == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: Login to ECR
-        id: ecr
+        if: steps.affected.outputs.any == 'true'
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Set up Docker Buildx
+        if: steps.affected.outputs.any == 'true'
         uses: docker/setup-buildx-action@v3
 
+      # provenance: false on every build. These are single-arch images for ECR;
+      # the default attestation manifest shows up there as an untagged image and
+      # counts against the repository's lifecycle policy.
+      #
       # NEXT_PUBLIC_API_URL is intentionally the empty string: CloudFront serves
       # web and api from one origin, so the browser calls a relative /api/... path.
       - name: Build and push web image
+        if: steps.affected.outputs.web == 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -52,6 +119,7 @@ jobs:
           target: runner
           push: true
           platforms: linux/amd64
+          provenance: false
           build-args: |
             NEXT_PUBLIC_API_URL=
             NEXT_PUBLIC_BRAIN_URL=
@@ -64,6 +132,7 @@ jobs:
           cache-to: type=gha,scope=web,mode=max
 
       - name: Build and push api image
+        if: steps.affected.outputs.api == 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -71,6 +140,7 @@ jobs:
           target: release
           push: true
           platforms: linux/amd64
+          provenance: false
           build-args: |
             BUILD_SHA=${{ github.sha }}
           tags: |
@@ -80,6 +150,7 @@ jobs:
           cache-to: type=gha,scope=api,mode=max
 
       - name: Build and push brain image
+        if: steps.affected.outputs.brain == 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -87,6 +158,7 @@ jobs:
           target: release
           push: true
           platforms: linux/amd64
+          provenance: false
           build-args: |
             BUILD_SHA=${{ github.sha }}
           tags: |
@@ -95,39 +167,98 @@ jobs:
           cache-from: type=gha,scope=brain
           cache-to: type=gha,scope=brain,mode=max
 
-      # Exactly one process applies migrations, and it finishes before any
-      # service restarts. This used to run in every container's CMD, which raced
-      # between tasks and would race between services now that there are two.
-      # A failure here stops the deploy: better to keep serving the old code
-      # than to start new code against a schema that didn't migrate.
+      # Images that did not need a rebuild get this commit's sha as well, so
+      # web/api/brain:<sha> always names the whole release. Server-side retag.
+      - name: Tag unchanged images with this commit
+        if: steps.affected.outputs.any == 'true'
+        env:
+          WEB: ${{ steps.affected.outputs.web }}
+          API: ${{ steps.affected.outputs.api }}
+          BRAIN: ${{ steps.affected.outputs.brain }}
+          ECR_WEB: ${{ vars.ECR_WEB }}
+          ECR_API: ${{ vars.ECR_API }}
+          ECR_BRAIN: ${{ vars.ECR_BRAIN }}
+        run: |
+          if [ "$WEB" != true ]; then bash scripts/ci/ecr-tag.sh "$ECR_WEB" "$GITHUB_SHA" --from-tag latest; fi
+          if [ "$API" != true ]; then bash scripts/ci/ecr-tag.sh "$ECR_API" "$GITHUB_SHA" --from-tag latest; fi
+          if [ "$BRAIN" != true ]; then bash scripts/ci/ecr-tag.sh "$ECR_BRAIN" "$GITHUB_SHA" --from-tag latest; fi
+
+      # Migrations ship inside the api image (packages/db is one of its
+      # workspaces), so the migrate task runs whenever that image changed.
+      # Exactly one process applies them, and it finishes before any service
+      # restarts. A failure stops the deploy: better to keep serving the old
+      # code than to start new code against a schema that did not migrate.
       - name: Run database migrations
+        if: steps.affected.outputs.api == 'true'
+        env:
+          CLUSTER: ${{ vars.ECS_CLUSTER }}
+          TASK_DEF: ${{ vars.ECS_TASK_MIGRATE }}
+          SUBNETS: ${{ vars.SUBNET_IDS }}
+          SECURITY_GROUP: ${{ vars.BRAIN_SG_ID }}
+          LOG_GROUP: /ecs/joice-migrate
+        run: bash scripts/ci/ecs-run-migrate.sh
+
+      - name: Roll changed services
+        id: roll
+        if: steps.affected.outputs.any == 'true'
+        env:
+          CLUSTER: ${{ vars.ECS_CLUSTER }}
+          SERVICES: ${{ steps.services.outputs.list }}
+          DEADLINE_MINUTES: 20
+        run: bash scripts/ci/ecs-roll.sh
+
+      # A failed deploy leaves :latest pointing at images that are not (or not
+      # fully) live, and with a mutable tag the circuit breaker's own rollback
+      # just re-pulls them. Put :latest back on the last release that was live
+      # (its <sha> tags exist on every repo by construction), roll again if we
+      # had started rolling, then let the job fail. Expand/contract migrations
+      # are what make running the previous code against the new schema safe.
+      - name: Restore previous images after a failed deploy
+        if: failure() && steps.affected.outputs.any == 'true' && steps.affected.outputs.base != ''
+        env:
+          BASE: ${{ steps.affected.outputs.base }}
+          WEB: ${{ steps.affected.outputs.web }}
+          API: ${{ steps.affected.outputs.api }}
+          BRAIN: ${{ steps.affected.outputs.brain }}
+          ECR_WEB: ${{ vars.ECR_WEB }}
+          ECR_API: ${{ vars.ECR_API }}
+          ECR_BRAIN: ${{ vars.ECR_BRAIN }}
+          CLUSTER: ${{ vars.ECS_CLUSTER }}
+          SERVICES: ${{ steps.services.outputs.list }}
+          ROLL_OUTCOME: ${{ steps.roll.outcome }}
+          DEADLINE_MINUTES: 20
         run: |
-          task_arn=$(aws ecs run-task \
-            --cluster "${{ vars.ECS_CLUSTER }}" \
-            --task-definition "${{ vars.ECS_TASK_MIGRATE }}" \
-            --launch-type FARGATE \
-            --network-configuration "awsvpcConfiguration={subnets=[${{ vars.SUBNET_IDS }}],securityGroups=[${{ vars.BRAIN_SG_ID }}],assignPublicIp=ENABLED}" \
-            --query 'tasks[0].taskArn' --output text)
-          echo "Migration task: $task_arn"
-
-          aws ecs wait tasks-stopped --cluster "${{ vars.ECS_CLUSTER }}" --tasks "$task_arn"
-
-          exit_code=$(aws ecs describe-tasks --cluster "${{ vars.ECS_CLUSTER }}" \
-            --tasks "$task_arn" --query 'tasks[0].containers[0].exitCode' --output text)
-          echo "Migration exit code: $exit_code"
-          if [ "$exit_code" != "0" ]; then
-            echo "::error::Migrations failed — not deploying. See /ecs/joice-migrate."
-            exit 1
+          echo "Restoring :latest to the last successful deploy ${BASE:0:7}"
+          if [ "$WEB" = true ]; then bash scripts/ci/ecr-tag.sh "$ECR_WEB" latest --from-tag "$BASE"; fi
+          if [ "$API" = true ]; then bash scripts/ci/ecr-tag.sh "$ECR_API" latest --from-tag "$BASE"; fi
+          if [ "$BRAIN" = true ]; then bash scripts/ci/ecr-tag.sh "$ECR_BRAIN" latest --from-tag "$BASE"; fi
+          if [ "$ROLL_OUTCOME" != "skipped" ] && [ -n "$SERVICES" ]; then
+            bash scripts/ci/ecs-roll.sh
           fi
+          echo "::error::Deploy failed; :latest restored to ${BASE:0:7}. See the failed step above."
 
-      - name: Deploy services
+      - name: Summary
+        if: always() && steps.affected.outputs.any == 'true'
+        env:
+          STATUS: ${{ job.status }}
+          WEB: ${{ steps.affected.outputs.web }}
+          API: ${{ steps.affected.outputs.api }}
+          BRAIN: ${{ steps.affected.outputs.brain }}
+          SERVICES: ${{ steps.services.outputs.list }}
+          BASE: ${{ steps.affected.outputs.base }}
         run: |
-          for service in "${{ vars.ECS_SERVICE_API }}" "${{ vars.ECS_SERVICE_BRAIN }}" "${{ vars.ECS_SERVICE_WEB }}"; do
-            aws ecs update-service --cluster "${{ vars.ECS_CLUSTER }}" \
-              --service "$service" --force-new-deployment >/dev/null
+          built=""; kept=""
+          for app in web api brain; do
+            case "$app" in web) v=$WEB;; api) v=$API;; brain) v=$BRAIN;; esac
+            if [ "$v" = true ]; then built="$built $app"; else kept="$kept $app"; fi
           done
-          echo "Waiting for services to stabilize..."
-          aws ecs wait services-stable --cluster "${{ vars.ECS_CLUSTER }}" \
-            --services "${{ vars.ECS_SERVICE_API }}" "${{ vars.ECS_SERVICE_BRAIN }}" \
-                       "${{ vars.ECS_SERVICE_WEB }}"
-          echo "✅ Deployed ${{ github.sha }}"
+          {
+            echo "### Deploy ${GITHUB_SHA:0:7}: $STATUS"
+            echo ""
+            echo "- built:${built:- none}"
+            echo "- retagged unchanged:${kept:- none}"
+            echo "- rolled: ${SERVICES:-none}"
+            if [ "$STATUS" != "success" ] && [ -n "$BASE" ]; then
+              echo "- :latest restored to ${BASE:0:7}"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -11,7 +11,7 @@ referral link + QR "membership card" → friends join via your link and you move
 | API      | Bun + Hono (end-to-end typed via Hono RPC)                            |
 | Web      | Next.js 16 (App Router), React 19, Tailwind v4, Zustand, TanStack Query |
 | Data     | Postgres 17 + Drizzle ORM                                             |
-| Deploy   | Docker Compose                                                        |
+| Deploy   | ECS Fargate via GitHub Actions (see CLAUDE.md → Deployment)           |
 
 ## Layout
 
@@ -87,6 +87,7 @@ bun run dev
 | --------------------- | ----------------------------------------- |
 | `bun run dev`         | Run all apps in dev mode (Turbo)          |
 | `bun run build`       | Build everything                          |
+| `bun run check`       | Type-check, lint and test (what CI runs)  |
 | `bun run type-check`  | Type-check the whole monorepo             |
 | `bun run lint`        | Lint the whole monorepo                   |
 | `bun run db:generate` | Generate a Drizzle migration from schema  |

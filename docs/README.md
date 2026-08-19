@@ -25,6 +25,12 @@ want the shape of the system before the detail.
 
 **New here? Read 01 and 10, then 05 to get it running.**
 
+## CI/CD
+
+| Doc | What it covers |
+|---|---|
+| [How Joice deploys](ci-cd/README.md) | Push-to-main pipeline: change detection with `turbo ls --affected`, what each `scripts/ci/*.sh` does, the migrate/roll/restore steps, Turborepo caching in CI, and the open simplification candidates |
+
 ## Marketing (Klaviyo)
 
 | Doc | What it covers |

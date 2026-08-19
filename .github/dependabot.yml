@@ -1,0 +1,10 @@
+# Keeps the pinned major versions of the actions in .github/workflows current.
+# Application dependencies (bun) are updated by hand; adding them here would
+# mostly generate noise at this size.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
