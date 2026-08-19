@@ -167,6 +167,8 @@ resource "aws_ecs_task_definition" "api" {
       secrets = [
         { name = "DATABASE_URL", valueFrom = aws_secretsmanager_secret.database_url.arn },
         { name = "CLERK_SECRET_KEY", valueFrom = aws_secretsmanager_secret.clerk_secret_key.arn },
+        # The brain presents this on /api/internal/*; the api verifies it.
+        { name = "INTERNAL_API_TOKEN", valueFrom = aws_secretsmanager_secret.internal_api_token.arn },
         { name = "KLAVIYO_API_KEY", valueFrom = aws_secretsmanager_secret.klaviyo_api_key.arn },
       ]
       logConfiguration = {
