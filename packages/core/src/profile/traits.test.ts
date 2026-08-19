@@ -15,7 +15,6 @@ import {
   traitsWithSensitivity,
   validateTraitValue,
 } from './traits';
-import { US_STATES, US_STATE_CODES, usStateName } from '../onboarding/us-states';
 
 describe('trait registry', () => {
   test('keys are unique, snake_case, and match their definition', () => {
@@ -131,12 +130,3 @@ describe('trait values', () => {
   });
 });
 
-describe('us states', () => {
-  test('fifty states plus DC, unique codes', () => {
-    expect(US_STATES).toHaveLength(51);
-    expect(new Set(US_STATE_CODES).size).toBe(51);
-    expect(US_STATE_CODES).toContain('DC');
-    expect(usStateName('CA')).toBe('California');
-    expect(usStateName('ZZ')).toBe('ZZ');
-  });
-});

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { US_STATE_CODES } from '../onboarding/us-states';
+import { US_STATE_CODES } from '@joice/utils';
 
 /**
  * The trait registry: the schema of a person, as the platform understands it.

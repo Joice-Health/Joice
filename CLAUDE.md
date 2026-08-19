@@ -47,6 +47,7 @@ packages/db          Drizzle schema, split by owner (schema/{waitlist,identity,p
             └► packages/api-client   hc<AppType> + hc<BrainAppType> clients + TanStack hooks
                  └► apps/web         Next.js App Router consumes the typed hooks
 packages/ui          Tailwind v4 theme tokens (theme.css) + primitives (Button, Input, cn)
+packages/utils       dependency-free helpers any package or app may import (US states, ...)
 infra/               Terraform for all of AWS (see infra/README.md)
 ```
 
