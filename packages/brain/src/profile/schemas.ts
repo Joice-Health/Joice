@@ -14,27 +14,14 @@ import { z } from 'zod';
  */
 
 /**
- * The care areas a visitor can be here for. This is the warm-lead signal — a
- * lead tagged `weight-metabolic` is worth far more than a name.
- *
- * ⚠️ Must stay in sync with `CARE_AREAS` in apps/web/lib/site-content.ts. These
- * are the ONLY valid goals; there is deliberately no "cognitive" area, so the
- * companion cannot route anyone to a care area with no protocol behind it.
+ * The care areas are the warm-lead signal — a lead tagged `weight-metabolic`
+ * is worth far more than a name. The vocabulary is canonical in @joice/utils
+ * (care-areas.ts), shared with the site's explore pages and the intake's goal
+ * question, so the companion can never route anyone to a care area with no
+ * protocol behind it. Re-exported here so this package's consumers keep one
+ * import path.
  */
-export const CARE_AREAS = [
-  { slug: 'weight-metabolic', label: 'Weight & metabolic' },
-  { slug: 'body-comp-recovery', label: 'Body comp / recovery' },
-  { slug: 'beauty-skin', label: 'Beauty / skin' },
-  { slug: 'energy', label: 'Energy' },
-  { slug: 'stress-sleep', label: 'Stress & sleep' },
-] as const;
-
-/** `not-sure` is a first-class answer — an undecided visitor is still a lead. */
-export const GOAL_UNSURE = 'not-sure';
-
-const CARE_AREA_SLUGS = CARE_AREAS.map((a) => a.slug);
-/** Every acceptable `goal` value: a real care area, or an honest "not sure". */
-export const GOAL_VALUES = [...CARE_AREA_SLUGS, GOAL_UNSURE] as const;
+export { CARE_AREAS, GOAL_UNSURE, GOAL_VALUES } from '@joice/utils';
 
 /**
  * Keyword → care-area mapping, so a goal typed in prose ("I want to lose
