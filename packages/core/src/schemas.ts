@@ -12,6 +12,7 @@ import { z } from 'zod';
 
 export * from './profile/traits';
 export * from './rules';
+export * from './onboarding';
 
 export const joinWaitlistSchema = z.object({
   firstName: z
