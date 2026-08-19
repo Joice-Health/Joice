@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
   // Trace workspace deps from the monorepo root so the standalone bundle is complete.
   outputFileTracingRoot: join(import.meta.dirname, '../../'),
   // Compile workspace packages from source (no prebuilt dist step needed).
-  transpilePackages: ['@joice/ui', '@joice/api-client', '@joice/core'],
+  transpilePackages: ['@joice/ui', '@joice/api-client', '@joice/core', '@joice/utils'],
   reactStrictMode: true,
 };
 
