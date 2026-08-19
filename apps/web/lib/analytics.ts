@@ -34,7 +34,8 @@ export type AnalyticsEvent =
   | { event: 'onboarding_notify_submitted' }
   | { event: 'onboarding_completed' }
   | { event: 'onboarding_restarted' }
-  | { event: 'onboarding_registration_started' };
+  | { event: 'onboarding_registration_started' }
+  | { event: 'onboarding_registration_completed' };
 
 export function track(event: AnalyticsEvent): void {
   if (typeof window === 'undefined') return;
