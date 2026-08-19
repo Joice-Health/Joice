@@ -25,6 +25,20 @@ want the shape of the system before the detail.
 
 **New here? Read 01 and 10, then 05 to get it running.**
 
+## Onboarding (intake logic tree)
+
+The admin-configurable intake flow behind `/get-started`: state and age gates, goal
+branches, a profile with provenance, registration, and the data shape protocols will match
+on. Work lands on the `onboarding/intake` branch; the design brief is the place to start.
+
+| Doc | What it covers |
+|---|---|
+| [00 Design brief (approved plan)](onboarding/00-plan.md) | Tracked as Shortcut epic 127. Product design (journey, gates, carry-over, segments), architecture (data model, flow definition, condition DSL, engine, versioning, brain exchange, compliance), file-level implementation plan, phases and stories, verification, documentation and branch workflow, decisions log, council verdict |
+
+Pages 01-10 (overview, flow model, data model, sessions and registration, admin guide,
+brain integration, compliance, local development, troubleshooting, protocol readiness) arrive
+with the phase that builds each piece; see section 7 of the brief.
+
 ## CI/CD
 
 | Doc | What it covers |
