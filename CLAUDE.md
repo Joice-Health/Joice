@@ -142,8 +142,9 @@ with the reasoning is `docs/design/01-design-system.md`. Tokens live in
   secondary text, `surface` white. `brand-*` is the olive ramp with #877C00 at 600. Olive is
   an accent, not a body colour: it carries the announcement bar, focus rings, dots. The
   `card-from/card-to` gold gradient is reserved for the membership card.
-- **Type**: three Dinamo faces, all Light 300, served from `apps/web/public/fonts` via
-  `next/font/local` in `apps/web/app/layout.tsx`. `font-sans` ABC Ginto (text, +1% tracking),
+- **Type**: three Dinamo faces, all Light 300, licensed files in `apps/web/fonts` (not
+  `public/`, so they are never served raw) loaded via `next/font/local` in
+  `apps/web/app/layout.tsx`. `font-sans` ABC Ginto (text, +1% tracking),
   `display` utility = ABC Ginto Nord Condensed uppercase (+3%, short charismatic statements),
   `mono-label` utility = ABC Gaisyr Mono uppercase 11px (+5%: eyebrows, nav, buttons, indices).
   `font-synthesis: none` is on `html`, so `font-bold`/`font-semibold` render as Light: do not
@@ -152,10 +153,12 @@ with the reasoning is `docs/design/01-design-system.md`. Tokens live in
   `[ get started ]` (`Bracket`/`Index` from `@joice/ui`); the button is a dotted-outline pill
   with a mono label whose forward actions end in ` +` (`buttonClasses`, `Button`, `CtaLink`);
   structure is hairlines (`border-line`) and open lists, not cards, shadows or glass. Large
-  image panels take `rounded-t-card`; everything small is a pill. `ImageSlot` renders the
+  image panels take `rounded-card`; everything small is a pill. `ImageSlot` renders the
   organic green field until a photo lands under `public/`.
-- The animated water/video background (`water-background.tsx`) belongs to `/waitlist` only,
-  where the `glass` utility (frosted panel with a hairline) still earns its keep.
+- Frost is for things that float over content: the full-width sticky nav (frosted cream, no
+  rule beneath it) and the `glass` panels in admin. White surfaces (`panel`, `Input`, `glass`)
+  carry no frame; the white on the cream is the edge. The animated water/video background
+  (`water-background.tsx`) belongs to `/waitlist` only.
 
 ## Compliance posture
 

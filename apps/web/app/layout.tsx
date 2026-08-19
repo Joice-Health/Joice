@@ -10,23 +10,25 @@ const GTM_ID = 'GTM-TKJRXFML';
  * The three Dinamo faces, Light only (the only cuts we license). Text and
  * labels are set in Ginto and Gaisyr Mono; Ginto Nord Condensed is the
  * uppercase display voice. `theme.css` maps them to font-sans/display/mono.
+ * The files live in apps/web/fonts, outside public/, so the licensed fonts are
+ * only ever served hashed by next/font, never as raw downloads.
  */
 const ginto = localFont({
   src: [
-    { path: '../public/fonts/ABCGinto-Light.woff2', weight: '300', style: 'normal' },
-    { path: '../public/fonts/ABCGinto-LightItalic.woff2', weight: '300', style: 'italic' },
+    { path: '../fonts/ABCGinto-Light.woff2', weight: '300', style: 'normal' },
+    { path: '../fonts/ABCGinto-LightItalic.woff2', weight: '300', style: 'italic' },
   ],
   variable: '--font-ginto',
   display: 'swap',
 });
 const gintoNord = localFont({
-  src: '../public/fonts/ABCGintoNordCondensed-Light.woff2',
+  src: '../fonts/ABCGintoNordCondensed-Light.woff2',
   weight: '300',
   variable: '--font-ginto-nord',
   display: 'swap',
 });
 const gaisyr = localFont({
-  src: '../public/fonts/ABCGaisyrMono-Light.woff2',
+  src: '../fonts/ABCGaisyrMono-Light.woff2',
   weight: '300',
   variable: '--font-gaisyr',
   display: 'swap',

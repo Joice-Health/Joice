@@ -34,18 +34,18 @@ export function AnswerMarkdown({ children }: { children: string }) {
               href={href}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-brand-700 underline underline-offset-2 hover:text-brand-800"
+              className="text-ink underline underline-offset-4 decoration-line hover:decoration-ink"
             >
               {children}
             </a>
           ),
           blockquote: ({ children }) => (
-            <blockquote className="border-l-2 border-brand-400/40 pl-3 text-muted">
+            <blockquote className="border-l border-line pl-3 text-muted">
               {children}
             </blockquote>
           ),
           code: ({ children }) => (
-            <code className="rounded bg-brand-400/12 px-1.5 py-0.5 font-mono text-[0.85em]">
+            <code className="rounded border border-line px-1.5 py-0.5 font-mono text-[0.85em]">
               {children}
             </code>
           ),

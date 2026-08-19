@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, cn } from '@joice/ui';
+import { Button, buttonClasses, cn } from '@joice/ui';
+import { Eyebrow } from '@/components/ui/eyebrow';
 import {
   FieldError,
   streamPeptideRecommendation,
@@ -27,7 +28,7 @@ import { useAudioLevel } from './use-audio-level';
 import { useLiveTranscript } from './use-live-transcript';
 import { useRecorder } from './use-recorder';
 import { useSpeaker } from './use-speaker';
-import { VoiceSun } from './voice-sun';
+import { VoiceMic } from './voice-mic';
 import { VoiceVisualizer } from './voice-visualizer';
 
 /**
@@ -154,9 +155,8 @@ function StopIcon({ className }: { className?: string }) {
 }
 
 /**
- * Ask Joice. The page opens on a horizon at first light: the microphone is the
- * sun, and speaking raises the light behind the conversation. Typing is the
- * quiet second path underneath.
+ * Ask Joice. The page opens on the microphone, drawn as the house button made
+ * round; speaking moves its rings. Typing is the quiet second path underneath.
  */
 export function PeptideChat() {
   const client = useBrainClient(); // chat and voice live on the brain service
@@ -252,7 +252,7 @@ export function PeptideChat() {
     void recorder.start();
   };
 
-  // One rAF loop feeds the sun's corona and the horizon glow from live audio.
+  // One rAF loop feeds the mic's rings from live audio.
   useAudioLevel(rootRef, recorder.analyser ?? speaker.analyser);
 
   const scrollToEnd = () => {
@@ -811,7 +811,7 @@ export function PeptideChat() {
 
   const started = messages.length > 0;
   const busy = pending || transcribing;
-  const sunState = recorder.recording
+  const micState = recorder.recording
     ? 'listening'
     : recorder.arming
       ? 'arming'
@@ -843,7 +843,7 @@ export function PeptideChat() {
           : brainUi.inputPlaceholder;
 
   const composer = (
-    <div className={cn(started && 'border-t border-line/70 px-4 py-4 sm:px-6')}>
+    <div className={cn(started && 'border-t border-line px-4 py-4 sm:px-6')}>
       {/* Goal step: tappable quick-replies sit right above the composer, so
           they're always reachable even after a question scrolls the thread. */}
       {pendingStep?.field === 'goal' ? (
@@ -879,8 +879,8 @@ export function PeptideChat() {
         }}
       >
         {started ? (
-          <VoiceSun
-            state={sunState}
+          <VoiceMic
+            state={micState}
             size="sm"
             disabled={busy && !recorder.recording}
             onClick={() => toggleMic()}
@@ -901,20 +901,17 @@ export function PeptideChat() {
           placeholder={composerPlaceholder}
           aria-label={pendingStep ? `Answer: ${pendingStep.prompt}` : 'Type your question'}
           className={cn(
-            'min-h-11 flex-1 resize-none bg-transparent text-ink outline-none',
-            'placeholder:text-muted/70 disabled:opacity-50',
-            started ? 'py-2' : 'rounded-card bg-surface/70 px-5 py-3.5',
+            'min-h-11 flex-1 resize-none text-ink outline-none transition-colors',
+            'placeholder:text-muted disabled:opacity-50',
+            started
+              ? 'bg-transparent py-2.5'
+              : 'rounded-[1.5rem] bg-surface px-5 py-3.5 focus-visible:ring-2 focus-visible:ring-brand-600/50',
           )}
         />
         <button
           type="submit"
           disabled={busy || recorder.recording || input.trim().length === 0}
-          className={cn(
-            'h-11 shrink-0 rounded-full px-5 text-sm transition-colors outline-none',
-            'bg-ink text-canvas hover:bg-ink/90',
-            'focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas',
-            'disabled:cursor-not-allowed disabled:bg-ink/25',
-          )}
+          className={buttonClasses({ variant: 'solid', size: 'lg', className: 'shrink-0' })}
         >
           {pending ? 'Asking…' : pendingStep && pendingStep.field !== 'goal' ? 'Send' : 'Ask'}
         </button>
@@ -926,7 +923,7 @@ export function PeptideChat() {
           type="button"
           onClick={() => void skipCapture(pendingStep)}
           disabled={submitField.isPending || pending}
-          className="mt-2 font-mono text-[11px] tracking-mono text-muted/70 uppercase transition-colors hover:text-muted disabled:opacity-50"
+          className="mono-label mt-2 text-muted transition-colors hover:text-ink disabled:opacity-50"
         >
           Skip
         </button>
@@ -939,7 +936,7 @@ export function PeptideChat() {
           type="button"
           onClick={startFresh}
           disabled={pending}
-          className="mt-2 ml-4 font-mono text-[11px] tracking-mono text-muted/70 uppercase transition-colors hover:text-muted disabled:opacity-50"
+          className="mono-label mt-2 ml-4 text-muted transition-colors hover:text-ink disabled:opacity-50"
         >
           Start a new conversation
         </button>
@@ -948,25 +945,22 @@ export function PeptideChat() {
   );
 
   return (
-    <div ref={rootRef} className="dawn flex flex-col items-center">
-      {/* ---- Hero: the horizon ---- */}
+    <div ref={rootRef} className="flex flex-col items-center">
+      {/* ---- Hero: the microphone ---- */}
       <header
         className={cn(
           'flex flex-col items-center text-center transition-all duration-700',
           started ? 'pt-10 pb-6' : 'pt-14 pb-6 sm:pt-20',
         )}
       >
-        <span className="font-mono text-[10px] tracking-[0.28em] text-brand-700 uppercase">
-          Ask Joice
-        </span>
+        <Eyebrow as="p">Ask Joice</Eyebrow>
 
         {!started ? (
           <>
-            <h1 className="mt-6 max-w-3xl text-balance text-5xl leading-[0.98] font-extralight tracking-[-0.035em] text-ink sm:text-7xl">
-              Ask it{' '}
-              <span className="text-[var(--dawn-ember-deep)] italic">out loud</span>.
+            <h1 className="mt-6 max-w-3xl text-balance text-4xl leading-[1.1] text-ink sm:text-6xl">
+              Ask it <span className="italic text-muted">out loud</span>.
             </h1>
-            <p className="mt-6 max-w-md text-pretty leading-relaxed text-muted">
+            <p className="mt-6 max-w-md text-pretty text-lg leading-relaxed text-muted">
               {brainUi.emptyStateHint}
             </p>
           </>
@@ -974,12 +968,11 @@ export function PeptideChat() {
           <h1 className="sr-only">Ask Joice</h1>
         )}
 
-        {/* The sun rising out of the horizon — the primary way in. */}
+        {/* The microphone: the primary way in. */}
         {!started ? (
           <div className="relative mt-14 flex w-full justify-center">
-            <span className="horizon" aria-hidden="true" />
-            <VoiceSun
-              state={sunState}
+            <VoiceMic
+              state={micState}
               disabled={busy && !recorder.recording}
               onClick={() => toggleMic()}
             />
@@ -987,12 +980,9 @@ export function PeptideChat() {
         ) : null}
 
         {!started ? (
-          <div className="mt-5 flex min-h-24 w-full max-w-2xl flex-col items-center gap-3 px-4">
+          <div className="mt-8 flex min-h-24 w-full max-w-2xl flex-col items-center gap-3 px-4">
             {recorder.recording ? (
-              <VoiceVisualizer
-                analyser={recorder.analyser}
-                className="h-6 w-56 text-[var(--dawn-ember-deep)]"
-              />
+              <VoiceVisualizer analyser={recorder.analyser} className="h-6 w-56 text-brand-600" />
             ) : null}
             {/* The words as they are spoken. */}
             {live.interim ? (
@@ -1002,10 +992,7 @@ export function PeptideChat() {
             ) : (
               <p
                 aria-live="polite"
-                className={cn(
-                  'font-mono text-[10px] tracking-[0.22em] uppercase',
-                  status ? 'text-[var(--dawn-ember-deep)]' : 'text-muted',
-                )}
+                className={cn('mono-label', status ? 'text-brand-700' : 'text-muted')}
               >
                 {status ?? 'Press to speak'}
               </p>
@@ -1018,8 +1005,7 @@ export function PeptideChat() {
       <div
         className={cn(
           'w-full max-w-3xl transition-all duration-500',
-          started &&
-            'rounded-card bg-surface/85 backdrop-blur-xl',
+          started && 'border-y border-line',
         )}
       >
         {started ? (
@@ -1041,10 +1027,10 @@ export function PeptideChat() {
                     : () => router.push('/get-started');
                 return (
                   <div key={i} className={align}>
-                    <div className="max-w-md rounded-card bg-linear-to-br from-card-from to-card-to p-5">
+                    <div className="panel max-w-md rounded-card p-5">
                       <p className="text-pretty leading-relaxed text-ink">{message.content}</p>
-                      <Button size="lg" className="mt-4" onClick={onClick}>
-                        {message.ctaLabel}
+                      <Button variant="solid" size="lg" className="mt-4" onClick={onClick}>
+                        {message.ctaLabel} +
                       </Button>
                     </div>
                   </div>
@@ -1064,7 +1050,7 @@ export function PeptideChat() {
                       {text.content}
                     </div>
                   ) : isError ? (
-                    <div className="max-w-2xl rounded-card bg-red-50 px-4 py-3 text-red-800">
+                    <div className="max-w-2xl rounded-card bg-surface px-4 py-3 text-red-800">
                       {text.content}
                     </div>
                   ) : (
@@ -1072,7 +1058,7 @@ export function PeptideChat() {
                       {text.content ? (
                         <AnswerMarkdown>{text.content}</AnswerMarkdown>
                       ) : (
-                        <p className="font-mono text-[10px] tracking-[0.22em] text-muted uppercase">
+                        <p className="mono-label text-muted">
                           {toolStatus ?? 'Looking through the research…'}
                         </p>
                       )}
@@ -1087,14 +1073,14 @@ export function PeptideChat() {
                           isSpeaking ? speaker.stop() : void speaker.speak(text.content, messageId)
                         }
                         aria-label={isSpeaking ? 'Stop reading answer' : 'Read answer aloud'}
-                        className="rounded-full p-1.5 text-muted transition-colors hover:bg-brand-400/15 hover:text-[var(--dawn-ember-deep)] focus-visible:ring-2 focus-visible:ring-brand-500 outline-none"
+                        className="rounded-full border border-dotted border-transparent p-1.5 text-muted transition-colors hover:border-current hover:text-ink focus-visible:ring-2 focus-visible:ring-brand-600 outline-none"
                       >
                         {isSpeaking ? <StopIcon className="h-4 w-4" /> : <SpeakerIcon className="h-4 w-4" />}
                       </button>
                       {isSpeaking ? (
                         <VoiceVisualizer
                           analyser={speaker.analyser}
-                          className="h-5 w-28 text-[var(--dawn-ember-deep)]"
+                          className="h-5 w-28 text-brand-600"
                         />
                       ) : null}
                     </div>
@@ -1106,7 +1092,7 @@ export function PeptideChat() {
                         <li
                           key={citation.index}
                           title={citation.citedText}
-                          className="rounded-full bg-brand-400/12 px-3 py-1 font-mono text-[10px] tracking-[0.1em] text-brand-800 uppercase"
+                          className="mono-label rounded-full border border-line px-3 py-1 text-muted"
                         >
                           [{citation.index}]{' '}
                           {citation.headingPath ?? citation.sourcePath.replace(/\.md$/, '')}
@@ -1120,14 +1106,12 @@ export function PeptideChat() {
           </div>
         ) : null}
 
-        {/* Composer: quiet second path below the horizon when idle. */}
+        {/* Composer: quiet second path below the mic when idle. */}
         {started ? (
           composer
         ) : (
           <div className="mx-auto max-w-xl px-4">
-            <p className="mb-2.5 text-center font-mono text-[10px] tracking-[0.22em] text-muted/70 uppercase">
-              or type instead
-            </p>
+            <p className="mono-label mb-3 text-center text-muted">or type instead</p>
             {composer}
           </div>
         )}
@@ -1135,7 +1119,7 @@ export function PeptideChat() {
         {started && status ? (
           <p
             aria-live="polite"
-            className="px-6 pb-4 font-mono text-[10px] tracking-[0.22em] text-[var(--dawn-ember-deep)] uppercase"
+            className="mono-label px-6 pb-4 text-brand-700"
           >
             {status}
           </p>
@@ -1149,24 +1133,23 @@ export function PeptideChat() {
       ) : null}
 
       {/* ---- What makes the answers trustworthy ---- */}
-      <ul className="mt-14 mb-6 grid w-full max-w-3xl gap-px overflow-hidden rounded-card bg-line/60 sm:grid-cols-3">
+      <ul className="mt-16 mb-8 grid w-full max-w-3xl border-t border-line sm:grid-cols-3">
         {[
           ['Grounded', 'Answers come from our clinical team’s research library.'],
           ['Sourced', 'Every claim shows the study it came from.'],
           ['Honest', 'If the research doesn’t cover it, it says so.'],
         ].map(([label, detail]) => (
-          <li key={label} className="bg-canvas/80 px-5 py-4 backdrop-blur-sm">
-            <span className="font-mono text-[10px] tracking-[0.22em] text-[var(--dawn-ember-deep)] uppercase">
-              {label}
-            </span>
-            <p className="mt-1.5 text-sm leading-relaxed text-muted">{detail}</p>
+          <li
+            key={label}
+            className="border-b border-line py-5 sm:border-b-0 sm:border-r sm:px-5 sm:first:pl-0 sm:last:border-r-0"
+          >
+            <span className="mono-label text-ink">{label}</span>
+            <p className="mt-2 text-sm leading-relaxed text-muted">{detail}</p>
           </li>
         ))}
       </ul>
 
-      <p className="pb-16 text-center font-mono text-[10px] tracking-[0.2em] text-muted/80 uppercase">
-        {brainUi.disclaimer}
-      </p>
+      <p className="mono-label pb-16 text-center text-muted">{brainUi.disclaimer}</p>
     </div>
   );
 }

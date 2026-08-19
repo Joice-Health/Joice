@@ -1,25 +1,28 @@
 import { Bracket } from '@joice/ui';
-import { Eyebrow } from '@/components/ui/eyebrow';
 import { CtaLink } from '@/components/ui/cta-link';
 import { ImageSlot } from '@/components/ui/image-slot';
 
 /**
- * The thesis. A mono label, one light sentence, one dotted pill, then the
- * photo panel with its soft top corners. The panel carries the brand line in
- * scattered white mono, so the slot means something before the photo lands
- * (drop it at apps/web/public/hero.jpg).
+ * The thesis. The photo comes first, edge to edge under the nav:
+ * `public/hero.png` carries the lockup ("Joice · Preserving [ you ]") in the
+ * picture itself, so nothing is laid over it. Underneath, one light sentence
+ * and the dotted pills, then the green panel: the brand line in scattered
+ * white mono with the way into Ask Joice (a photo can take its place at
+ * `public/statement.jpg`; until then ImageSlot draws the organic field).
  */
 export function Hero() {
   return (
-    <section className="pt-14 sm:pt-24">
-      <div className="mx-auto flex max-w-3xl flex-col items-center text-center animate-fade-up">
-        <Eyebrow as="p" className="text-sm">
-          Preserving{' '}
-          <span className="normal-case">
-            <Bracket>you</Bracket>
-          </span>
-        </Eyebrow>
-        <h1 className="mt-8 text-balance text-3xl leading-[1.15] text-ink sm:text-5xl">
+    <section>
+      <ImageSlot
+        src="hero.png"
+        alt="Joice. Preserving you: a fingertip drawing a line of cream across a forearm."
+        priority
+        sizes="100vw"
+        className="relative left-1/2 aspect-square w-screen -translate-x-1/2 sm:aspect-[2/1] sm:max-h-[72vh]"
+      />
+
+      <div className="mx-auto flex max-w-3xl flex-col items-center py-16 text-center animate-fade-up sm:py-24">
+        <h1 className="text-balance text-3xl leading-[1.15] text-ink sm:text-5xl">
           Health and longevity to protect the you inside your head.
         </h1>
         <p className="mt-6 max-w-lg text-pretty text-lg leading-relaxed text-muted">
@@ -37,16 +40,13 @@ export function Hero() {
       </div>
 
       <ImageSlot
-        src="hero.jpg"
+        src="statement.jpg"
         alt=""
-        priority
         sizes="(min-width: 1152px) 1152px, 100vw"
-        className="mt-14 aspect-[4/5] rounded-t-card text-white sm:mt-20 sm:aspect-[21/9]"
+        className="aspect-[4/5] rounded-card text-white sm:aspect-[21/9]"
       >
         <p className="mono-label absolute inset-x-0 top-[22%] mx-auto grid w-[min(80%,26rem)] gap-5 text-sm text-white sm:top-[28%] sm:text-base">
-          <span className="justify-self-start">
-            The you
-          </span>
+          <span className="justify-self-start">The you</span>
           <span className="justify-self-center normal-case">
             <Bracket>inside</Bracket>
           </span>

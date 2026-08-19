@@ -67,7 +67,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           src={`products/${product.slug}.jpg`}
           alt=""
           sizes="(min-width: 1024px) 40vw, 100vw"
-          className="aspect-4/3 rounded-t-card"
+          className="aspect-4/3 rounded-card"
         />
       </section>
 

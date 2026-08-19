@@ -16,7 +16,7 @@ export function ShareCard({ entry }: { entry: WaitlistEntryView }) {
   const referenceId = entry.referralCode.toUpperCase();
 
   return (
-    <div className="relative w-full overflow-hidden rounded-card border border-line">
+    <div className="relative w-full overflow-hidden rounded-card">
       {/* Gold header: frosts the water behind the card */}
       <div className="relative h-44 overflow-hidden bg-gradient-to-b from-card-from/80 to-card-to/70 backdrop-blur-xl">
         <div className="absolute inset-0 flex items-start justify-between p-5">
@@ -49,7 +49,7 @@ export function ShareCard({ entry }: { entry: WaitlistEntryView }) {
         </dl>
 
         <div className="flex flex-col items-center justify-start">
-          <div className="rounded-xl border border-line bg-white p-2.5">
+          <div className="rounded-xl bg-white p-2.5">
             <QRCodeSVG value={shareUrl} size={104} level="M" marginSize={0} fgColor="#4d4f3f" />
           </div>
           <span className="mono-label mt-2.5 text-[9px] text-muted">Scan to join</span>

@@ -45,7 +45,7 @@ export function LeadSummary() {
                 Intake opens soon: a few quick questions, your labs if you have them, then a
                 licensed clinician takes it from there.
               </p>
-              <p className="mt-6 rounded-2xl border border-line bg-canvas px-5 py-4 text-sm leading-relaxed text-ink">
+              <p className="mt-6 rounded-2xl bg-canvas px-5 py-4 text-sm leading-relaxed text-ink">
                 Your details are saved under <span className="font-mono">{profile.email}</span>.
                 You&rsquo;re set for the
                 moment intake opens. In the meantime, the companion is right where you left it.

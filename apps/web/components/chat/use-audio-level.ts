@@ -4,7 +4,7 @@ import { useEffect, type RefObject } from 'react';
 
 /**
  * Writes the live audio amplitude (0–1) to a `--level` CSS custom property on
- * the given element, so the sun's corona and the horizon glow are driven by the
+ * the given element, so the microphone's rings are driven by the
  * member's actual voice — or the assistant's — rather than a canned animation.
  *
  * One rAF loop feeds every dependent style, since custom properties inherit.

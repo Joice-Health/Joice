@@ -25,7 +25,8 @@ else is cream, ink, stone and white.
 
 ## Type
 
-Three faces from Dinamo, Light only (the cuts we license), served with `next/font/local`.
+Three faces from Dinamo, Light only (the cuts we license). The files live in `apps/web/fonts`,
+outside `public/` so they are only ever served hashed through `next/font/local`.
 
 | Role | Face | Case | Tracking | Utility |
 | --- | --- | --- | --- | --- |
@@ -53,13 +54,19 @@ oblique. Emphasis comes from size, case, or a bracket, never weight.
   which means "type here". One `solid` (ink) button per page at most, for the commit action.
 - **Structure** is hairlines and open lists. A section starts with a `border-t border-line`;
   a list is `border-t` with `border-b` rows. Cards, shadows and glass are gone from the main
-  site; `glass` survives only on the waitlist, over the water.
-- **Image panels** take soft top corners (`rounded-t-card`, 2rem) and carry white mono on
+  site. Frost is reserved for things that float over content: the full-width sticky nav
+  (frosted cream, no rule beneath it) and the `glass` panels in admin. White surfaces
+  (`panel`, `Input`, `glass`) carry no frame: the white on the cream is the edge.
+- **The microphone** on Ask Joice is the button made round: a dotted circle on the paper that
+  fills with ink while listening, with hairline rings that turn olive and move with the live
+  audio level. No sky, no glow.
+- **Image panels** are fully rounded (`rounded-card`, 2rem) and carry white mono on
   them. Until photography lands, `ImageSlot` draws the organic green field from the deck.
 - **The dark band** (`bg-ink`, full-bleed) is the one place a page goes dark: Values.
 
 ## What is placeholder
 
-Photography (`public/hero.jpg`, `public/areas/<slug>.jpg`, `public/products/<slug>.jpg`),
+Photography (`public/statement.jpg` for the home panel, `public/areas/<slug>.jpg`,
+`public/products/<slug>.jpg`; `public/hero.png` is in),
 the logo mark from the deck (the wordmark is set in Gaisyr Mono for now), and the copy,
 which is still pre content pass.

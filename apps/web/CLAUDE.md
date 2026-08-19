@@ -63,3 +63,6 @@ root CLAUDE.md and `docs/design/01-design-system.md`. In practice:
   trick; `body` has `overflow-x: clip` for that.
 - Fonts are `next/font/local` in `app/layout.tsx`; only Light cuts exist, and `html` has
   `font-synthesis: none`, so weight classes are inert on purpose.
+- The nav (`components/layout/site-nav.tsx`) is full-width, sticky and frosted with no rule
+  under it; page-level CSS that is not a token (the Ask microphone, the organic image field)
+  lives in `app/globals.css`.

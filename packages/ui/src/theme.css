@@ -50,7 +50,7 @@
   --tracking-display: 0.03em;
   --tracking-mono: 0.05em;
 
-  /* Large image panels get soft top corners; everything small is a pill. */
+  /* Large image panels get soft corners; everything small is a pill. */
   --radius-card: 2rem;
 
   /* Motion */
@@ -105,19 +105,17 @@
   line-height: 0.95;
 }
 
-/* Flat panel: white paper on the cream, framed by a hairline. */
+/* Flat panel: white paper on the cream. The white is the edge; no frame. */
 @utility panel {
   background-color: var(--color-surface);
-  border: 1px solid var(--color-line);
 }
 
 /* Frosted panel: the flat panel with a little of what is behind it showing
- * through. Only earns its keep over media (the waitlist water). */
+ * through. No frame, like every white surface. */
 @utility glass {
   background-color: color-mix(in oklch, var(--color-surface) 78%, transparent);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
-  border: 1px solid color-mix(in oklch, var(--color-line) 70%, transparent);
 }
 
 @layer base {
