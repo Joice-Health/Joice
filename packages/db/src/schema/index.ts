@@ -8,9 +8,11 @@
  *
  * The rule: a service may write only the tables in its own file. The brain
  * touches `brain.ts` and nothing else; if it needs something from another
- * domain it asks through a port (see `@joice/brain` ports/).
+ * domain it asks through a port (see `@joice/brain` ports/). `onboarding.ts`
+ * (the intake flow and the member profile) belongs to @joice/core on the api.
  */
 export * from './waitlist';
 export * from './identity';
 export * from './platform';
 export * from './brain';
+export * from './onboarding';
