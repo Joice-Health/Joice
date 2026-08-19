@@ -34,12 +34,15 @@ on. Work lands on the `onboarding/intake` branch; the design brief is the place 
 | Doc | What it covers |
 |---|---|
 | [00 Design brief (approved plan)](onboarding/00-plan.md) | Tracked as Shortcut epic 127. Product design (journey, gates, carry-over, segments), architecture (data model, flow definition, condition DSL, engine, versioning, brain exchange, compliance), file-level implementation plan, phases and stories, verification, documentation and branch workflow, decisions log, council verdict |
+| [01 Overview](onboarding/01-overview.md) | The journey (flowchart), the three tiers and the flags, what exists and what comes later, file by file |
 | [02 The flow model](onboarding/02-flow-model.md) | The definition (bank + sections), the condition language and its why-trace, the engine (walk, minor rule, pruning, back), versions and pinning, the publish validator's codes |
 | [03 The data model](onboarding/03-data-model.md) | Every table with its writer, the trait registry and tiers, the profile fold and provenance precedence, migrations and seeds, retention |
+| [07 Compliance](onboarding/07-compliance.md) | Sensitivity tiers, the two PHI keys, minors, notice and consent, identity linking, retention, analytics rules, what is open for counsel |
+| [08 Running it locally](onboarding/08-local-development.md) | Migrate, open the flag, click through, drive the API with curl, look at the data, tests, reset |
 
-Pages 01, 04 to 10 (overview, sessions and registration, admin guide, brain integration,
-compliance, local development, troubleshooting, protocol readiness) arrive with the phase that
-builds each piece; see section 7 of the brief.
+Pages 04 to 06, 09 and 10 (sessions and registration, admin guide, brain integration,
+troubleshooting, protocol readiness) arrive with the phase that builds each piece; see section 7
+of the brief. **New here? Read 01, then 02, then 08 to run it.**
 
 ## CI/CD
 
