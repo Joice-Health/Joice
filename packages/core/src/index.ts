@@ -10,3 +10,4 @@ export * from './schemas';
 export * from './waitlist-service';
 export * from './marketing';
 export * from './admin';
+export * from './profile/profile-service';
