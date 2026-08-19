@@ -30,6 +30,16 @@ export interface Requester {
 export interface MemberContext {
   /** Preferred name, for addressing them naturally. */
   firstName: string | null;
+  /** The care area they said they are here for, as a readable label. */
+  goalLabel: string | null;
+  /** The derived segment (e.g. weight-newcomer), for tone, never for advice. */
+  segment: string | null;
+  /**
+   * Marketing/personal-tier intake facts as short readable lines ("Timeline:
+   * About six months"). The api decides what may cross; health-tier facts
+   * never do until the PHI keys are on.
+   */
+  traitsSummary: string[];
   /** Products they've actually ordered — grounds "how do I take mine?". */
   orders: MemberOrder[];
   /** Protocols a clinician has assigned them. */
@@ -54,6 +64,19 @@ export interface MemberProtocol {
 /** Identity, orders and protocols. Owned by the platform, read by the brain. */
 export interface MemberContextPort {
   forMember(memberId: string): Promise<MemberContext>;
+}
+
+/**
+ * The brain observed something about a member (a goal set in chat, an
+ * enum-only interest signal). Written to the platform's profile through the
+ * api; fire-and-forget on the brain side, never on the answer path's critical
+ * line. Nothing free-text crosses: values are vocabulary tokens.
+ */
+export interface ObservationSinkPort {
+  record(input: {
+    memberId: string;
+    observations: Array<{ trait: string; value: unknown; confidence?: number }>;
+  }): Promise<void>;
 }
 
 /** A product the brain can talk about and, eventually, suggest. */
@@ -87,8 +110,18 @@ export interface CartPort {
 }
 
 /** Everything the brain needs injected. Stubs below cover what doesn't exist yet. */
+export const emptyMemberContext: MemberContext = {
+  firstName: null,
+  goalLabel: null,
+  segment: null,
+  traitsSummary: [],
+  orders: [],
+  protocols: [],
+};
+
 export interface BrainPorts {
   memberContext: MemberContextPort;
+  observations: ObservationSinkPort;
   catalog: CatalogPort;
   cart: CartPort;
 }
@@ -96,8 +129,13 @@ export interface BrainPorts {
 /** No member data exists yet — an empty context, not a failure. */
 export const emptyMemberContextPort: MemberContextPort = {
   async forMember() {
-    return { firstName: null, orders: [], protocols: [] };
+    return emptyMemberContext;
   },
+};
+
+/** Records nothing; the default until the platform adapter is wired. */
+export const noopObservationSinkPort: ObservationSinkPort = {
+  async record() {},
 };
 
 /** No catalogue yet. Returning nothing is honest; the brain answers without it. */
@@ -122,6 +160,7 @@ export const unavailableCartPort: CartPort = {
 
 export const stubPorts: BrainPorts = {
   memberContext: emptyMemberContextPort,
+  observations: noopObservationSinkPort,
   catalog: emptyCatalogPort,
   cart: unavailableCartPort,
 };
