@@ -1,4 +1,5 @@
 import { Hono, type Context } from 'hono';
+import { clerkMiddleware } from '@hono/clerk-auth';
 import { cors } from 'hono/cors';
 import { requestId, type RequestIdVariables } from 'hono/request-id';
 import { secureHeaders } from 'hono/secure-headers';
@@ -47,14 +48,24 @@ const app = new Hono<{ Variables: RequestIdVariables & RequesterVariables }>();
 app.use('*', requestId());
 app.use('*', requestLog);
 app.use('*', secureHeaders());
-// Who is asking. Anonymous today (an opaque session cookie); the seam where
-// member auth plugs in — see middleware/requester.ts.
+// Who is asking: the opaque session cookie always, plus the member id from a
+// Clerk bearer token when the browser sends one (clerkMiddleware verifies it;
+// without a token it simply sets no user). See middleware/requester.ts.
+app.use(
+  '/api/brain/*',
+  clerkMiddleware({
+    publishableKey: env.CLERK_PUBLISHABLE_KEY,
+    // Networkless verification with the public JWT key in prod; the secret key
+    // only as a local fallback (see env.ts). Never both unset in a real env.
+    ...(env.CLERK_JWT_KEY ? { jwtKey: env.CLERK_JWT_KEY } : { secretKey: env.CLERK_SECRET_KEY || 'sk_test_placeholder' }),
+  }),
+);
 app.use('/api/brain/*', identifyRequester);
 app.use(
   '/api/*',
   cors({
     origin: allowedOrigins,
-    allowMethods: ['GET', 'POST', 'OPTIONS'],
+    allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
     // The session cookie must survive cross-origin requests in local dev (web
     // :3000 → brain :4100). Requires a specific origin allowlist above, never
@@ -492,6 +503,21 @@ const routes = app
       conversationService.deleteForRequester(requester),
     ]);
     return c.json({ erased: { profiles, conversations } });
+  })
+  /**
+   * Attach this browser's anonymous lead and threads to the signed-in member.
+   * The web calls it right after sign-up (alongside the intake claim on the
+   * api). Needs a member id on the requester, which only a verified Clerk
+   * token carrying `metadata.memberId` provides; only unclaimed rows move.
+   */
+  .post('/api/brain/profile/claim', rateLimit({ windowMs: 60_000, max: 10 }), async (c) => {
+    const requester: Requester = c.get('requester');
+    if (!requester.memberId) return c.json({ error: 'Sign in to continue' }, 401);
+    const [profiles, conversations] = await Promise.all([
+      profileService.claim(requester.sessionId, requester.memberId),
+      conversationService.claim(requester.sessionId, requester.memberId),
+    ]);
+    return c.json({ claimed: { profiles, conversations } });
   });
 
 export type BrainAppType = typeof routes;

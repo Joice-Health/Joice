@@ -122,6 +122,11 @@ resource "aws_ecs_task_definition" "brain" {
         # line — see docs/rag/07-compliance.md § conversation-persistence gate.
         # Do not flip this to "true" before that section's checklist is settled.
         { name = "BRAIN_PERSIST_CONVERSATIONS", value = tostring(var.persist_conversations) },
+        # Recognise a signed-in member's bearer token (the companion claim on
+        # sign-up) with networkless verification: the public JWT key, never the
+        # Clerk secret, which this task deliberately cannot read (iam.tf).
+        { name = "CLERK_PUBLISHABLE_KEY", value = var.clerk_publishable_key },
+        { name = "CLERK_JWT_KEY", value = var.clerk_jwt_key },
       ]
       secrets = [
         { name = "DATABASE_URL", valueFrom = aws_secretsmanager_secret.database_url.arn },
