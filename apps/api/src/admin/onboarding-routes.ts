@@ -1,0 +1,181 @@
+import { Hono } from 'hono';
+import { zValidator } from '@hono/zod-validator';
+import {
+  FLOW_KEY,
+  FlowServiceError,
+  createFlowVersionSchema,
+  funnelQuerySchema,
+  onboardingSettingsPatchSchema,
+  publishFlowVersionSchema,
+  rollbackFlowSchema,
+  serviceAreaRequestsQuerySchema,
+  simulateRequestSchema,
+  simulate,
+  stateCodeParamSchema,
+  updateFlowVersionSchema,
+  updateServiceAreaSchema,
+  uuidParamSchema,
+  type AdminActor,
+  type EngineContext,
+} from '@joice/core';
+import { z } from 'zod';
+import {
+  flows,
+  onboarding,
+  onboardingConfig,
+  onboardingEvents,
+  serviceAreaRequests,
+  serviceAreas,
+} from '../services';
+import type { AdminEnv } from './auth';
+
+const actorOf = (c: { get: (k: 'adminUserId' | 'adminEmail') => string | undefined }): AdminActor => ({
+  clerkUserId: c.get('adminUserId')!,
+  email: c.get('adminEmail'),
+});
+
+const flowKeyParamSchema = z.object({ key: z.literal(FLOW_KEY) });
+
+function flowError(c: { json: (body: unknown, status: 404 | 409) => Response }, err: unknown) {
+  if (err instanceof FlowServiceError) {
+    return c.json({ error: err.message, code: err.code }, err.code === 'not_found' ? 404 : 409);
+  }
+  throw err;
+}
+
+/**
+ * The admin's onboarding surface, mounted at /api/admin/onboarding (inside the
+ * admin chain: rate limit, Clerk, requireAdmin). Editing is drafts and
+ * publishes, never edits of a published version; gates (service areas, the
+ * minimum age) live on their own routes with their own audit actions so
+ * opening a state never hides among copy changes. The simulator runs the real
+ * engine and persists nothing.
+ */
+export const adminOnboardingRoutes = new Hono<AdminEnv>()
+
+  // --- Flows and versions ---
+  .get('/flows', async (c) => {
+    return c.json({ items: await flows.listFlows() });
+  })
+  .get('/flows/:key/versions', zValidator('param', flowKeyParamSchema), async (c) => {
+    const items = await flows.listVersions(c.req.valid('param').key);
+    // The list stays light: definitions are fetched per version.
+    return c.json({
+      items: items.map(({ definition: _definition, validationReport: _report, ...row }) => row),
+    });
+  })
+  .post(
+    '/flows/:key/versions',
+    zValidator('param', flowKeyParamSchema),
+    zValidator('json', createFlowVersionSchema),
+    async (c) => {
+      try {
+        const row = await flows.createDraft(c.req.valid('param').key, c.req.valid('json'), actorOf(c));
+        return c.json(row, 201);
+      } catch (err) {
+        return flowError(c, err);
+      }
+    },
+  )
+  .get('/versions/:id', zValidator('param', uuidParamSchema), async (c) => {
+    const found = await flows.getVersion(c.req.valid('param').id).catch((err) => {
+      if (err instanceof FlowServiceError) return null;
+      throw err;
+    });
+    if (!found) return c.json({ error: 'Version not found' }, 404);
+    return c.json(found.version);
+  })
+  .put(
+    '/versions/:id',
+    zValidator('param', uuidParamSchema),
+    zValidator('json', updateFlowVersionSchema),
+    async (c) => {
+      try {
+        const { version, report } = await flows.saveDraft(c.req.valid('param').id, c.req.valid('json'), actorOf(c));
+        return c.json({ version, report });
+      } catch (err) {
+        return flowError(c, err);
+      }
+    },
+  )
+  .post(
+    '/versions/:id/publish',
+    zValidator('param', uuidParamSchema),
+    zValidator('json', publishFlowVersionSchema),
+    async (c) => {
+      try {
+        const result = await flows.publish(c.req.valid('param').id, actorOf(c), c.req.valid('json'));
+        if (!result.ok) return c.json({ error: 'The definition does not validate', report: result.report }, 422);
+        return c.json({ version: result.version });
+      } catch (err) {
+        return flowError(c, err);
+      }
+    },
+  )
+  .post(
+    '/flows/:key/rollback',
+    zValidator('param', flowKeyParamSchema),
+    zValidator('json', rollbackFlowSchema),
+    async (c) => {
+      try {
+        const version = await flows.rollback(c.req.valid('param').key, c.req.valid('json').versionId, actorOf(c));
+        return c.json({ version });
+      } catch (err) {
+        return flowError(c, err);
+      }
+    },
+  )
+
+  // --- The simulator: the real engine, nothing persisted ---
+  .post('/simulate', zValidator('json', simulateRequestSchema), async (c) => {
+    const input = c.req.valid('json');
+    let definition = input.definition;
+    if (!definition) {
+      const found = await flows.getVersion(input.versionId!);
+      if (!found) return c.json({ error: 'Version not found' }, 404);
+      definition = found.definition;
+    }
+    const [settings, areas] = await Promise.all([onboardingConfig.get(), serviceAreas.map()]);
+    const ctx: EngineContext = {
+      minimumAge: input.context?.minimumAge ?? settings.minimumAge,
+      serviceAreas: { ...areas, ...input.context?.serviceAreaOverrides },
+      now: input.context?.now ? new Date(input.context.now) : new Date(),
+      segmentRules: definition.segmentRules,
+    };
+    const result = simulate(definition, input.persona, ctx);
+    const { snapshot: _snapshot, ...view } = result;
+    return c.json(view);
+  })
+
+  // --- Service areas and the minimum age (their own audit actions) ---
+  .get('/service-areas', async (c) => {
+    return c.json({ items: await serviceAreas.list(), settings: await onboardingConfig.get() });
+  })
+  .patch(
+    '/service-areas/:code',
+    zValidator('param', stateCodeParamSchema),
+    zValidator('json', updateServiceAreaSchema),
+    async (c) => {
+      const row = await serviceAreas.update(c.req.valid('param').code, c.req.valid('json'), actorOf(c));
+      if (!row) return c.json({ error: 'Unknown state' }, 404);
+      return c.json(row);
+    },
+  )
+  .put('/settings', zValidator('json', onboardingSettingsPatchSchema), async (c) => {
+    return c.json(await onboardingConfig.update(c.req.valid('json'), actorOf(c)));
+  })
+
+  // --- The funnel and the notify-me requests ---
+  .get('/funnel', zValidator('query', funnelQuerySchema), async (c) => {
+    return c.json(await onboardingEvents.funnel(c.req.valid('query')));
+  })
+  .get('/requests', zValidator('query', serviceAreaRequestsQuerySchema), async (c) => {
+    return c.json(await serviceAreaRequests.list(c.req.valid('query')));
+  })
+
+  // --- The member's registered sessions, for support: state only, no answers dump ---
+  .get('/sessions/member/:id', zValidator('param', uuidParamSchema), async (c) => {
+    const state = await onboarding.stateForMember(c.req.valid('param').id);
+    if (!state) return c.json({ error: 'No intake for that member' }, 404);
+    return c.json(state);
+  });
