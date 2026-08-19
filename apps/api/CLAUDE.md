@@ -33,7 +33,7 @@ schemas from `@joice/core`, call the service, return JSON.
 |---|---|---|---|
 | `/api/waitlist*`, `/api/flags` | `src/app.ts` | public, rate-limited, waitlist behind its flag | yes |
 | `/api/onboarding/*` | `src/onboarding/routes.ts` | anonymous cookie session, behind the `onboarding` flag, rate-limited per route | yes (`.route('/api/onboarding', ...)`) |
-| `/api/admin/*` | `src/admin/routes.ts` | Clerk + `requireAdmin` | yes (`.route('/api/admin', ...)`) |
+| `/api/admin/*` | `src/admin/routes.ts` (+ `src/admin/onboarding-routes.ts` at `/api/admin/onboarding`) | Clerk + `requireAdmin` | yes (`.route('/api/admin', ...)`) |
 | `/api/me/*`, `/api/onboarding/session/claim` | (Phase 2) | Clerk + `requireMember`, which also creates the member's `users` row on its first call after sign-up (no webhook) | yes |
 | `/api/internal/*` | (Phase 4) | internal bearer token | **no**: registered on the app outside the chain, not a browser API |
 
@@ -65,6 +65,10 @@ The whole surface answers 404 until an admin turns the `onboarding` flag on.
   prod, `None; Secure` in dev because the web app is a different origin there. Separate from
   the brain's cookie on purpose. CORS therefore allows credentials, and the api client sends
   them; in prod both are no-ops (same origin through CloudFront).
+- Onboarding audit actions to keep distinct: `onboarding.publish`, `onboarding.rollback`,
+  `onboarding.draft_created`, `onboarding.draft_saved`, `service_area.update`,
+  `onboarding.settings`. Gate changes (service areas, minimum age) must never share an action
+  with copy edits.
 - `PHI_READY` (env, set by Terraform) and the `onboarding_health` flag are the two PHI keys;
   `services.ts` combines them into the flow service's `phiEnabled`. Never expose a route that
   lets an admin set the env half.
