@@ -451,6 +451,12 @@ export function formatValue(question: FlowQuestion, value: unknown): string {
         : String(value);
     case 'us_state':
       return usStateName(String(value));
+    case 'date': {
+      const d = new Date(`${String(value)}T00:00:00Z`);
+      return Number.isNaN(d.getTime())
+        ? String(value)
+        : d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
+    }
     case 'boolean':
       return value ? 'Yes' : 'No';
     case 'height_weight': {
@@ -485,6 +491,13 @@ export function answerSchemaFor(question: FlowQuestion): z.ZodTypeAny {
       .array(z.enum(vocabulary as [string, ...string[]]))
       .min(1)
       .refine((arr) => new Set(arr).size === arr.length, 'No repeats');
+  }
+
+  // A boolean question is a checkbox. Required means it must be ticked (the
+  // consent step); a yes/no question that may be answered either way is a
+  // single_select. Keeps "required" meaning the same thing for every type.
+  if (question.type === 'boolean' && question.required) {
+    schema = z.literal(true, { errorMap: () => ({ message: 'Tick the box to continue' }) });
   }
 
   const c = question.constraints;

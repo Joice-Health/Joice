@@ -64,6 +64,7 @@
         "@joice/brain": "*",
         "@joice/core": "*",
         "@joice/ui": "*",
+        "@joice/utils": "*",
         "@tanstack/react-query": "^5.101.0",
         "next": "^16.2.0",
         "qrcode.react": "^4.2.0",

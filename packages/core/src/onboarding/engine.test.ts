@@ -177,7 +177,7 @@ describe('the matrix', () => {
     expect(r.step.segment).toBe('explorer');
     expect(r.step.summary.map((row) => [row.questionKey, row.value])).toEqual([
       ['us_state', 'California'],
-      ['date_of_birth', ADULT],
+      ['date_of_birth', 'January 1, 2000'],
       ['goal', 'Not sure yet'],
       ['peptide_experience', 'New to them'],
       ['first_name', 'Sam'],
@@ -283,6 +283,24 @@ describe('the matrix', () => {
     expect(r.pruned.sort()).toEqual(['weight_timeline', 'weight_tried']);
     expect(r.snapshot.answers.weight_tried).toBeUndefined();
     expect(questionKey(r.snapshot)).toBe('peptide_experience');
+  });
+
+  test('22b. a required boolean must be ticked; an optional one may be false', () => {
+    const s = play([
+      ['us_state', 'CA'],
+      ['date_of_birth', ADULT],
+      ['goal', 'energy'],
+      ['peptide_experience', 'none'],
+      ['first_name', 'Sam'],
+    ]);
+    expect(questionKey(s)).toBe('consent_terms');
+    const no = applyAnswer(DEF, s, ctx, 'consent_terms', false);
+    expect(no.ok === false && no.error.code).toBe('invalid_value');
+    const yes = applyAnswer(DEF, s, ctx, 'consent_terms', true);
+    expect(yes.ok).toBe(true);
+    if (!yes.ok) return;
+    const optionalNo = applyAnswer(DEF, yes.snapshot, ctx, 'consent_marketing', false);
+    expect(optionalNo.ok).toBe(true);
   });
 
   test('23. a required question cannot be skipped; an unknown one is unknown', () => {

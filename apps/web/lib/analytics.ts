@@ -21,7 +21,20 @@ export type AnalyticsEvent =
       trigger: 'buying_signal' | 'capture_complete' | 'exchange_threshold';
     }
   | { event: 'conversion_cta_clicked' }
-  | { event: 'handoff_viewed' };
+  | { event: 'handoff_viewed' }
+  // Intake (/get-started). Question keys and outcomes only; never a value, a
+  // name, an email or a state code.
+  | { event: 'onboarding_started'; carriedOver: boolean }
+  | { event: 'onboarding_resumed' }
+  | { event: 'onboarding_step_viewed'; questionKey: string }
+  | { event: 'onboarding_step_answered'; questionKey: string }
+  | { event: 'onboarding_step_skipped'; questionKey: string }
+  | { event: 'onboarding_back' }
+  | { event: 'onboarding_gate_hit'; outcome: 'stop_age' | 'notify_state' | 'closed_state' }
+  | { event: 'onboarding_notify_submitted' }
+  | { event: 'onboarding_completed' }
+  | { event: 'onboarding_restarted' }
+  | { event: 'onboarding_registration_started' };
 
 export function track(event: AnalyticsEvent): void {
   if (typeof window === 'undefined') return;

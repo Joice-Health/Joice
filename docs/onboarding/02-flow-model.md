@@ -47,7 +47,9 @@ unlocks or loosens them.
 Question types: `single_select`, `multi_select`, `number`, `text`, `date`,
 `us_state`, `height_weight`, `boolean`, `scale`. Custom traits (`custom.<slug>`)
 take their type from the question that asks them; a `single_select` on a custom
-trait is an enum over its own options.
+trait is an enum over its own options. A `boolean` question is a checkbox:
+`required` means it must be ticked (the consent step); a yes/no question that
+may go either way is a `single_select`.
 
 The v1 content is `DEFAULT_INTAKE_FLOW` (`onboarding/default-flow.ts`): it is
 frozen with migration 0015 (a test keeps the two equal), and every change after
