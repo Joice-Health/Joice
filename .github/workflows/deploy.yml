@@ -102,7 +102,7 @@ jobs:
 
       - name: Set up Docker Buildx
         if: steps.affected.outputs.any == 'true'
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       # provenance: false on every build. These are single-arch images for ECR;
       # the default attestation manifest shows up there as an untagged image and
