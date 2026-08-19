@@ -39,8 +39,8 @@ give the file a fresh inode: `cp f /tmp/x && rm f && cp /tmp/x f`, then restart.
 Turborepo monorepo; the type flow is the core design — **no hand-written DTOs anywhere**:
 
 ```
-packages/db          Drizzle schema, split by owner (schema/{waitlist,identity,platform,brain}.ts)
-  ├► packages/core   platform domain: waitlist + admin/* — runtime-agnostic
+packages/db          Drizzle schema, split by owner (schema/{waitlist,identity,platform,brain,onboarding}.ts)
+  ├► packages/core   platform domain: waitlist + admin/* + onboarding/* + profile/* + rules/*, runtime-agnostic
   │    └► apps/api   Hono on Bun :4000 — `export type AppType`
   └► packages/brain  THE BRAIN: retrieval, generation, voice, config, ports
        └► apps/brain Hono on Bun :4100 — `export type BrainAppType`
@@ -71,12 +71,42 @@ Rules that keep this working:
   service, and CI runs the `joice-migrate` ECS task to completion before deploying either
   service. Two services booting migrations against one database would race.
 
+## Onboarding rules that keep this working
+
+The intake flow on `/get-started` (design brief: `docs/onboarding/00-plan.md`; model:
+`docs/onboarding/02-flow-model.md`, `03-data-model.md`):
+
+- Flow definitions are **versioned and immutable once published**; sessions pin a version.
+  A copy-only publish (same logic hash) moves live sessions forward; a logic change never does.
+  Publish/rollback go through `createFlowService` (audited) and nothing else moves the pointer.
+- **The engine is pure and lives in core** (`packages/core/src/onboarding/engine.ts`). The
+  server computes the next step; the browser only renders it. Gates cannot be bypassed.
+- **Traits are code with sensitivity tiers** (`packages/core/src/profile/traits.ts`); questions
+  bind to traits; protocols and the brain read traits, never question ids. The publish
+  validator refuses health-tier traits until both PHI keys are on: `PHI_READY` (Terraform) and
+  the `onboarding_health` flag.
+- **A date of birth under the minimum age is never persisted** (the engine checks the age gate
+  before writing) and the session's answers and observations are purged.
+- `onboarding_events` and GTM carry **keys and outcomes only**, never answer values, names or
+  emails.
+- **Notify-me** (`service_area_requests`) is its own table: not the referral waitlist, no brain
+  lineage. Klaviyo under `onboarding_*` is the only place the funnels meet.
+- The intake cookie (`joice_onboarding_session`, api) is separate from the brain cookie; the
+  api client sends `credentials: 'include'` and the api's CORS allows it (dev is cross-origin).
+- The brain reaches the profile **only over HTTP** (`/api/internal/*`, Phase 4); it never
+  imports onboarding tables and the platform never reads brain tables for carry-over: the
+  visitor carries companion data over and confirms it.
+- Every onboarding change lands on the `onboarding/intake` branch with its docs
+  (`docs/onboarding/*`) and the relevant CLAUDE.md in the same PR.
+
 ## Access model (three tiers)
 
 1. **Public**: `/waitlist` (+ `?ref=` referral links) — the only public surface until launch.
    The waitlist itself sits behind the `waitlist` feature flag (seeded on by migration, toggled
    in `/admin/flags`); off, `/waitlist` and the public `/api/waitlist*` endpoints close and
-   visitors land on `/coming-soon` ("Something special is coming").
+   visitors land on `/coming-soon` ("Something special is coming"). The intake flow
+   (`/get-started`, `/api/onboarding/*`) sits behind the `onboarding` flag (seeded off) and,
+   like every other page, behind the team gate until launch.
 2. **Team preview**: everything else redirects anonymous visitors to `/waitlist` via
    `apps/web/middleware.ts`. Team logs in at `/team` with `TEAM_PASSWORD` (HMAC cookie,
    no session store). `SITE_LAUNCHED=true` removes this gate entirely.
@@ -91,8 +121,9 @@ Rules that keep this working:
 Variables: `CLOUDFRONT_URL`, `CLERK_PUBLISHABLE_KEY`). Changing them requires a **rebuild**, not
 a redeploy or task-env change: run the Deploy workflow manually with `scope=all`, because no
 file in git changed and change detection would otherwise skip the web image. Everything else
-(`TEAM_PASSWORD`, `SITE_LAUNCHED`, `CLERK_SECRET_KEY`, `DATABASE_URL`) is runtime env on the
-ECS tasks, changed via `terraform apply`, no rebuild.
+(`TEAM_PASSWORD`, `SITE_LAUNCHED`, `CLERK_SECRET_KEY`, `DATABASE_URL`, the onboarding knobs
+`PHI_READY`, `ONBOARDING_SESSION_IDLE_DAYS`, `ONBOARDING_SESSION_TTL_DAYS`) is runtime env on
+the ECS tasks, changed via `terraform apply`, no rebuild.
 
 In production the web app is built with `NEXT_PUBLIC_API_URL=""` — CloudFront serves web and
 API from one origin (`/api/*` → API service), so browser calls are relative and CORS never

@@ -13,6 +13,7 @@ import { checkHealth } from './health';
 import { requestLog } from './middleware/request-log';
 import { featureFlags, waitlist } from './services';
 import { adminRoutes } from './admin/routes';
+import { onboardingRoutes } from './onboarding/routes';
 
 const app = new Hono<{ Variables: RequestIdVariables }>();
 
@@ -28,6 +29,10 @@ app.use(
     origin: allowedOrigins,
     allowMethods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
+    // The intake session rides on an httpOnly cookie; in dev the web app is a
+    // different origin, so the browser only sends it with credentials allowed
+    // here and `credentials: 'include'` on the client. Same-origin in prod.
+    credentials: true,
   }),
 );
 
@@ -95,6 +100,8 @@ const routes = app
   .get('/api/flags', rateLimit({ windowMs: 60_000, max: 60 }), async (c) => {
     return c.json(await featureFlags.evaluateAll());
   })
+  // The intake flow: anonymous, cookie-keyed, behind the `onboarding` flag.
+  .route('/api/onboarding', onboardingRoutes)
   .route('/api/admin', adminRoutes);
 
 export type AppType = typeof routes;

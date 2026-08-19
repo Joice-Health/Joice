@@ -356,6 +356,16 @@ export function toView(question: FlowQuestion): QuestionView {
   };
 }
 
+/** Where an answer came from: the companion when it equals the carried value, else the visitor. */
+export function answerSource(
+  question: FlowQuestion,
+  value: unknown,
+  carry: CarryOver | null,
+): AcceptedAnswer['source'] {
+  const carried = carriedValue(question, carry);
+  return carried !== undefined && sameValue(carried, value) ? 'companion' : 'onboarding';
+}
+
 /** The companion's value for a question, when its trait is one the companion captures. */
 export function carriedValue(question: FlowQuestion, carry: CarryOver | null): unknown {
   if (!carry) return undefined;
@@ -533,8 +543,7 @@ export function applyAnswer(
     }
   }
 
-  const carried = carriedValue(question, snap.carryOver);
-  const source: AcceptedAnswer['source'] = carried !== undefined && sameValue(carried, value) ? 'companion' : 'onboarding';
+  const source = answerSource(question, value, snap.carryOver);
 
   // The age gate is checked BEFORE the date of birth is written: a minor's
   // date of birth never reaches the session row.

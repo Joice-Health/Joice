@@ -26,6 +26,30 @@ export {
   companionKeys,
   FieldError,
 } from './companion';
+export {
+  onboardingKeys,
+  OnboardingActionError,
+  OnboardingClosedError,
+  useOnboardingSession,
+  useStartOnboarding,
+  useAnswerQuestion,
+  useSkipQuestion,
+  useGoBack,
+  useRestartOnboarding,
+  useSubmitNotify,
+} from './onboarding';
+export type {
+  ActionError,
+  AnswerInput,
+  CarryOverInput,
+  GateView,
+  NotifyRequestInput,
+  ProgressView,
+  SessionState,
+  SessionStatus,
+  SkipInput,
+  StepView,
+} from '@joice/core';
 export type {
   CaptureField,
   CaptureStep,

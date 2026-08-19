@@ -176,3 +176,145 @@ export type FlowDefinitionInput = z.input<typeof flowDefinitionSchema>;
 /** The locked sections every intake flow must carry, and where. */
 export const ELIGIBILITY_SECTION_KEY = 'eligibility';
 export const CONSENT_SECTION_KEY = 'consent';
+
+/* ------------------------------------------------------------------------- */
+/* Wire contracts: what the browser sends and sees                           */
+/* ------------------------------------------------------------------------- */
+
+export const SESSION_STATUSES = [
+  'in_progress',
+  'gated_age',
+  'gated_state',
+  'completed',
+  'registered',
+  'abandoned',
+] as const;
+export const sessionStatusSchema = z.enum(SESSION_STATUSES);
+export type SessionStatus = z.infer<typeof sessionStatusSchema>;
+
+/** What the companion hands over. Never answers: the visitor confirms each value. */
+export const carryOverSchema = z
+  .object({
+    firstName: z.string().trim().min(1).max(80),
+    email: z.string().trim().toLowerCase().email().max(254),
+    goal: z.string().trim().min(1).max(64),
+  })
+  .partial()
+  .strict();
+export type CarryOverInput = z.infer<typeof carryOverSchema>;
+
+export const startSessionSchema = z.object({ carryOver: carryOverSchema.optional() }).strict();
+export type StartSessionInput = z.infer<typeof startSessionSchema>;
+
+/** The value is validated by the engine against the pinned definition. */
+export const answerSchema = z.object({ questionKey: flowKeySchema, value: z.unknown() }).strict();
+export type AnswerInput = z.infer<typeof answerSchema>;
+
+export const skipSchema = z.object({ questionKey: flowKeySchema }).strict();
+export type SkipInput = z.infer<typeof skipSchema>;
+
+/** The state comes from the session's gate, never from the body. */
+export const notifyRequestSchema = z
+  .object({
+    email: z.string().trim().toLowerCase().min(3).max(254).email('Enter a valid email'),
+    firstName: z.string().trim().max(80).optional(),
+  })
+  .strict();
+export type NotifyRequestInput = z.infer<typeof notifyRequestSchema>;
+
+export const claimSchema = z
+  .object({
+    /** Reserved for the waitlist bridge; stored, not acted on yet. */
+    referralCode: z.string().trim().max(64).optional(),
+  })
+  .strict();
+export type ClaimInput = z.infer<typeof claimSchema>;
+
+export const summaryRowSchema = z.object({ questionKey: z.string(), label: z.string(), value: z.string() });
+
+export const progressSchema = z.object({
+  sectionIndex: z.number().int().nonnegative(),
+  sectionCount: z.number().int().positive(),
+  answered: z.number().int().nonnegative(),
+  remainingEstimate: z.number().int().nonnegative(),
+  percent: z.number().int().min(0).max(100),
+});
+export type ProgressView = z.infer<typeof progressSchema>;
+
+export const questionViewSchema = z.object({
+  key: flowKeySchema,
+  type: questionTypeSchema,
+  copy: questionCopySchema,
+  options: z.array(optionSchema).optional(),
+  constraints: questionConstraintsSchema.optional(),
+  required: z.boolean(),
+  sensitivity: z.enum(['marketing', 'personal', 'health']),
+});
+
+export const gateViewSchema = z.object({
+  gateKey: flowKeySchema,
+  sectionKey: flowKeySchema,
+  outcome: gateOutcomeSchema,
+  reason: gateReasonSchema,
+  /** Resolved copy: title, body, and optional cta / done lines. */
+  copy: z.object({
+    title: z.string(),
+    body: z.string(),
+    cta: z.string().optional(),
+    done: z.string().optional(),
+  }),
+  stateCode: z.string().optional(),
+  stateName: z.string().optional(),
+  notifySubmitted: z.boolean(),
+});
+export type GateView = z.infer<typeof gateViewSchema>;
+
+export const stepViewSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('question'),
+    section: z.object({ key: flowKeySchema, title: z.string(), intro: z.string().optional() }),
+    question: questionViewSchema,
+    value: z.unknown(),
+    carriedOver: z.boolean(),
+    canGoBack: z.boolean(),
+  }),
+  z.object({ kind: z.literal('gate'), gate: gateViewSchema }),
+  z.object({
+    kind: z.literal('complete'),
+    copy: completionSchema,
+    summary: z.array(summaryRowSchema),
+    segment: z.string().nullable(),
+    nextHref: z.string(),
+  }),
+]);
+export type StepView = z.infer<typeof stepViewSchema>;
+
+/** GET /api/onboarding/session and the result of every action. */
+export const sessionStateSchema = z.object({
+  sessionId: z.string().uuid(),
+  flowVersion: z.number().int().positive(),
+  status: sessionStatusSchema,
+  step: stepViewSchema,
+  progress: progressSchema,
+  /** Answered so far, on the current path, for a review list. */
+  answers: z.array(summaryRowSchema),
+  carryOver: carryOverSchema.nullable(),
+  /** Intro and resume copy the client renders around the first step. */
+  copy: z.object({
+    introTitle: z.string(),
+    introBody: z.string(),
+    carriedTitle: z.string().optional(),
+    carriedBody: z.string().optional(),
+    resumeNote: z.string().optional(),
+  }),
+  memberId: z.string().uuid().nullable(),
+});
+export type SessionState = z.infer<typeof sessionStateSchema>;
+
+/** A rejected action: the code the client can branch on, the question it concerns. */
+export const actionErrorSchema = z.object({
+  error: z.string(),
+  code: z.enum(['unknown_question', 'not_eligible', 'invalid_value', 'required', 'gated', 'not_gated', 'no_session']),
+  questionKey: z.string().optional(),
+});
+export type ActionError = z.infer<typeof actionErrorSchema>;
