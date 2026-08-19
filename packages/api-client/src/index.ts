@@ -7,6 +7,7 @@ export {
 } from './client';
 export { ApiClientProvider, useApiClient, useBrainClient } from './provider';
 export * from './admin/hooks';
+export * from './admin/onboarding-hooks';
 export {
   useJoinWaitlist,
   useWaitlistByCode,
