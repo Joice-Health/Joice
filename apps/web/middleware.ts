@@ -22,7 +22,9 @@ import { TEAM_COOKIE, isValidTeamCookie, siteLaunched } from '@/lib/team-auth';
 const isAdminRoute = createRouteMatcher(['/admin(.*)']);
 const isAdminSignInRoute = createRouteMatcher(['/admin/sign-in(.*)']);
 
-const PUBLIC_PATHS = ['/waitlist', '/coming-soon', '/team'];
+// /health is the ALB liveness check (app/health/route.ts): it must answer 200
+// with no cookie, so it sits outside the gate.
+const PUBLIC_PATHS = ['/waitlist', '/coming-soon', '/team', '/health'];
 
 const clerkConfigured = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 

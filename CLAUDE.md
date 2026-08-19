@@ -116,6 +116,10 @@ that. A failed rollout is detected (the deployment's `rolloutState`, not
 `wait services-stable`) and `:latest` is put back on the previous release; that is what makes
 the expand/contract migration rule matter. Full walkthrough with diagrams: `docs/ci-cd/README.md`.
 
+The ALB health check for web is `/health` (`apps/web/app/health/route.ts`, a plain 200 that is
+public in `middleware.ts`). Never point it at a page: `/waitlist` 307s when the waitlist flag is
+off, and a health check that can fail on a flag means no web deploy can complete while it is off.
+
 CI never touches infrastructure: it pushes images and rolls the existing ECS services, nothing
 else. Infra is Terraform in `infra/`, run locally by Shaun (CloudFront → ALB → 2× Fargate +
 RDS; Route53 for joicehealth.com + joice.health, which 301s to the canonical domain preserving

@@ -48,7 +48,11 @@ resource "aws_lb_target_group" "web" {
   target_type = "ip"
 
   health_check {
-    path                = "/waitlist"
+    # A plain 200 route (apps/web/app/health/route.ts), not a page. /waitlist
+    # used to be the path here, and it 307s to /coming-soon whenever the
+    # waitlist feature flag is off, which made "flag off" mean "web unhealthy"
+    # and blocked every web deploy.
+    path                = "/health"
     matcher             = "200"
     interval            = 30
     timeout             = 5
