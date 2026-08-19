@@ -82,3 +82,23 @@ export function useSubmitProfileField() {
     },
   });
 }
+
+/**
+ * Erase this browser's companion lead and threads on the brain. The intake
+ * flow calls it when the age gate stops a minor, so nothing of theirs stays
+ * behind on either service; the companion UI can offer it as "start clean".
+ */
+export function useEraseCompanion() {
+  const client: BrainClient = useBrainClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (): Promise<{ erased: { profiles: number; conversations: number } }> => {
+      const res = await client.api.brain.profile.$delete();
+      if (!res.ok) throw new Error(`Erase failed (${res.status})`);
+      return res.json() as Promise<{ erased: { profiles: number; conversations: number } }>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: companionKeys.profile });
+    },
+  });
+}

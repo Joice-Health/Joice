@@ -23,6 +23,7 @@ export {
 export {
   useCompanionProfile,
   useSubmitProfileField,
+  useEraseCompanion,
   companionKeys,
   FieldError,
 } from './companion';

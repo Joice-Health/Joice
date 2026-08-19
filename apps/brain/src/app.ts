@@ -477,7 +477,22 @@ const routes = app
         throw error;
       }
     },
-  );
+  )
+  /**
+   * Erase the requester's own lead (and threads): the intake flow calls this
+   * when the age gate stops a minor, and a visitor can call it to start clean.
+   * Suppresses the email in Klaviyo first, then deletes, so erasure is
+   * retryable end to end (see profileService.deleteForRequester). Scoped by the
+   * session cookie, so it can only ever reach the requester's own rows.
+   */
+  .delete('/api/brain/profile', rateLimit({ windowMs: 60_000, max: 10 }), async (c) => {
+    const requester: Requester = c.get('requester');
+    const [profiles, conversations] = await Promise.all([
+      profileService.deleteForRequester(requester),
+      conversationService.deleteForRequester(requester),
+    ]);
+    return c.json({ erased: { profiles, conversations } });
+  });
 
 export type BrainAppType = typeof routes;
 // `routes` is the same instance as `app`, but typed with the full route chain.

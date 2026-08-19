@@ -31,6 +31,13 @@ client, and an upgrade handler has no place in `BrainAppType`.
   none of these (that removal is deliberate — see `infra/iam.tf`).
 - **Brain settings**: read-only here. The admin console on the api service owns writes, which
   is why `src/services.ts` passes `noopAuditPort` — there is no admin actor on this side.
+- **The intake flow** (`/get-started`, api service) never reads brain tables and the brain
+  never reads the platform's: the visitor carries the companion's capture over and confirms
+  it. The one call the intake makes here is `DELETE /api/brain/profile` (erase the requester's
+  own lead and threads, Klaviyo suppression first) when the age gate stops a minor, so nothing
+  of theirs stays on either service. Member claim (`POST /api/brain/profile/claim`) and the
+  member-context port arrive with the registration and profile phases; see
+  `docs/onboarding/00-plan.md` section 3.8.
 
 ## Cost is the operating constraint
 
