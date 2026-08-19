@@ -297,7 +297,6 @@ erDiagram
     text status "in_progress | gated_age | gated_state | completed | registered | abandoned"
     jsonb answers "question_key to value (current path)"
     jsonb skipped "question keys skipped"
-    jsonb history "presented order, for back"
     text cursor_question_key "set while stepping back"
     jsonb carry_over "companion name/goal/email, not answers"
     jsonb gate_outcome "outcome + reason when gated"
@@ -506,10 +505,12 @@ stateDiagram-v2
 4. No section left: `complete`.
 5. Progress = answered eligible / currently-eligible total (recomputed each call).
 
-Re-answering an earlier question that changes the path leaves later answers stored but
-ignored (not projected, not shown) until they become eligible again. Same function serves
-`GET /session`, `POST /answer`, `POST /back` and the admin simulator; the test is a table of
-(answers) → (expected step).
+Re-answering an earlier question re-runs eligibility downstream: answers to questions a rule
+now hides are pruned from the session (and returned as `pruned`, so the service can record
+the event); the append-only observations keep the history. Back is a cursor over the current
+path, so the session needs no presented-order log. Same function serves `GET /session`,
+`POST /answer`, `POST /back` and the admin simulator; the test is a table of (answers) →
+(expected step).
 
 ### 3.6 Sessions, identity and registration
 
