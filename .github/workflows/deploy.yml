@@ -53,7 +53,7 @@ jobs:
       contents: read
       actions: read # affected-apps.sh reads this workflow's run history
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # affected-apps.sh diffs against the last deployed commit
 
