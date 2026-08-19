@@ -8,7 +8,10 @@ import { TEAM_COOKIE, isValidTeamCookie, siteLaunched } from '@/lib/team-auth';
  * 1. /admin/* — Clerk. Requires a signed-in user whose publicMetadata role is
  *    `admin` (surfaced via the session-token `metadata` claim). Non-admins are
  *    sent to /waitlist so the admin surface is never revealed.
- * 2. Everything else — the preview gate: until SITE_LAUNCHED=true, the main
+ * 2. /welcome (member pages) — Clerk, any signed-in user; anonymous visitors go to
+ *    our /sign-in with a redirect_url. /sign-up and /sign-in themselves pass
+ *    through. All of it sits behind the preview gate below until launch.
+ * 3. Everything else — the preview gate: until SITE_LAUNCHED=true, the main
  *    site requires a valid team cookie; anonymous visitors land on /waitlist.
  *    The waitlist itself is a feature flag: when it is off, /waitlist hands
  *    them on to /coming-soon, which is why that path is public too (otherwise
@@ -21,6 +24,8 @@ import { TEAM_COOKIE, isValidTeamCookie, siteLaunched } from '@/lib/team-auth';
 
 const isAdminRoute = createRouteMatcher(['/admin(.*)']);
 const isAdminSignInRoute = createRouteMatcher(['/admin/sign-in(.*)']);
+/** Member pages: any signed-in Clerk user (no role needed). /sign-up and /sign-in pass through. */
+const isMemberRoute = createRouteMatcher(['/welcome(.*)']);
 
 // /health is the ALB liveness check (app/health/route.ts): it must answer 200
 // with no cookie, so it sits outside the gate.
@@ -72,6 +77,22 @@ const withClerk = clerkMiddleware(
       return NextResponse.next();
     }
 
+    if (isMemberRoute(request)) {
+      // Still behind the team gate before launch, like every site page.
+      const gate = await teamGate(request);
+      if (gate.headers.get('location')) return gate;
+      const { userId } = await auth();
+      if (!userId) {
+        // Our own sign-in page, relative (see the admin note above), carrying
+        // where to come back to.
+        const url = request.nextUrl.clone();
+        url.pathname = '/sign-in';
+        url.search = `?redirect_url=${encodeURIComponent(request.nextUrl.pathname + request.nextUrl.search)}`;
+        return NextResponse.redirect(url);
+      }
+      return NextResponse.next();
+    }
+
     return teamGate(request);
   },
   // Use the in-app sign-in page, never the hosted Account Portal.
@@ -81,6 +102,13 @@ const withClerk = clerkMiddleware(
 export default function middleware(request: NextRequest, event: NextFetchEvent) {
   if (!clerkConfigured) {
     if (isAdminRoute(request)) return redirectToWaitlist(request);
+    // No Clerk, no accounts: member pages fall back to the intake.
+    if (isMemberRoute(request)) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/get-started';
+      url.search = '';
+      return NextResponse.redirect(url);
+    }
     return teamGate(request);
   }
   return withClerk(request, event);
