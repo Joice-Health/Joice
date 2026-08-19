@@ -6,6 +6,7 @@ import {
   OnboardingClosedError,
   useAnswerQuestion,
   useCompanionProfile,
+  useEraseCompanion,
   useGoBack,
   useOnboardingSession,
   useRestartOnboarding,
@@ -40,6 +41,7 @@ export function OnboardingFlow({ fallback, accountsOpen = false }: { fallback: R
   const skip = useSkipQuestion();
   const back = useGoBack();
   const restart = useRestartOnboarding();
+  const eraseCompanion = useEraseCompanion();
 
   const [draft, setDraft] = useState<unknown>(undefined);
   const [error, setError] = useState<string | null>(null);
@@ -184,7 +186,12 @@ export function OnboardingFlow({ fallback, accountsOpen = false }: { fallback: R
                 () => answer.mutateAsync({ questionKey: questionKey!, value: valueToSubmit(state.step.kind === 'question' ? state.step.question : ({} as never), draft) }),
                 (next) => {
                   track({ event: 'onboarding_step_answered', questionKey: questionKey! });
-                  if (next.step.kind === 'gate') track({ event: 'onboarding_gate_hit', outcome: gateOutcome(next) });
+                  if (next.step.kind === 'gate') {
+                    track({ event: 'onboarding_gate_hit', outcome: gateOutcome(next) });
+                    // A minor: the api has already purged the intake; erase the
+                    // companion lead too, so nothing of theirs stays on either service.
+                    if (next.step.gate.reason === 'age') eraseCompanion.mutate();
+                  }
                   if (next.step.kind === 'complete') track({ event: 'onboarding_completed' });
                 },
               )
