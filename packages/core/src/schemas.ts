@@ -3,7 +3,14 @@ import { z } from 'zod';
 /**
  * Shared contracts used by both the API (request validation) and the web app
  * (form validation + response typing). Single source of truth for the wire shape.
+ *
+ * Browser-safe by construction: nothing re-exported from here may import the
+ * Postgres driver or the AWS SDK. The onboarding and profile contracts live in
+ * their own folders and are re-exported below so the web app, the admin
+ * console and the api validate against the same shapes.
  */
+
+export * from './profile/traits';
 
 export const joinWaitlistSchema = z.object({
   firstName: z

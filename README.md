@@ -24,6 +24,7 @@ packages/
   core/         Waitlist domain service + shared Zod schemas
   api-client/   Hono RPC client + TanStack Query hooks
   ui/           Tailwind v4 theme tokens + primitives
+  utils/        Dependency-free helpers usable anywhere (US states, ...)
   config/       Shared tsconfig + eslint
 ```
 
