@@ -38,11 +38,13 @@ on. Work lands on the `onboarding/intake` branch; the design brief is the place 
 | [02 The flow model](onboarding/02-flow-model.md) | The definition (bank + sections), the condition language and its why-trace, the engine (walk, minor rule, pruning, back), versions and pinning, the publish validator's codes |
 | [03 The data model](onboarding/03-data-model.md) | Every table with its writer, the trait registry and tiers, the profile fold and provenance precedence, migrations and seeds, retention |
 | [04 Sessions and registration](onboarding/04-sessions-and-registration.md) | The cookie, requireMember and the no-webhook member record, the claim (rules and sequence), the brain's JWT-key recognition, retention, the Clerk dashboard checklist |
+| [05 The admin guide](onboarding/05-admin-guide.md) | For non-engineers: change wording, add a question, what locks and tiers mean, simulate before publishing, roll back, what the surface refuses by design |
 | [07 Compliance](onboarding/07-compliance.md) | Sensitivity tiers, the two PHI keys, minors, notice and consent, identity linking, retention, analytics rules, what is open for counsel |
 | [08 Running it locally](onboarding/08-local-development.md) | Migrate, open the flag, click through, drive the API with curl, look at the data, tests, reset |
+| [09 Troubleshooting](onboarding/09-troubleshooting.md) | Symptom, cause, fix: flags and caches, cookie and credentials, action error codes, publish refusals, rollback and schema versions, local Docker quirks |
 
-Pages 05, 06, 09 and 10 (admin guide, brain integration, troubleshooting, protocol
-readiness) arrive with the phase that builds each piece; see section 7 of the brief. **New here? Read 01, then 02, then 08 to run it.**
+Pages 06 and 10 (brain integration, protocol readiness) arrive with the phases that build
+them; see section 7 of the brief. **New here? Read 01, then 02, then 08 to run it.**
 
 ## CI/CD
 

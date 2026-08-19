@@ -30,7 +30,10 @@ web-specific detail.
 - `/team` — team password login; sets the HMAC cookie from `lib/team-auth.ts`.
 - `/admin/*` — Clerk-gated dashboard (`admin/(dashboard)/` route group); sign-in at
   `/admin/sign-in` (in-app page, not Clerk's hosted portal). Non-admin users are bounced to
-  `/waitlist`, same as anonymous.
+  `/waitlist`, same as anonymous. The onboarding surface lives at `/admin/onboarding/*`
+  (hub, flow editor, simulator, versions, service areas, funnel, requests) over the
+  `@joice/api-client` admin onboarding hooks; the editor edits drafts only and the inline help
+  must keep saying what `docs/onboarding/05-admin-guide.md` says.
 
 `middleware.ts` composes both gates and has a no-Clerk fallback: without
 `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` at build time, `/admin` is unreachable by design — if
