@@ -20,6 +20,7 @@ x-workspace-modules: &workspace-modules
   - /app/packages/db/node_modules
   - /app/packages/marketing/node_modules
   - /app/packages/ui/node_modules
+  - /app/packages/utils/node_modules
 
 services:
   # Bind-mounted too, so a migration added on the host is picked up without a

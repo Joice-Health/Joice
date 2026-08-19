@@ -75,6 +75,16 @@ export const FLAG_KEYS = {
    * Off: the page redirects to /coming-soon and the API answers 404.
    */
   waitlist: 'waitlist',
+  /**
+   * Intake on /get-started and the public /api/onboarding/* endpoints. Off:
+   * the page shows the companion lead summary and the API answers 404.
+   */
+  onboarding: 'onboarding',
+  /**
+   * PHI key 2 of 2: lets a flow version that asks health-tier traits be
+   * published. No effect unless PHI_READY is also set on the api (Terraform).
+   */
+  onboardingHealth: 'onboarding_health',
 } as const;
 
 export type FlagKey = (typeof FLAG_KEYS)[keyof typeof FLAG_KEYS];
