@@ -10,7 +10,7 @@ import { z } from 'zod';
  * console and the api validate against the same shapes.
  */
 
-export * from './profile/traits';
+export * from './profile';
 export * from './rules';
 export * from './onboarding';
 
