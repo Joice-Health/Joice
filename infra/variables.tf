@@ -121,6 +121,20 @@ variable "clerk_secret_key" {
   default     = ""
 }
 
+# ---- Onboarding retention ----
+
+variable "onboarding_session_idle_days" {
+  description = "An in-progress intake session idle this many days becomes abandoned."
+  type        = number
+  default     = 30
+}
+
+variable "onboarding_session_ttl_days" {
+  description = "An unclaimed intake session untouched this many days is purged with its answers, observations and profile. Registered sessions never expire. Counsel confirms the number."
+  type        = number
+  default     = 90
+}
+
 # ---- Klaviyo (waitlist marketing sync) ----
 
 variable "klaviyo_api_key" {
