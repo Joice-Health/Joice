@@ -107,10 +107,14 @@ interface CartPort          { addItem({ …, confirmedByMember: true }) }      /
 interface AuditPort         { record(entry, tx?) }                           // used today
 ```
 
-Every implementation except the audit one is a stub returning empty, because
-orders, protocols and a catalogue don't exist yet. When they do, the stubs
-become HTTP clients to the api service and **nothing in the domain changes** —
-that's the whole point of paying for the interface now.
+That promise started paying out with the onboarding epic: `MemberContextPort`
+and the new `ObservationSinkPort` are now HTTP clients to the api's
+`/api/internal/*` (`apps/brain/src/ports/platform-client.ts`, bearer
+`INTERNAL_API_TOKEN`, wired only when the token is set), feeding a member's
+intake profile into chat as a post-cache-point system suffix, and nothing in
+the domain changed. Orders, protocols and the catalogue remain stubs returning
+empty until commerce exists; they follow the same path. The contract of what
+may cross is `docs/onboarding/06-brain-integration.md`.
 
 `CartPort.addItem` takes a literal `confirmedByMember: true`. A model deciding
 to put something in someone's basket is a different risk class from a model

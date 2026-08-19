@@ -33,11 +33,15 @@ client, and an upgrade handler has no place in `BrainAppType`.
   is why `src/services.ts` passes `noopAuditPort` — there is no admin actor on this side.
 - **The intake flow** (`/get-started`, api service) never reads brain tables and the brain
   never reads the platform's: the visitor carries the companion's capture over and confirms
-  it. The one call the intake makes here is `DELETE /api/brain/profile` (erase the requester's
-  own lead and threads, Klaviyo suppression first) when the age gate stops a minor, so nothing
-  of theirs stays on either service. Member claim (`POST /api/brain/profile/claim`) and the
-  member-context port arrive with the registration and profile phases; see
-  `docs/onboarding/00-plan.md` section 3.8.
+  it. The intake calls `DELETE /api/brain/profile` on a minor stop and the web calls
+  `POST /api/brain/profile/claim` at sign-up (member id from the token's `metadata.memberId`
+  claim, verified networklessly with `CLERK_JWT_KEY`; the Clerk secret never lives here).
+- **Member context in chat**: `src/ports/platform-client.ts` reads
+  `GET /api/internal/profile/:memberId` on the api (bearer `INTERNAL_API_TOKEN`) and renders
+  `buildMemberSuffix` AFTER the prompt-cache point, server-side only; failures degrade to an
+  anonymous turn with one warning, never a failed answer. Identity fields, derived internals
+  and the raw date of birth are filtered before the prompt. Contract:
+  `docs/onboarding/06-brain-integration.md`.
 
 ## Cost is the operating constraint
 
