@@ -180,3 +180,38 @@ resource "aws_route53_record" "google_dkim" {
   # Route53 caps each TXT character-string at 255 chars; "" splices the halves back together.
   records = ["${substr(local.google_dkim, 0, 255)}\"\"${substr(local.google_dkim, 255, 255)}"]
 }
+
+# ---- SendGrid domain authentication + link branding ----
+# Values come from the SendGrid dashboard (Settings > Sender Authentication)
+# and must match exactly. em7695 is the sending domain, s1/s2 are DKIM,
+# url2049 + 24224351 are branded link/click tracking.
+
+locals {
+  sendgrid_cnames = {
+    "em7695"        = "u24224351.wl102.sendgrid.net"
+    "s1._domainkey" = "s1.domainkey.u24224351.wl102.sendgrid.net"
+    "s2._domainkey" = "s2.domainkey.u24224351.wl102.sendgrid.net"
+    "url2049"       = "sendgrid.net"
+    "24224351"      = "sendgrid.net"
+  }
+}
+
+resource "aws_route53_record" "sendgrid" {
+  for_each = local.sendgrid_cnames
+
+  zone_id = aws_route53_zone.main[var.domain_name].zone_id
+  name    = "${each.key}.${var.domain_name}"
+  type    = "CNAME"
+  ttl     = 300
+  records = [each.value]
+}
+
+# p=none: monitor only, no delivery impact; tighten once SendGrid + Google
+# have both been observed passing DMARC.
+resource "aws_route53_record" "dmarc" {
+  zone_id = aws_route53_zone.main[var.domain_name].zone_id
+  name    = "_dmarc.${var.domain_name}"
+  type    = "TXT"
+  ttl     = 3600
+  records = ["v=DMARC1; p=none;"]
+}
