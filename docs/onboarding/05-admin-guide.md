@@ -26,7 +26,8 @@ started with; only pure copy changes reach them silently.
 
 ## Add a question
 
-1. In a section that is not locked, "Add a question +".
+1. "Add a question +" under the section it belongs in (locked sections
+   accept new questions too; only their core is protected).
 2. Write the wording; pick the Type (choice pills, text, number, date...).
 3. Pick the trait it writes. Use a registered trait when one fits; otherwise
    the `custom.your_key` field appears; name it in snake_case. Custom traits
@@ -37,6 +38,21 @@ started with; only pure copy changes reach them silently.
 5. "Show this question when" if it should branch: rows of trait / operator /
    value, joined by ALL or ANY.
 6. Save, read the report, simulate, publish.
+
+## Remove a question or a section
+
+The small × on a question row or a section header takes it out of the draft.
+You confirm first, and nothing is live until you publish. Two rules:
+
+- Locked questions and locked sections have no ×: the state and date-of-birth
+  questions, the required terms consent, and the eligibility and consent
+  sections themselves must survive. Publishing refuses a flow without them.
+- Removing a section takes its questions with it. If a "show when" rule
+  somewhere still points at a trait nobody asks any more, the report flags it
+  before you can publish.
+
+A removal is a logic change, so visitors mid-intake keep the version they
+started on; only new sessions see the shorter flow.
 
 ## What the badges and locks mean
 
