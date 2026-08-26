@@ -99,6 +99,34 @@ The intake flow on `/get-started` (design brief: `docs/onboarding/00-plan.md`; m
 - Every onboarding change lands on the `onboarding/intake` branch with its docs
   (`docs/onboarding/*`) and the relevant CLAUDE.md in the same PR.
 
+## Team visibility workflow
+
+Every piece of work is visible on three surfaces: `docs/` speaks to engineers, Shortcut to
+product, Notion to the whole team. Same facts, three voices. Full doc:
+`docs/workflow/01-team-visibility.md`.
+
+- **Feature-sized work**: after the plan is approved, run the `kickoff` skill **before writing
+  code** (engineering docs under `docs/<area>/`, the `docs/README.md` index, a Shortcut epic
+  with product-voiced stories under the Engineering team, all cross-linked). When it ships,
+  run the `wrap-up` skill (as-built docs, story sweep + a plain-language epic status comment,
+  the feature's Notion page under Product Docs in the Engineering workspace).
+- **Fixes and small updates**: no new epic. One story on the relevant epic (or the standing
+  "Maintenance" epic), and the affected `docs/*` and CLAUDE.md updated **in the same PR** as
+  the change; this generalizes the onboarding rule above to the whole repo. If member-visible
+  or admin-visible behavior changed, the feature's Notion page gets a changelog row at the
+  next wrap-up.
+- **Shortcut moves in lockstep with the code**, via the Shortcut MCP: story started (branch or
+  first commit) means In Progress and assigned; PR opened means the PR URL attached to the
+  story and In Review; PR merged means Done (with a story comment if scope changed).
+  `wrap-up` is the catch-all sweep, not the mechanism.
+- **Docs house style** (repo-wide, from the onboarding brief section 7): Mermaid for anything
+  with more than two boxes, file:line references where a doc points at code, one "why"
+  paragraph per decision, no em dashes anywhere (docs, stories, commits, copy), and
+  `docs/README.md` indexes every new doc.
+- **Conventions**: branch `<area>/<phase>-<story>-<slug>` (like `onboarding/2-1-member-clerk`);
+  PR title `[P<phase>] <story#> <Title> (sc-NNN)`; commit bodies are prose ending with a story
+  reference line, `Story sc-NNN (epic NNN).`
+
 ## Access model (four tiers)
 
 1. **Public**: `/waitlist` (+ `?ref=` referral links) — the only public surface until launch.

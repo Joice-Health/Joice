@@ -64,6 +64,15 @@ Page 10 (protocol readiness) arrives with Phase 5; see section 7 of the brief. *
 |---|---|
 | [01 — Klaviyo Waitlist Sync](marketing/01-klaviyo.md) | Architecture (shared client → per-domain ports), the fire-and-forget sync, what data leaves the DB, config/secrets, the checkpoint extension recipe, troubleshooting |
 
+## Workflow
+
+How work stays visible to the whole team: this docs directory for engineers, Shortcut for
+product, Notion for everyone. Run by the `kickoff` and `wrap-up` skills in `.claude/skills/`.
+
+| Doc | What it covers |
+|---|---|
+| [01 Team visibility](workflow/01-team-visibility.md) | The three surfaces and their voices, the plan-to-shipped lifecycle (flowchart), the small-fix path, branch/PR/commit conventions, the Notion auth caveat |
+
 > Diagrams are [Mermaid](https://mermaid.js.org/). GitHub renders them natively.
 > **Cursor/VS Code's markdown preview needs a one-time extension:**
 > `cursor --install-extension bierner.markdown-mermaid` (or search "Markdown
