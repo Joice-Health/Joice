@@ -5,6 +5,7 @@ import {
   TRAITS,
   TRAIT_TYPE_FOR_QUESTION,
   isCustomTrait,
+  isProtectedQuestion,
   sensitivityOf,
   type FlowDefinition,
   type FlowQuestion,
@@ -14,10 +15,10 @@ import { Badge } from '@/components/admin/ui';
 import { ConditionBuilder } from './condition-builder';
 
 /**
- * One question: its copy, options, binding and rule. Locked questions
- * (eligibility, consent terms) show everything and let nothing structural
- * change: the publish validator refuses removals anyway, so the editor says it
- * up front. A health-tier binding wears the lock in plain words.
+ * One question: its copy, options, binding and rule. Locked questions (the
+ * eligibility core: state and date of birth) show everything and let nothing
+ * structural change: the publish validator refuses removals anyway, so the
+ * editor says it up front. A health-tier binding wears the lock in plain words.
  */
 export function QuestionEditor({
   definition,
@@ -31,7 +32,11 @@ export function QuestionEditor({
   const question = definition.questions[questionKey];
   if (!question) return null;
   const tier = sensitivityOf(question.trait);
-  const locked = question.locked;
+  // Protection comes from LOCKED_SECTIONS in core (what the publish validator
+  // enforces), not the stored locked flag, so the editor and the validator
+  // can never disagree about what is editable.
+  const sectionKey = definition.sections.find((s) => s.questions.includes(questionKey))?.key ?? '';
+  const locked = isProtectedQuestion(sectionKey, question.trait);
   const isSelect = question.type === 'single_select' || question.type === 'multi_select';
   const registered = TRAITS[question.trait as keyof typeof TRAITS];
   const set = (patch: Partial<FlowQuestion>) => onChange({ ...question, ...patch });

@@ -44,9 +44,9 @@ started with; only pure copy changes reach them silently.
 The small × on a question row or a section header takes it out of the draft.
 You confirm first, and nothing is live until you publish. Two rules:
 
-- Locked questions and locked sections have no ×: the state and date-of-birth
-  questions, the required terms consent, and the eligibility and consent
-  sections themselves must survive. Publishing refuses a flow without them.
+- Only the eligibility core has no ×: the state and date-of-birth questions,
+  and the eligibility section with its age and state gates. Publishing refuses
+  a flow without them. Everything else can go, the consent section included.
 - Removing a section takes its questions with it. If a "show when" rule
   somewhere still points at a trait nobody asks any more, the report flags it
   before you can publish.
@@ -54,16 +54,22 @@ You confirm first, and nothing is live until you publish. Two rules:
 A removal is a logic change, so visitors mid-intake keep the version they
 started on; only new sessions see the shorter flow.
 
+If you remove the terms consent, the Terms and Privacy agreement must be
+presented somewhere else before the account exists: turn on legal consent on
+the Clerk sign-up screen (Clerk Dashboard, under sign-up settings). And
+without the marketing opt-in question, completion never subscribes anyone to
+Klaviyo; that is the designed fail-safe, not a bug.
+
 ## What the badges and locks mean
 
-- **locked** on a section or question (eligibility, consent terms): the
-  wording is yours; the structure is not. Publishing refuses a flow that
-  removes the state or date-of-birth questions, the age or state gates, or
-  the required terms consent.
+- **locked** on a section or question (the eligibility core): the wording is
+  yours; the structure is not. Publishing refuses a flow that removes the
+  state or date-of-birth questions or the age and state gates. Nothing else
+  is locked.
 - **marketing / personal / health** on a question: the sensitivity tier of
   the trait it writes. **health** means "Medical question. Publishing is
   locked until the Before-PHI checklist is complete and both PHI keys are
-  on" — you can draft it, never publish it, until engineering turns the key.
+  on": you can draft it, never publish it, until engineering turns the key.
 - **optional**: the visitor gets "Skip for now".
 
 ## Gates are not copy

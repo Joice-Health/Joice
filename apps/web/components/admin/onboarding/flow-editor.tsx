@@ -10,7 +10,13 @@ import {
   useSaveFlowVersion,
   type ValidationReportView,
 } from '@joice/api-client';
-import { flowDefinitionSchema, type FlowDefinition, type FlowQuestion } from '@joice/core/schemas';
+import {
+  flowDefinitionSchema,
+  isProtectedQuestion,
+  isProtectedSection,
+  type FlowDefinition,
+  type FlowQuestion,
+} from '@joice/core/schemas';
 import { Button, Input, cn } from '@joice/ui';
 import { Badge, Card, EmptyState, ErrorState } from '@/components/admin/ui';
 import { ConditionBuilder } from './condition-builder';
@@ -23,9 +29,10 @@ import { ValidationReportPanel } from './validation-report';
  * reorder and reword sections and questions, bind traits, build show-when
  * rules, then Save (which returns the live validation report) and Publish
  * (which refuses with the report until it is clean). The editor permits
- * exactly what the publish validator permits: locked questions and locked
- * sections have no remove control (the eligibility and consent core must
- * survive), everything else can go, and the report says what a removal broke.
+ * exactly what the publish validator permits, both reading LOCKED_SECTIONS
+ * from core: only the eligibility core (state, date of birth, the gates) has
+ * no remove control; everything else can go, and the report says what a
+ * removal broke.
  */
 export function FlowEditor() {
   const versions = useAdminFlowVersions();
@@ -249,14 +256,14 @@ function SectionList({
         <div key={section.key}>
           <div className="flex items-center gap-2">
             <p className="mono-label flex-1 text-ink">{section.title}</p>
-            {section.locked ? <Badge tone="pending">locked</Badge> : null}
+            {isProtectedSection(section.key) ? <Badge tone="pending">locked</Badge> : null}
             <button type="button" aria-label={`Move ${section.title} up`} className="text-muted hover:text-ink" onClick={() => moveSection(si, -1)}>
               ↑
             </button>
             <button type="button" aria-label={`Move ${section.title} down`} className="text-muted hover:text-ink" onClick={() => moveSection(si, 1)}>
               ↓
             </button>
-            {!section.locked ? (
+            {!isProtectedSection(section.key) ? (
               <button type="button" aria-label={`Remove ${section.title}`} className="text-muted hover:text-ink" onClick={() => removeSection(si)}>
                 ×
               </button>
@@ -290,7 +297,7 @@ function SectionList({
                 <button type="button" aria-label={`Move ${qKey} down`} className="text-muted hover:text-ink" onClick={() => moveQuestion(si, qi, 1)}>
                   ↓
                 </button>
-                {!definition.questions[qKey]?.locked ? (
+                {!isProtectedQuestion(section.key, definition.questions[qKey]?.trait ?? '') ? (
                   <button type="button" aria-label={`Remove ${qKey}`} className="text-muted hover:text-ink" onClick={() => removeQuestion(si, qKey)}>
                     ×
                   </button>
