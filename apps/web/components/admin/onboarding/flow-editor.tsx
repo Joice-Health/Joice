@@ -10,7 +10,13 @@ import {
   useSaveFlowVersion,
   type ValidationReportView,
 } from '@joice/api-client';
-import { flowDefinitionSchema, type FlowDefinition, type FlowQuestion } from '@joice/core/schemas';
+import {
+  flowDefinitionSchema,
+  isProtectedQuestion,
+  isProtectedSection,
+  type FlowDefinition,
+  type FlowQuestion,
+} from '@joice/core/schemas';
 import { Button, Input, cn } from '@joice/ui';
 import { Badge, Card, EmptyState, ErrorState } from '@/components/admin/ui';
 import { ConditionBuilder } from './condition-builder';
@@ -19,11 +25,14 @@ import { ValidationReportPanel } from './validation-report';
 
 /**
  * The flow editor. Admins edit a DRAFT (published versions are frozen; the
- * button to make a draft copies the published definition), reorder and reword
- * sections and questions, bind traits, build show-when rules, then Save (which
- * returns the live validation report) and Publish (which refuses with the
- * report until it is clean). Locked sections wear their badge and keep their
- * structure; the validator enforces it server-side regardless.
+ * button to make a draft copies the published definition), add, remove,
+ * reorder and reword sections and questions, bind traits, build show-when
+ * rules, then Save (which returns the live validation report) and Publish
+ * (which refuses with the report until it is clean). The editor permits
+ * exactly what the publish validator permits, both reading LOCKED_SECTIONS
+ * from core: only the eligibility core (state, date of birth, the gates) has
+ * no remove control; everything else can go, and the report says what a
+ * removal broke.
  */
 export function FlowEditor() {
   const versions = useAdminFlowVersions();
@@ -156,7 +165,7 @@ function SectionList({
 }: {
   definition: FlowDefinition;
   selected: string | null;
-  onSelect: (key: string) => void;
+  onSelect: (key: string | null) => void;
   onChange: (next: FlowDefinition) => void;
 }) {
   const [adding, setAdding] = useState(false);
@@ -202,6 +211,35 @@ function SectionList({
     });
     onSelect(key);
   };
+  // Removal mirrors what the publish validator allows: a locked question (the
+  // eligibility and consent core) has no remove control, and neither does a
+  // locked section; anything else goes, and the report catches what a removal
+  // breaks (a rule referencing a trait nobody asks any more, for instance).
+  const removeQuestion = (sectionIndex: number, qKey: string) => {
+    const label = definition.questions[qKey]?.copy.label ?? qKey;
+    if (!window.confirm(`Remove "${label}" from the draft? Sessions on published versions keep it.`)) return;
+    const sections = definition.sections.map((s, i) =>
+      i === sectionIndex ? { ...s, questions: s.questions.filter((k) => k !== qKey) } : s,
+    );
+    const questions = { ...definition.questions };
+    if (!sections.some((s) => s.questions.includes(qKey))) delete questions[qKey];
+    onChange({ ...definition, sections, questions });
+    if (selected === qKey) onSelect(null);
+  };
+  const removeSection = (index: number) => {
+    const section = definition.sections[index];
+    if (!section) return;
+    const count = section.questions.length;
+    const suffix = count === 0 ? '' : count === 1 ? ' and its question' : ` and its ${count} questions`;
+    if (!window.confirm(`Remove the section "${section.title}"${suffix} from the draft?`)) return;
+    const sections = definition.sections.filter((_, i) => i !== index);
+    const questions = { ...definition.questions };
+    for (const qKey of section.questions) {
+      if (!sections.some((s) => s.questions.includes(qKey))) delete questions[qKey];
+    }
+    onChange({ ...definition, sections, questions });
+    if (selected && section.questions.includes(selected)) onSelect(null);
+  };
   const addSection = () => {
     const title = newTitle.trim();
     if (!title) return;
@@ -218,13 +256,18 @@ function SectionList({
         <div key={section.key}>
           <div className="flex items-center gap-2">
             <p className="mono-label flex-1 text-ink">{section.title}</p>
-            {section.locked ? <Badge tone="pending">locked</Badge> : null}
+            {isProtectedSection(section.key) ? <Badge tone="pending">locked</Badge> : null}
             <button type="button" aria-label={`Move ${section.title} up`} className="text-muted hover:text-ink" onClick={() => moveSection(si, -1)}>
               ↑
             </button>
             <button type="button" aria-label={`Move ${section.title} down`} className="text-muted hover:text-ink" onClick={() => moveSection(si, 1)}>
               ↓
             </button>
+            {!isProtectedSection(section.key) ? (
+              <button type="button" aria-label={`Remove ${section.title}`} className="text-muted hover:text-ink" onClick={() => removeSection(si)}>
+                ×
+              </button>
+            ) : null}
           </div>
           {section.showIf ? (
             <div className="mt-2">
@@ -254,14 +297,17 @@ function SectionList({
                 <button type="button" aria-label={`Move ${qKey} down`} className="text-muted hover:text-ink" onClick={() => moveQuestion(si, qi, 1)}>
                   ↓
                 </button>
+                {!isProtectedQuestion(section.key, definition.questions[qKey]?.trait ?? '') ? (
+                  <button type="button" aria-label={`Remove ${qKey}`} className="text-muted hover:text-ink" onClick={() => removeQuestion(si, qKey)}>
+                    ×
+                  </button>
+                ) : null}
               </li>
             ))}
           </ul>
-          {!section.locked ? (
-            <Button type="button" variant="ghost" size="sm" className="mt-1" onClick={() => addQuestion(si)}>
-              Add a question +
-            </Button>
-          ) : null}
+          <Button type="button" variant="ghost" size="sm" className="mt-1" onClick={() => addQuestion(si)}>
+            Add a question +
+          </Button>
         </div>
       ))}
 

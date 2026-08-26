@@ -9,9 +9,9 @@ import {
 import { conditionTraits, type Condition } from '../rules/conditions';
 import { validateCondition } from '../rules/validate';
 import {
-  CONSENT_SECTION_KEY,
   ELIGIBILITY_SECTION_KEY,
   FLOW_SCHEMA_VERSION,
+  LOCKED_SECTIONS,
   TRAIT_TYPE_FOR_QUESTION,
   flowDefinitionSchema,
   type FlowDefinition,
@@ -76,15 +76,6 @@ export interface ValidateFlowOptions {
 export type ValidateFlowResult =
   | (ValidationReport & { ok: true; definition: FlowDefinition })
   | (ValidationReport & { ok: false; definition?: undefined });
-
-/** Locked content: the questions each locked section must still ask. */
-const LOCKED_SECTIONS: Readonly<Record<string, { traits: readonly string[]; requiredTraits: readonly string[] }>> = {
-  [ELIGIBILITY_SECTION_KEY]: {
-    traits: ['us_state', 'date_of_birth'],
-    requiredTraits: ['us_state', 'date_of_birth'],
-  },
-  [CONSENT_SECTION_KEY]: { traits: ['consent_terms'], requiredTraits: ['consent_terms'] },
-};
 
 export function validateFlowDefinition(input: unknown, options: ValidateFlowOptions): ValidateFlowResult {
   const errors: FlowIssue[] = [];

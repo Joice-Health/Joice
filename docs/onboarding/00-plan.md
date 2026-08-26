@@ -1168,6 +1168,13 @@ at code, one "why" paragraph per decision (the style of `docs/rag/*`).
 in parallel with registration (Phase 1 runs on the code-seeded definition; interim copy
 changes go through the existing `/admin/settings` JSON editor, never a deploy).
 
+**Decided later (Shaun, 2026-08-26):** the consent section is **not** part of the locked
+core. Only eligibility (state, date of birth, the age and state gates) is structurally
+required; the consent questions are ordinary, removable content. A flow that drops the terms
+consent must present the Terms and Privacy agreement on the Clerk sign-up screen instead
+(legal consent in the Clerk Dashboard), and without the marketing opt-in trait nobody is
+subscribed to Klaviyo at completion.
+
 **Still open (defaults in bold; the plan proceeds on them unless changed):**
 
 | # | Question | Default |

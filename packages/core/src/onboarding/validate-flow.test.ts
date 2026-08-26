@@ -203,10 +203,17 @@ describe('locked sections', () => {
     expect(errorCodes(def5)).toContain('locked_section_altered');
   });
 
-  test('consent must exist and keep the terms question', () => {
+  test('consent is ordinary content: the whole section can go', () => {
+    // Decision (Shaun, 2026-08-26): terms acceptance is the flow author's to
+    // place, in the flow or on the Clerk sign-up screen. Removing the section
+    // leaves its questions orphaned in the bank, which is a warning, not a
+    // refusal.
     const def = base();
+    const consent = def.sections.find((s) => s.key === 'consent');
     def.sections = def.sections.filter((s) => s.key !== 'consent');
-    expect(errorCodes(def)).toContain('locked_section_missing');
+    for (const key of consent?.questions ?? []) delete def.questions[key];
+    const result = validateFlowDefinition(def, { phiEnabled: false });
+    expect(result.ok).toBe(true);
   });
 });
 

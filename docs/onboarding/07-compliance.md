@@ -49,10 +49,14 @@ notify-me. Tested in `engine.test.ts` (rows 4, 5, 14) and
 
 ## Notice and consent
 
-- The intro copy says why state and age are asked; the consent section is a
-  locked part of every flow (`consent_terms` required, `consent_marketing`
-  optional), stored as versioned, timestamped observations so "what did they
-  agree to, and to which version" is a query.
+- The intro copy says why state and age are asked. When the flow carries a
+  consent section (`consent_terms`, `consent_marketing`), answers are stored
+  as versioned, timestamped observations so "what did they agree to, and to
+  which version" is a query. The section is not structurally required
+  (decision 2026-08-26): a flow without it must present the Terms and Privacy
+  agreement on the Clerk sign-up screen instead (legal consent in the Clerk
+  Dashboard), and completion then subscribes nobody to Klaviyo, since that
+  requires an explicit `consent_marketing` true.
 - Carried-over companion data is shown and confirmed by the visitor, never
   applied silently; confirming a companion-captured email is still not
   marketing consent (the completion screen promises no email).
