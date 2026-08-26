@@ -82,3 +82,43 @@ export function useSubmitProfileField() {
     },
   });
 }
+
+/**
+ * Erase this browser's companion lead and threads on the brain. The intake
+ * flow calls it when the age gate stops a minor, so nothing of theirs stays
+ * behind on either service; the companion UI can offer it as "start clean".
+ */
+export function useEraseCompanion() {
+  const client: BrainClient = useBrainClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (): Promise<{ erased: { profiles: number; conversations: number } }> => {
+      const res = await client.api.brain.profile.$delete();
+      if (!res.ok) throw new Error(`Erase failed (${res.status})`);
+      return res.json() as Promise<{ erased: { profiles: number; conversations: number } }>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: companionKeys.profile });
+    },
+  });
+}
+
+/**
+ * Attach this browser's companion lead and threads to the signed-in member.
+ * Needs the member providers (the Clerk token rides on the brain client too).
+ * Best-effort on /welcome: a failure is logged, never shown.
+ */
+export function useClaimCompanion() {
+  const client: BrainClient = useBrainClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (): Promise<{ claimed: { profiles: number; conversations: number } }> => {
+      const res = await client.api.brain.profile.claim.$post();
+      if (!res.ok) throw new Error(`Companion claim failed (${res.status})`);
+      return res.json() as Promise<{ claimed: { profiles: number; conversations: number } }>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: companionKeys.profile });
+    },
+  });
+}

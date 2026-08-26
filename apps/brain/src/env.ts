@@ -46,6 +46,27 @@ const envSchema = z.object({
    * Optional: absent locally, capture still works and simply doesn't sync.
    */
   KLAVIYO_API_KEY: z.string().optional(),
+  /**
+   * Recognise a signed-in member when the browser sends a Clerk bearer token
+   * (the companion claim on sign-up; member context later). Verification is
+   * networkless with the instance's JWT public key (Clerk Dashboard -> API
+   * keys -> JWT public key, PEM), so this service never holds the Clerk
+   * secret: the brain task cannot touch Clerk's API by design (infra/iam.tf).
+   * CLERK_SECRET_KEY is accepted only as a local-dev fallback when no JWT key
+   * is set. With neither, every token fails verification and the requester
+   * stays anonymous; nothing else changes.
+   */
+  CLERK_JWT_KEY: z.string().default(''),
+  CLERK_PUBLISHABLE_KEY: z.string().default('pk_test_placeholder'),
+  CLERK_SECRET_KEY: z.string().default(''),
+  /**
+   * The api service, for /api/internal/* (member profiles into chat). The
+   * canonical URL in prod until Service Connect; the compose service name in
+   * dev. With no INTERNAL_API_TOKEN the ports stay stubs and members chat
+   * exactly like visitors.
+   */
+  API_URL_INTERNAL: z.string().default('http://localhost:4000'),
+  INTERNAL_API_TOKEN: z.string().default(''),
   /** Git SHA of the image, baked in at build time and reported by /health. */
   BUILD_SHA: z.string().default('dev'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),

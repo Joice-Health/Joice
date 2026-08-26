@@ -16,10 +16,24 @@ web-specific detail.
   preview gate bounces it to `/waitlist` and loops.
 - `/` and future site pages — final URLs, gated by `middleware.ts` until `SITE_LAUNCHED=true`;
   anonymous → redirected to `/waitlist` (public must never see a login).
+- `/get-started`: the intake flow. The server component reads the `onboarding` flag
+  (`flagEnabled`): on, it mounts `components/onboarding/flow.tsx` (the server-driven step
+  runner over the `@joice/api-client` intake hooks); off, the companion lead summary. The runner
+  also falls back when the API answers 404 (flag flipped mid-session). Behind the team gate until
+  launch like every site page. Design and rules: `docs/onboarding/00-plan.md`,
+  `docs/onboarding/01-overview.md`.
+- `/sign-up`, `/sign-in`, `/welcome`: the member tree (`(member)` route group with its own
+  ClerkProvider; the api client carries the member token). `/welcome` claims the intake and
+  the companion lead on first render and shows the profile; middleware requires a session for
+  it and no-Clerk builds redirect member pages to `/get-started`. See
+  `docs/onboarding/04-sessions-and-registration.md`.
 - `/team` — team password login; sets the HMAC cookie from `lib/team-auth.ts`.
 - `/admin/*` — Clerk-gated dashboard (`admin/(dashboard)/` route group); sign-in at
   `/admin/sign-in` (in-app page, not Clerk's hosted portal). Non-admin users are bounced to
-  `/waitlist`, same as anonymous.
+  `/waitlist`, same as anonymous. The onboarding surface lives at `/admin/onboarding/*`
+  (hub, flow editor, simulator, versions, service areas, funnel, requests) over the
+  `@joice/api-client` admin onboarding hooks; the editor edits drafts only and the inline help
+  must keep saying what `docs/onboarding/05-admin-guide.md` says.
 
 `middleware.ts` composes both gates and has a no-Clerk fallback: without
 `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` at build time, `/admin` is unreachable by design — if
@@ -29,7 +43,17 @@ the deploy workflow; setting task env does nothing for `NEXT_PUBLIC_*`).
 ## Patterns to follow
 
 - **Data**: import hooks from `@joice/api-client` (`useJoinWaitlist`, `useWaitlistStats`,
-  admin hooks). Never `fetch` the API by hand — the Hono RPC client is fully typed.
+  admin hooks, the intake hooks `useOnboardingSession` / `useAnswerQuestion` / `useSkipQuestion` /
+  `useGoBack` / `useRestartOnboarding` / `useSubmitNotify`). Never `fetch` the API by hand: the
+  Hono RPC client is fully typed. The api client sends `credentials: 'include'` because the
+  intake session is an httpOnly cookie; the api's CORS allows it.
+- **The intake runner** (`components/onboarding/`): the server decides the next step, the
+  runner renders it. Every question is a `fieldset` whose legend takes focus; pills are real
+  radios/checkboxes; Continue is the one solid action; a required boolean is a checkbox that
+  must be ticked. What the companion knew arrives as a prefilled value marked "carried over",
+  never applied silently. Gate screens never dead-end. Analytics events are `onboarding_*`
+  with question keys and outcomes only: never a value, a name, an email or a state code
+  (`lib/analytics.ts`).
 - **Feature flags in server components**: `flagEnabled(FLAG_KEYS.x)` from `lib/flags.ts` (keys
   in `@joice/core/schemas`). It keeps its own ~30s process cache and bypasses Next's fetch data
   cache on purpose: under `next dev`/Bun that cache served a stale flag map indefinitely.

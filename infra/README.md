@@ -119,6 +119,21 @@ zones + the multi-SAN ACM cert + validation and alias records are all in `dns.tf
 
 Old `*.cloudfront.net` links keep working: they 301 to the canonical domain.
 
+## Member accounts (Clerk) and onboarding retention
+
+Before production sign-ups: enable public sign-ups + email verification in the
+Clerk dashboard, and set `clerk_jwt_key` in `terraform.tfvars` (Dashboard ->
+API keys -> JWT public key, PEM; public, not a secret) so the brain can verify
+member tokens networklessly; the brain task deliberately cannot read the
+Clerk secret. There is **no webhook**: the member record is created by the api
+on the member's first authenticated call after sign-up.
+
+`onboarding-retention.tf` runs the intake sweep nightly (04:40 UTC) on the api
+image: idle sessions abandoned after `onboarding_session_idle_days` (30),
+unclaimed ones purged after `onboarding_session_ttl_days` (90; counsel
+confirms). First run after an apply is worth a manual dry-run
+(`ONBOARDING_RETENTION_DRY_RUN=true` via `aws ecs run-task`).
+
 ## Before-PHI checklist (HIPAA hardening for Phase 1)
 
 Phase 0 stores marketing data only (email + referral attribution) — not PHI.

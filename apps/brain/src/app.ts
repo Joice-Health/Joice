@@ -1,4 +1,5 @@
 import { Hono, type Context } from 'hono';
+import { clerkMiddleware } from '@hono/clerk-auth';
 import { cors } from 'hono/cors';
 import { requestId, type RequestIdVariables } from 'hono/request-id';
 import { secureHeaders } from 'hono/secure-headers';
@@ -47,14 +48,24 @@ const app = new Hono<{ Variables: RequestIdVariables & RequesterVariables }>();
 app.use('*', requestId());
 app.use('*', requestLog);
 app.use('*', secureHeaders());
-// Who is asking. Anonymous today (an opaque session cookie); the seam where
-// member auth plugs in — see middleware/requester.ts.
+// Who is asking: the opaque session cookie always, plus the member id from a
+// Clerk bearer token when the browser sends one (clerkMiddleware verifies it;
+// without a token it simply sets no user). See middleware/requester.ts.
+app.use(
+  '/api/brain/*',
+  clerkMiddleware({
+    publishableKey: env.CLERK_PUBLISHABLE_KEY,
+    // Networkless verification with the public JWT key in prod; the secret key
+    // only as a local fallback (see env.ts). Never both unset in a real env.
+    ...(env.CLERK_JWT_KEY ? { jwtKey: env.CLERK_JWT_KEY } : { secretKey: env.CLERK_SECRET_KEY || 'sk_test_placeholder' }),
+  }),
+);
 app.use('/api/brain/*', identifyRequester);
 app.use(
   '/api/*',
   cors({
     origin: allowedOrigins,
-    allowMethods: ['GET', 'POST', 'OPTIONS'],
+    allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
     // The session cookie must survive cross-origin requests in local dev (web
     // :3000 → brain :4100). Requires a specific origin allowlist above, never
@@ -298,7 +309,7 @@ const routes = app
     zValidator('json', chatRequestSchema),
     async (c) => {
       const { messages } = c.req.valid('json');
-      const recommendation = await recommendations.recommend(messages);
+      const recommendation = await recommendations.recommend(messages, { requester: c.get('requester') });
       // Known gap: recommend() doesn't surface token usage, so non-streaming
       // exchanges persist without counts. The chat UI always streams; this
       // path exists for non-chat surfaces and the typed-client flow.
@@ -322,7 +333,9 @@ const routes = app
         let partialAnswer = '';
         let completed = false;
         try {
-          for await (const event of recommendations.recommendStream(messages)) {
+          for await (const event of recommendations.recommendStream(messages, {
+            requester: c.get('requester'),
+          })) {
             if (aborted.aborted || stream.aborted || stream.closed) break;
             if (event.type === 'delta') {
               partialAnswer += event.text;
@@ -477,7 +490,37 @@ const routes = app
         throw error;
       }
     },
-  );
+  )
+  /**
+   * Erase the requester's own lead (and threads): the intake flow calls this
+   * when the age gate stops a minor, and a visitor can call it to start clean.
+   * Suppresses the email in Klaviyo first, then deletes, so erasure is
+   * retryable end to end (see profileService.deleteForRequester). Scoped by the
+   * session cookie, so it can only ever reach the requester's own rows.
+   */
+  .delete('/api/brain/profile', rateLimit({ windowMs: 60_000, max: 10 }), async (c) => {
+    const requester: Requester = c.get('requester');
+    const [profiles, conversations] = await Promise.all([
+      profileService.deleteForRequester(requester),
+      conversationService.deleteForRequester(requester),
+    ]);
+    return c.json({ erased: { profiles, conversations } });
+  })
+  /**
+   * Attach this browser's anonymous lead and threads to the signed-in member.
+   * The web calls it right after sign-up (alongside the intake claim on the
+   * api). Needs a member id on the requester, which only a verified Clerk
+   * token carrying `metadata.memberId` provides; only unclaimed rows move.
+   */
+  .post('/api/brain/profile/claim', rateLimit({ windowMs: 60_000, max: 10 }), async (c) => {
+    const requester: Requester = c.get('requester');
+    if (!requester.memberId) return c.json({ error: 'Sign in to continue' }, 401);
+    const [profiles, conversations] = await Promise.all([
+      profileService.claim(requester.sessionId, requester.memberId),
+      conversationService.claim(requester.sessionId, requester.memberId),
+    ]);
+    return c.json({ claimed: { profiles, conversations } });
+  });
 
 export type BrainAppType = typeof routes;
 // `routes` is the same instance as `app`, but typed with the full route chain.

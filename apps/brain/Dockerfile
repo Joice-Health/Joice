@@ -16,6 +16,7 @@ COPY packages/marketing/package.json ./packages/marketing/
 COPY packages/db/package.json ./packages/db/
 COPY packages/api-client/package.json ./packages/api-client/
 COPY packages/ui/package.json ./packages/ui/
+COPY packages/utils/package.json ./packages/utils/
 COPY packages/config/package.json ./packages/config/
 RUN bun install --frozen-lockfile
 

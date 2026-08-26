@@ -108,11 +108,31 @@ variable "clerk_publishable_key" {
   default     = ""
 }
 
+variable "clerk_jwt_key" {
+  description = "Clerk instance JWT public key (PEM; Dashboard -> API keys -> JWT public key). Public, not a secret: lets the brain verify member session tokens networklessly without holding the Clerk secret."
+  type        = string
+  default     = ""
+}
+
 variable "clerk_secret_key" {
   description = "Clerk secret key (sk_...). Set in terraform.tfvars (gitignored); stored in Secrets Manager for the ECS tasks."
   type        = string
   sensitive   = true
   default     = ""
+}
+
+# ---- Onboarding retention ----
+
+variable "onboarding_session_idle_days" {
+  description = "An in-progress intake session idle this many days becomes abandoned."
+  type        = number
+  default     = 30
+}
+
+variable "onboarding_session_ttl_days" {
+  description = "An unclaimed intake session untouched this many days is purged with its answers, observations and profile. Registered sessions never expire. Counsel confirms the number."
+  type        = number
+  default     = 90
 }
 
 # ---- Klaviyo (waitlist marketing sync) ----

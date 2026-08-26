@@ -13,6 +13,9 @@ import { checkHealth } from './health';
 import { requestLog } from './middleware/request-log';
 import { featureFlags, waitlist } from './services';
 import { adminRoutes } from './admin/routes';
+import { onboardingRoutes } from './onboarding/routes';
+import { memberRoutes } from './member/routes';
+import { internalRoutes } from './internal/routes';
 
 const app = new Hono<{ Variables: RequestIdVariables }>();
 
@@ -28,6 +31,10 @@ app.use(
     origin: allowedOrigins,
     allowMethods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
+    // The intake session rides on an httpOnly cookie; in dev the web app is a
+    // different origin, so the browser only sends it with credentials allowed
+    // here and `credentials: 'include'` on the client. Same-origin in prod.
+    credentials: true,
   }),
 );
 
@@ -52,6 +59,12 @@ const waitlistOpen = requireFlag(
   FLAG_KEYS.waitlist,
   "The waitlist isn't open right now.",
 );
+
+/**
+ * Service-to-service routes, OUTSIDE the typed chain below: not browser APIs,
+ * and they must not leak into the RPC types. Bearer-token gated.
+ */
+app.route('/api/internal', internalRoutes);
 
 /**
  * Routes are defined in a single chain so `typeof routes` carries the full
@@ -95,6 +108,10 @@ const routes = app
   .get('/api/flags', rateLimit({ windowMs: 60_000, max: 60 }), async (c) => {
     return c.json(await featureFlags.evaluateAll());
   })
+  // The intake flow: anonymous, cookie-keyed, behind the `onboarding` flag.
+  .route('/api/onboarding', onboardingRoutes)
+  // A signed-in member about themselves; the first call creates their record.
+  .route('/api/me', memberRoutes)
   .route('/api/admin', adminRoutes);
 
 export type AppType = typeof routes;

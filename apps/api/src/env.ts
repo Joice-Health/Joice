@@ -40,6 +40,29 @@ const envSchema = z.object({
   /** Polly voice for spoken answers — must be generative-capable. */
   POLLY_VOICE_ID: z.string().default('Ruth'),
   /**
+   * Onboarding retention: an in-progress session idle this long becomes
+   * abandoned; an unclaimed session untouched for the TTL loses its answers,
+   * observations and profile (the sweep script). Registered sessions never
+   * expire. Numbers confirmed by counsel (brief, section 9).
+   */
+  ONBOARDING_SESSION_IDLE_DAYS: z.coerce.number().int().min(1).default(30),
+  ONBOARDING_SESSION_TTL_DAYS: z.coerce.number().int().min(1).default(90),
+  /**
+   * PHI key 1 of 2. Set by Terraform after the Before-PHI checklist, never by
+   * an admin. With the onboarding_health flag it lets a flow version that asks
+   * health-tier traits be published; off, the validator refuses them.
+   */
+  PHI_READY: z
+    .string()
+    .default('false')
+    .transform((v) => v === 'true' || v === '1'),
+  /**
+   * Bearer token for /api/internal/* (the brain reading a member's profile
+   * and writing observations). Shared with the brain task by Terraform
+   * (random_password in infra/secrets.tf); empty makes the routes answer 503.
+   */
+  INTERNAL_API_TOKEN: z.string().default(''),
+  /**
    * Git SHA of the image, baked in at build time and reported by /health.
    * "dev" locally, where the running code is whatever is bind-mounted.
    */

@@ -15,6 +15,7 @@
   "dependencies": {
     "@joice/db": "*",
     "@joice/marketing": "*",
+    "@joice/utils": "*",
     "nanoid": "^5.0.9",
     "zod": "^3.24.1"
   },

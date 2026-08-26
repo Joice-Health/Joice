@@ -9,9 +9,19 @@ export interface ApiClientOptions {
   headers?: () => Record<string, string> | Promise<Record<string, string>>;
 }
 
-/** Build a fully-typed Hono RPC client bound to the API base URL. */
+/**
+ * Build a fully-typed Hono RPC client bound to the API base URL.
+ *
+ * `credentials: 'include'` for the same reason the brain client has it: the
+ * intake session on /get-started is an httpOnly cookie issued by the api, and
+ * in local dev the web app (:3000) and the api (:4000) are different origins.
+ * Same-origin in production, where it is a no-op. The api's CORS allows it.
+ */
 export function createApiClient(baseUrl: string, options?: ApiClientOptions): ApiClient {
-  return hc<AppType>(baseUrl, options?.headers ? { headers: options.headers } : undefined);
+  return hc<AppType>(baseUrl, {
+    init: { credentials: 'include' },
+    ...(options?.headers ? { headers: options.headers } : {}),
+  });
 }
 
 /* ------------------------------------------------------------------------- *

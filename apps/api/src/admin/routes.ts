@@ -28,6 +28,7 @@ import {
 import { z } from 'zod';
 import { rateLimit } from '../middleware/rate-limit';
 import { requireAdmin, type AdminEnv } from './auth';
+import { adminOnboardingRoutes } from './onboarding-routes';
 import { adminWaitlist, audit, brainConfig, featureFlags, leads, settings, userService } from '../services';
 import { clerkClient } from './clerk';
 import { env } from '../env';
@@ -233,6 +234,9 @@ export const adminRoutes = new Hono<AdminEnv>()
   // --- Audit log ---
   .get('/audit-logs', zValidator('query', auditLogQuerySchema), async (c) => {
     return c.json(await audit.list(c.req.valid('query')));
-  });
+  })
+
+  // --- Onboarding: the intake flow, its versions, gates and funnel ---
+  .route('/onboarding', adminOnboardingRoutes);
 
 export type AdminRoutes = typeof adminRoutes;

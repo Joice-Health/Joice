@@ -6,7 +6,7 @@ import type {
   Usage,
 } from '../providers/bedrock';
 import type { ResolvedBrainConfig } from '../config/schemas';
-import { buildSystemPrompt } from './prompt';
+import { buildMemberSuffix, buildSystemPrompt } from './prompt';
 import { runToolLoop } from './agent-loop';
 import {
   createThinkingStreamFilter,
@@ -183,10 +183,27 @@ export function createRecommendationService(
     return rows.filter((row) => row.similarity >= similarityFloor);
   }
 
+  /**
+   * The member suffix for a signed-in requester, or undefined. Failure never
+   * fails the answer: the api being unreachable degrades to an anonymous turn,
+   * with one log line.
+   */
+  async function memberSuffixFor(requester?: { memberId: string | null }): Promise<string | undefined> {
+    if (!requester?.memberId) return undefined;
+    try {
+      const ctx = await ports.memberContext.forMember(requester.memberId);
+      return buildMemberSuffix(ctx);
+    } catch (error) {
+      console.warn(`member context unavailable (${(error as Error).message?.slice(0, 120)})`);
+      return undefined;
+    }
+  }
+
   function buildRequest(
     config: ResolvedBrainConfig,
     messages: ChatMessage[],
     chunks: RetrievedChunk[],
+    systemSuffix?: string,
   ) {
     const question = messages[messages.length - 1]!.content;
     const documents = chunks
@@ -214,6 +231,8 @@ export function createRecommendationService(
       // Classic mode's static prefix is small, so this rarely engages — but
       // the plumbing is shared and the provider degrades per-model anyway.
       promptCache: config.promptCache,
+      // After the cache point, so the shared prefix stays cacheable.
+      ...(systemSuffix ? { systemSuffix } : {}),
     };
   }
 
@@ -252,6 +271,7 @@ export function createRecommendationService(
   async function* toolStream(
     config: ResolvedBrainConfig,
     messages: ChatMessage[],
+    systemSuffix?: string,
   ): AsyncGenerator<RecommendationStreamEvent> {
     const question = messages[messages.length - 1]!.content;
     const registry: RetrievedChunk[] = [];
@@ -284,6 +304,7 @@ export function createRecommendationService(
         model: config.model,
         maxTokens: config.maxAnswerTokens,
         system: buildSystemPrompt(config, { tools: true }),
+        ...(systemSuffix ? { systemSuffix } : {}),
         turns: [
           ...messages.slice(0, -1),
           { role: 'user' as const, content: `${question}${citationReminder}` },
@@ -322,14 +343,18 @@ export function createRecommendationService(
     }
   }
 
-  async function recommend(messages: ChatMessage[]): Promise<PeptideRecommendation> {
+  async function recommend(
+    messages: ChatMessage[],
+    opts: { requester?: { memberId: string | null } } = {},
+  ): Promise<PeptideRecommendation> {
     const config = await getConfig();
+    const suffix = await memberSuffixFor(opts.requester);
     if (config.toolsEnabled && toolCapable()) {
       let recommendation: PeptideRecommendation = {
         answer: config.notCoveredMessage,
         citations: [],
       };
-      for await (const event of toolStream(config, messages)) {
+      for await (const event of toolStream(config, messages, suffix)) {
         if (event.type === 'complete') recommendation = event.recommendation;
       }
       return recommendation;
@@ -339,16 +364,18 @@ export function createRecommendationService(
     const chunks = await retrieve(question, config);
     if (chunks.length === 0) return { answer: config.notCoveredMessage, citations: [] };
 
-    const answer = await generation.generate(buildRequest(config, messages, chunks));
+    const answer = await generation.generate(buildRequest(config, messages, chunks, suffix));
     return finalize(config, answer, chunks);
   }
 
   async function* recommendStream(
     messages: ChatMessage[],
+    opts: { requester?: { memberId: string | null } } = {},
   ): AsyncGenerator<RecommendationStreamEvent> {
     const config = await getConfig();
+    const suffix = await memberSuffixFor(opts.requester);
     if (config.toolsEnabled && toolCapable()) {
-      yield* toolStream(config, messages);
+      yield* toolStream(config, messages, suffix);
       return;
     }
 
@@ -364,7 +391,7 @@ export function createRecommendationService(
     }
 
     const thinkingFilter = createThinkingStreamFilter();
-    for await (const event of generation.generateStream(buildRequest(config, messages, chunks))) {
+    for await (const event of generation.generateStream(buildRequest(config, messages, chunks, suffix))) {
       if (event.type === 'text') {
         const visible = thinkingFilter.push(event.text);
         if (visible) yield { type: 'delta', text: visible };

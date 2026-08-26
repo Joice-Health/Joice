@@ -15,6 +15,7 @@ import {
 } from '@joice/brain';
 import { createKlaviyoClient } from '@joice/marketing';
 import { env } from './env';
+import { createPlatformPorts } from './ports/platform-client';
 
 /** Single service graph over the shared DB client, reused across routes. */
 const db = getDatabase();
@@ -35,7 +36,18 @@ export const brainConfig = createBrainConfigService(db, noopAuditPort, {
  * service and only this line changes. The catalogue stub makes search_catalogue
  * honestly answer "nothing is listed yet" rather than inventing products.
  */
-export const ports = stubPorts;
+/**
+ * The platform ports: HTTP to the api's /api/internal/* when the shared token
+ * is set (member context into chat, observations back), stubs otherwise, in
+ * which case members chat exactly like anonymous visitors.
+ */
+export const ports = env.INTERNAL_API_TOKEN
+  ? {
+      ...stubPorts,
+      ...createPlatformPorts({ baseUrl: env.API_URL_INTERNAL, token: env.INTERNAL_API_TOKEN }),
+    }
+  : stubPorts;
+console.log(`[brain] platform ports: ${env.INTERNAL_API_TOKEN ? 'HTTP via ' + env.API_URL_INTERNAL : 'stubs (no INTERNAL_API_TOKEN)'}`);
 
 export const recommendations = createRecommendationService(db, {
   embeddings: createEmbeddingClient({ region: env.BEDROCK_REGION }),

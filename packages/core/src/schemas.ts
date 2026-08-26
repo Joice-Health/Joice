@@ -3,7 +3,16 @@ import { z } from 'zod';
 /**
  * Shared contracts used by both the API (request validation) and the web app
  * (form validation + response typing). Single source of truth for the wire shape.
+ *
+ * Browser-safe by construction: nothing re-exported from here may import the
+ * Postgres driver or the AWS SDK. The onboarding and profile contracts live in
+ * their own folders and are re-exported below so the web app, the admin
+ * console and the api validate against the same shapes.
  */
+
+export * from './profile';
+export * from './rules';
+export * from './onboarding';
 
 export const joinWaitlistSchema = z.object({
   firstName: z
@@ -66,6 +75,16 @@ export const FLAG_KEYS = {
    * Off: the page redirects to /coming-soon and the API answers 404.
    */
   waitlist: 'waitlist',
+  /**
+   * Intake on /get-started and the public /api/onboarding/* endpoints. Off:
+   * the page shows the companion lead summary and the API answers 404.
+   */
+  onboarding: 'onboarding',
+  /**
+   * PHI key 2 of 2: lets a flow version that asks health-tier traits be
+   * published. No effect unless PHI_READY is also set on the api (Terraform).
+   */
+  onboardingHealth: 'onboarding_health',
 } as const;
 
 export type FlagKey = (typeof FLAG_KEYS)[keyof typeof FLAG_KEYS];

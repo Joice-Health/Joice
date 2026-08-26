@@ -27,6 +27,22 @@ Business logic lives in `@joice/core` services (constructed in `src/services.ts`
 Drizzle client); route handlers stay thin — validate with `@hono/zod-validator` against
 schemas from `@joice/core`, call the service, return JSON.
 
+## Route groups
+
+| Prefix | File | Auth | In the typed chain |
+|---|---|---|---|
+| `/api/waitlist*`, `/api/flags` | `src/app.ts` | public, rate-limited, waitlist behind its flag | yes |
+| `/api/onboarding/*` | `src/onboarding/routes.ts` | anonymous cookie session, behind the `onboarding` flag, rate-limited per route | yes (`.route('/api/onboarding', ...)`) |
+| `/api/admin/*` | `src/admin/routes.ts` (+ `src/admin/onboarding-routes.ts` at `/api/admin/onboarding`) | Clerk + `requireAdmin` | yes (`.route('/api/admin', ...)`) |
+| `/api/me/*`, `/api/onboarding/session/claim` | (Phase 2) | Clerk + `requireMember`, which also creates the member's `users` row on its first call after sign-up (no webhook) | yes |
+| `/api/internal/*` | (Phase 4) | internal bearer token | **no**: registered on the app outside the chain, not a browser API |
+
+The intake routes (`src/onboarding/routes.ts`): `GET`/`POST /session`,
+`/session/answer`, `/skip`, `/back`, `/restart`, `/notify`. The engine runs on this side;
+the browser renders what it is told. A rejected action answers `{ error, code, questionKey? }`
+(404 no session, 409 gated or not gated, 400 otherwise) and the client branches on `code`.
+The whole surface answers 404 until an admin turns the `onboarding` flag on.
+
 ## Auth & middleware
 
 - `/api/admin/*`: Clerk. `clerkMiddleware` verifies the session token; `src/admin/auth.ts`
@@ -44,7 +60,18 @@ schemas from `@joice/core`, call the service, return JSON.
   `TRUSTED_PROXY_HOPS` is 2 in prod (CloudFront + ALB) and 0 locally, where the header is
   ignored entirely in favor of the socket address.
 - IPs are never stored raw — only salted SHA-256 (`src/hash.ts`, `IP_HASH_SALT`).
-- CORS is configured but moot in prod (same-origin through CloudFront).
+- The intake session is an httpOnly cookie, `joice_onboarding_session`
+  (`src/middleware/onboarding-session.ts`, a factory so tests need no env): `SameSite=Lax` in
+  prod, `None; Secure` in dev because the web app is a different origin there. Separate from
+  the brain's cookie on purpose. CORS therefore allows credentials, and the api client sends
+  them; in prod both are no-ops (same origin through CloudFront).
+- Onboarding audit actions to keep distinct: `onboarding.publish`, `onboarding.rollback`,
+  `onboarding.draft_created`, `onboarding.draft_saved`, `service_area.update`,
+  `onboarding.settings`. Gate changes (service areas, minimum age) must never share an action
+  with copy edits.
+- `PHI_READY` (env, set by Terraform) and the `onboarding_health` flag are the two PHI keys;
+  `services.ts` combines them into the flow service's `phiEnabled`. Never expose a route that
+  lets an admin set the env half.
 - This service serves no WebSockets. The voice socket and its origin/byte/duration bounds
   live on the brain service — see `apps/brain/CLAUDE.md`.
 

@@ -3,6 +3,10 @@
 A pre-launch waitlist with a viral referral loop. Sign up with an email → get a shareable
 referral link + QR "membership card" → friends join via your link and you move up the line.
 
+Also in the repo, behind gates until launch: the main site, the admin dashboard, the "Ask
+Joice" companion (`apps/brain`), and the intake flow on `/get-started` (server-driven,
+admin-configurable; see `docs/onboarding/`).
+
 ## Stack
 
 | Layer    | Tech                                                                  |
@@ -24,6 +28,7 @@ packages/
   core/         Waitlist domain service + shared Zod schemas
   api-client/   Hono RPC client + TanStack Query hooks
   ui/           Tailwind v4 theme tokens + primitives
+  utils/        Dependency-free helpers usable anywhere (US states, ...)
   config/       Shared tsconfig + eslint
 ```
 

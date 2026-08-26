@@ -5,3 +5,4 @@ export {
 } from './port';
 export { toWaitlistMarketingProfile } from './profile';
 export { createKlaviyoMarketingAdapter } from './klaviyo-adapter';
+export { createOnboardingKlaviyoAdapter } from './onboarding-klaviyo-adapter';

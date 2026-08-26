@@ -8,6 +8,10 @@
 export const METRICS = {
   joinedWaitlist: 'Joined Waitlist',
   waitlistStatusChanged: 'Waitlist Status Changed',
+  /** Onboarding: "tell me when my state opens" (no list subscription). */
+  serviceAreaRequested: 'Service Area Requested',
+  /** Onboarding: intake finished and the account exists. */
+  onboardingCompleted: 'Onboarding Completed',
 } as const;
 
 export type MetricName = (typeof METRICS)[keyof typeof METRICS];

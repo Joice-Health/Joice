@@ -25,6 +25,27 @@ want the shape of the system before the detail.
 
 **New here? Read 01 and 10, then 05 to get it running.**
 
+## Onboarding (intake logic tree)
+
+The admin-configurable intake flow behind `/get-started`: state and age gates, goal
+branches, a profile with provenance, registration, and the data shape protocols will match
+on. Work lands on the `onboarding/intake` branch; the design brief is the place to start.
+
+| Doc | What it covers |
+|---|---|
+| [00 Design brief (approved plan)](onboarding/00-plan.md) | Tracked as Shortcut epic 127. Product design (journey, gates, carry-over, segments), architecture (data model, flow definition, condition DSL, engine, versioning, brain exchange, compliance), file-level implementation plan, phases and stories, verification, documentation and branch workflow, decisions log, council verdict |
+| [01 Overview](onboarding/01-overview.md) | The journey (flowchart), the three tiers and the flags, what exists and what comes later, file by file |
+| [02 The flow model](onboarding/02-flow-model.md) | The definition (bank + sections), the condition language and its why-trace, the engine (walk, minor rule, pruning, back), versions and pinning, the publish validator's codes |
+| [03 The data model](onboarding/03-data-model.md) | Every table with its writer, the trait registry and tiers, the profile fold and provenance precedence, migrations and seeds, retention |
+| [04 Sessions and registration](onboarding/04-sessions-and-registration.md) | The cookie, requireMember and the no-webhook member record, the claim (rules and sequence), the brain's JWT-key recognition, retention, the Clerk dashboard checklist |
+| [05 The admin guide](onboarding/05-admin-guide.md) | For non-engineers: change wording, add a question, what locks and tiers mean, simulate before publishing, roll back, what the surface refuses by design |
+| [06 The brain and the intake](onboarding/06-brain-integration.md) | The three exchanges (carry-over, claim, member context over /api/internal), what may cross by tier, anonymous-on-failure, the trust boundary and 4.7 |
+| [07 Compliance](onboarding/07-compliance.md) | Sensitivity tiers, the two PHI keys, minors, notice and consent, identity linking, retention, analytics rules, what is open for counsel |
+| [08 Running it locally](onboarding/08-local-development.md) | Migrate, open the flag, click through, drive the API with curl, look at the data, tests, reset |
+| [09 Troubleshooting](onboarding/09-troubleshooting.md) | Symptom, cause, fix: flags and caches, cookie and credentials, action error codes, publish refusals, rollback and schema versions, local Docker quirks |
+
+Page 10 (protocol readiness) arrives with Phase 5; see section 7 of the brief. **New here? Read 01, then 02, then 08 to run it.**
+
 ## CI/CD
 
 | Doc | What it covers |
