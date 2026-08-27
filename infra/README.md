@@ -179,8 +179,10 @@ already expects the app subnets. Sequence:
 
 0. One-time console prep: raise the VPC quota **"Inbound or outbound rules per
    security group"** to 120 (the CloudFront prefix list weighs 55; the :80+:443
-   pair exceeds the default 60). Syntax-check any edit with
-   `terraform init -backend=false && terraform validate`.
+   pair exceeds the default 60). Note: Service Quotas can show APPROVED while
+   EC2 still enforces the old limit for up to ~30 minutes; if the apply fails
+   at the security group right after approval, wait and re-run. Syntax-check
+   any edit with `terraform init -backend=false && terraform validate`.
 1. `terraform apply` — everything lands in one apply; the ordering that matters
    is encoded as `depends_on` (HTTPS listener rules before the CloudFront
    origin flip; NAT route before the services move; log-bucket policy before
@@ -188,10 +190,14 @@ already expects the app subnets. Sequence:
    the CloudFront update blocks until fully propagated; services roll with the
    circuit breaker. Schedule it off-peak: the RDS Multi-AZ conversion runs in
    the background with a brief I/O pause.
-2. Verify: site + `/api/health` up through CloudFront; chat answers (Bedrock via
-   the endpoint); waitlist signup works (Klaviyo via NAT);
-   `aws ecs describe-services` shows tasks without public IPs;
-   `curl https://origin.joicehealth.com/` returns 403 (origin lock).
+2. Verify: site up through CloudFront (`curl https://joicehealth.com/health`;
+   the api's `/health` is root-level and only the ALB target group reaches it,
+   so there is no `/api/health`); chat answers (Bedrock via the endpoint);
+   `aws ecs describe-services` shows all rollouts COMPLETED and
+   `describe-network-interfaces` shows no public IPs on the task ENIs;
+   `curl https://origin.joicehealth.com/` **times out** from anywhere but
+   CloudFront (the SG admits only CloudFront's origin-facing IPs; the 403
+   fixed-response is what CloudFront itself would see without the header).
 3. Update the GitHub repo variable `SUBNET_IDS` to the app subnet ids (the
    `github_repo_variables` output prints the new value), then merge the PR and
    let the triggered full deploy prove CI's migrate path works privately.
