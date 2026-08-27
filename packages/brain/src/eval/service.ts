@@ -112,7 +112,11 @@ export function createEvalService(db: Database, deps: EvalServiceDeps) {
         and(
           eq(evalRuns.status, 'running'),
           lt(evalRuns.startedAt, cutoff),
-          sql`NOT EXISTS (SELECT 1 FROM ${evalResults} WHERE ${evalResults.runId} = ${evalRuns.id} AND ${evalResults.createdAt} > ${cutoff})`,
+          // The cutoff is an ISO string on purpose: a raw Date inside a sql
+          // fragment has no column mapping, so the driver receives it
+          // unserialized and crashes the bind (verified live). Postgres casts
+          // the string against the timestamptz column.
+          sql`NOT EXISTS (SELECT 1 FROM ${evalResults} WHERE ${evalResults.runId} = ${evalRuns.id} AND ${evalResults.createdAt} > ${cutoff.toISOString()})`,
         ),
       );
   }

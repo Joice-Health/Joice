@@ -327,11 +327,13 @@ describe('the stale sweep', () => {
     const rendered = new PgDialect().sqlToQuery(sweep!.where as SQL);
     expect(rendered.sql).toContain('NOT EXISTS');
     expect(rendered.params).toContain('running');
-    // The injectable clock decides the cutoff that rides in the where.
-    const cutoffs = rendered.params.filter(
-      (p) => p instanceof Date && p.getTime() === 1_000_000_000 - 15 * 60_000,
-    );
-    expect(cutoffs.length).toBeGreaterThanOrEqual(1);
+    // The injectable clock decides the cutoff. It appears twice: as a Date
+    // through the column-mapped lt(), and as an ISO string in the raw
+    // fragment (a Date there crashes the driver bind; verified live).
+    // sqlToQuery encodes params, so both cutoffs (the column-mapped lt and
+    // the raw fragment's pre-serialized string) arrive as the ISO string.
+    const cutoffIso = new Date(1_000_000_000 - 15 * 60_000).toISOString();
+    expect(rendered.params.filter((p) => p === cutoffIso).length).toBe(2);
   });
 });
 
