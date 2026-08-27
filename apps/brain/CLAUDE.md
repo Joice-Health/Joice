@@ -49,8 +49,11 @@ Every PUBLIC endpoint here is unauthenticated and metered; rate limits are the o
 front of them, so they are load-bearing rather than decorative. The one exception is the eval
 console (`/api/brain/admin/eval/*`, `src/admin/eval-routes.ts`): the brain's first admin
 surface of its own, gated by `src/middleware/admin.ts` (a deliberate copy of the api's
-`requireAdmin` over the app-level Clerk middleware; role rides the session-token metadata
-claim). Eval runs execute fire-and-forget in this process; the one-active-run guard is a
+`requireAdmin`; role rides the session-token metadata claim). Bearer verification is the
+brain's own `src/middleware/clerk.ts` calling the Clerk SDK's `verifyToken` with the public
+JWT key: the `@hono/clerk-auth` wrapper the api uses throws on every request unless it holds
+the Clerk SECRET key, which this task cannot read by design, so it must never come back here.
+An unverifiable token means an anonymous request, never a 500. Eval runs execute fire-and-forget in this process; the one-active-run guard is a
 partial unique index, not memory (docs/rag/12-eval-console.md).
 
 - Client IP comes from the `TRUSTED_PROXY_HOPS`-th hop **from the right** of `x-forwarded-for`

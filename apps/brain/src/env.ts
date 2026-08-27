@@ -54,7 +54,9 @@ const envSchema = z.object({
    * secret: the brain task cannot touch Clerk's API by design (infra/iam.tf).
    * CLERK_SECRET_KEY is accepted only as a local-dev fallback when no JWT key
    * is set. With neither, every token fails verification and the requester
-   * stays anonymous; nothing else changes.
+   * stays anonymous in dev and test; production refuses to boot (see the
+   * refinement below), so a missing key fails the deploy loudly instead of
+   * silently breaking every signed-in request.
    */
   CLERK_JWT_KEY: z.string().default(''),
   CLERK_PUBLISHABLE_KEY: z.string().default('pk_test_placeholder'),
@@ -72,6 +74,18 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 });
 
-export const env = envSchema.parse(process.env);
+export const env = envSchema
+  .superRefine((cfg, ctx) => {
+    if (cfg.NODE_ENV === 'production' && !cfg.CLERK_JWT_KEY && !cfg.CLERK_SECRET_KEY) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['CLERK_JWT_KEY'],
+        message:
+          'CLERK_JWT_KEY is required in production (terraform var clerk_jwt_key): ' +
+          'without it every request carrying a Clerk token fails.',
+      });
+    }
+  })
+  .parse(process.env);
 
 export const allowedOrigins = env.WEB_ORIGIN.split(',').map((o) => o.trim());
