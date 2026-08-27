@@ -31,7 +31,7 @@ Target: a sub-page per feature under the **Documentation** page in the **Joice H
 
 **Check the connection first.** Fetch the Documentation page by that id before writing anything. If the fetch fails as unauthenticated, or the page cannot be found (the token points at a workspace other than Joice Health): stop this leg, tell the user to re-authenticate the Notion server via `/mcp` in an interactive session and pick **Joice Health** on the authorization screen, and leave a "Notion docs pending" comment on the epic so it is not forgotten. Never fail silently and never fall back to a different location.
 
-1. Open the **Documentation** page by its id (the `Notion:search` and `Notion:create-page` skills wrap the Notion tools). Sub-pages live directly under it, one per feature.
+1. Open the **Documentation** page by its id with the connected Notion tools (`notion-fetch`, `notion-create-pages`, `notion-update-page`; load them via ToolSearch). Sub-pages live directly under it, one per feature. Before the first write, read the `notion://docs/enhanced-markdown-spec` resource with `notion-fetch`: tables must be Notion's XML table blocks (pipe tables do not render), Mermaid goes in a `mermaid` code block with node labels in double quotes, and square brackets in prose need escaping.
 2. Create or update the feature's sub-page:
    - **What it is / Who it's for**: plain language, two or three sentences.
    - **How to use it**: numbered steps a teammate can follow today, in the voice of `docs/onboarding/05-admin-guide.md` (where to click, what they will see, what the words on screen mean). If something needs a flag, a login, or an open service area first, say so as step 1.
