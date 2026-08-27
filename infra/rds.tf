@@ -1,6 +1,6 @@
 # Postgres 17 on RDS. HIPAA-ready posture baked in from day one (encryption at
 # rest can't be retrofitted without a snapshot-restore migration): storage
-# encrypted, TLS forced, 7-day backups, deletion protection.
+# encrypted, TLS forced, Multi-AZ, 35-day backups, deletion protection.
 
 resource "aws_db_subnet_group" "main" {
   name       = "${var.project}-db"
@@ -72,15 +72,24 @@ resource "aws_db_instance" "main" {
 
   allocated_storage = var.db_allocated_storage
   storage_type      = "gp3"
+  # AWS-managed key, deliberately: moving an existing encrypted instance to a
+  # customer-managed key means snapshot, restore under the new key, and a
+  # cutover window. Deferred (Before-PHI checklist notes it); the greenfield
+  # buckets (labs, CloudTrail) use CMKs instead.
   storage_encrypted = true
 
   db_subnet_group_name   = aws_db_subnet_group.main.name
   vpc_security_group_ids = [aws_security_group.rds.id]
   parameter_group_name   = aws_db_parameter_group.main.name
   publicly_accessible    = false
-  multi_az               = false # flip for Phase 1 / PHI
+  # Single -> Multi-AZ is a background standby build, not a failover: the
+  # primary keeps serving (brief I/O pause for the seeding snapshot on this
+  # instance class), and the endpoint is unchanged. Apply off-peak anyway.
+  multi_az = true
 
-  backup_retention_period   = 7
+  # 35 is the automated-backup maximum; at this storage size the cost is
+  # trivial and it maximizes point-in-time-recovery depth.
+  backup_retention_period   = 35
   delete_automated_backups  = true
   deletion_protection       = true
   skip_final_snapshot       = var.db_skip_final_snapshot
