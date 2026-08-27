@@ -7,7 +7,8 @@ web-specific detail.
 ## Route map & gates
 
 - `/waitlist` — public. Join form + referral confirmation (same route, two views switched by
-  the persisted Zustand store). Owns the animated video background (`AmbientBackground`).
+  the persisted Zustand store). Shows the animated water background (`AmbientBackground`),
+  shared with `/coming-soon`.
   The whole thing sits behind the `waitlist` feature flag (seeded by migration, toggled in
   `/admin/flags`). Flag off: the page and the public `/api/waitlist*` endpoints close, and the
   page redirects to `/coming-soon`.
