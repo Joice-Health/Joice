@@ -120,6 +120,13 @@ the stored answers are there for human review. Decision logged below.
 `eval_cases`, falling back to `fixtures/golden.jsonl` when the table is
 empty, and imports the shared scoring. One question set, two front ends.
 
+One semantic difference to know: the script's `--tools` flag pins tool mode
+for the run (`--full` alone always runs the classic pipeline), while the
+console's full mode inherits the STORED tools setting unless the admin
+overrides it in the run panel. The console's tool switch in "experiment with
+settings" is the equivalent of `--tools`. The run row's `tools_enabled`
+column records what actually ran, either way.
+
 ## Auditing decision
 
 The brain writes no `audit_logs` rows (platform-owned table; the brain never
