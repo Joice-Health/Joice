@@ -4,6 +4,7 @@ import {
   isDerivedTrait,
   isRegisteredTrait,
   sensitivityOf,
+  type Sensitivity,
   type TraitType,
 } from '../profile/traits';
 import { conditionTraits, type Condition } from '../rules/conditions';
@@ -71,6 +72,12 @@ export interface ValidateFlowOptions {
   phiEnabled: boolean;
   /** The newest schema version this build can run. */
   supportedSchemaVersion?: number;
+  /**
+   * Override the trait-tier lookup. The v1 registry holds no health-tier
+   * trait by construction, so this is how the PHI lock stays testable until
+   * story 5.2 registers one. Defaults to the registry's `sensitivityOf`.
+   */
+  tierOf?: (trait: string) => Sensitivity | null;
 }
 
 export type ValidateFlowResult =
@@ -326,7 +333,7 @@ function validateQuestionBinding(
     }
   }
 
-  const tier = sensitivityOf(question.trait);
+  const tier = (options.tierOf ?? sensitivityOf)(question.trait);
   if (tier === 'health' && !options.phiEnabled) {
     errors.push({
       path: `${path}.trait`,

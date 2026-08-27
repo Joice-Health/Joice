@@ -25,6 +25,7 @@ import {
   onboarding,
   onboardingConfig,
   onboardingEvents,
+  phiStatus,
   profiles,
   serviceAreaRequests,
   serviceAreas,
@@ -58,7 +59,10 @@ export const adminOnboardingRoutes = new Hono<AdminEnv>()
 
   // --- Flows and versions ---
   .get('/flows', async (c) => {
-    return c.json({ items: await flows.listFlows() });
+    // The editor's unlock state rides here: the browser can read the flag on
+    // its own but never the PHI_READY env half, so the server says both.
+    const [items, phi] = await Promise.all([flows.listFlows(), phiStatus()]);
+    return c.json({ items, phi });
   })
   .get('/flows/:key/versions', zValidator('param', flowKeyParamSchema), async (c) => {
     const items = await flows.listVersions(c.req.valid('param').key);

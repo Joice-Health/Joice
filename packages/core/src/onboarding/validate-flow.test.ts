@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import { sensitivityOf } from '../profile/traits';
 import { DEFAULT_INTAKE_FLOW } from './default-flow';
 import { canonicalJson, logicHash, validateFlowDefinition, type FlowIssueCode } from './validate-flow';
 import type { FlowDefinitionInput } from './schemas';
@@ -211,12 +212,49 @@ describe('locked sections', () => {
 });
 
 describe('PHI lock', () => {
-  // No health-tier trait exists in the v1 registry, so the lock is exercised
-  // through the tier lookup: once a health trait is registered (story 5.2),
-  // this test gets a real subject. Until then, assert the rule wiring.
-  test('phiEnabled false produces no phi_locked error for a marketing-only flow', () => {
+  // The v1 registry holds no health-tier trait by construction (story 5.2
+  // registers the first), so these tests inject the tier through the tierOf
+  // override the validator exposes for exactly this reason.
+  const asHealth =
+    (trait: string) =>
+    (key: string) =>
+      key === trait ? ('health' as const) : sensitivityOf(key);
+
+  test('the registry-only flow produces no phi_locked either way', () => {
     expect(errorCodes(base(), false)).not.toContain('phi_locked');
     expect(errorCodes(base(), true)).not.toContain('phi_locked');
+  });
+
+  test('a health-tier question blocks publishing while the keys are off', () => {
+    const report = validateFlowDefinition(base(), { phiEnabled: false, tierOf: asHealth('goal_note') });
+    expect(report.ok).toBe(false);
+    expect(report.errors).toContainEqual(
+      expect.objectContaining({ code: 'phi_locked', path: 'questions.goal_note.trait' }),
+    );
+  });
+
+  test('with both keys on the same question publishes, downgraded to a PHI warning', () => {
+    const report = validateFlowDefinition(base(), { phiEnabled: true, tierOf: asHealth('goal_note') });
+    expect(report.ok).toBe(true);
+    expect(report.errors.map((e) => e.code)).not.toContain('phi_locked');
+    expect(report.warnings).toContainEqual(
+      expect.objectContaining({ code: 'phi_locked', path: 'questions.goal_note.trait' }),
+    );
+  });
+
+  test('every key combination: only PHI_READY and the flag together unlock', () => {
+    // phiEnabled is the AND of the two keys, composed in apps/api/src/services.ts;
+    // this mirrors that composition through the validator for each combination.
+    for (const ready of [false, true]) {
+      for (const flag of [false, true]) {
+        const phiEnabled = ready && flag;
+        const codes = validateFlowDefinition(base(), { phiEnabled, tierOf: asHealth('goal_note') }).errors.map(
+          (e) => e.code,
+        );
+        if (phiEnabled) expect(codes).not.toContain('phi_locked');
+        else expect(codes).toContain('phi_locked');
+      }
+    }
   });
 });
 

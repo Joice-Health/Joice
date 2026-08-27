@@ -60,6 +60,12 @@ services:
       RAG_MODEL: ${RAG_MODEL:-us.anthropic.claude-sonnet-4-5-20250929-v1:0}
       BEDROCK_REGION: ${BEDROCK_REGION:-us-east-1}
       POLLY_VOICE_ID: ${POLLY_VOICE_ID:-Ruth}
+      # PHI key 1 of 2 (with the onboarding_health flag). Off by default; set
+      # PHI_READY=true in .env to exercise the health-tier unlock locally.
+      PHI_READY: ${PHI_READY:-false}
+      # Session retention knobs, same defaults as the Terraform variables.
+      ONBOARDING_SESSION_IDLE_DAYS: ${ONBOARDING_SESSION_IDLE_DAYS:-30}
+      ONBOARDING_SESSION_TTL_DAYS: ${ONBOARDING_SESSION_TTL_DAYS:-90}
     ports:
       - '4000:4000'
     depends_on:

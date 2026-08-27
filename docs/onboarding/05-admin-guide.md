@@ -48,6 +48,12 @@ started with; only pure copy changes reach them silently.
   the trait it writes. **health** means "Medical question. Publishing is
   locked until the Before-PHI checklist is complete and both PHI keys are
   on" — you can draft it, never publish it, until engineering turns the key.
+- **health locked / health unlocked** in the editor header: the state of the
+  two PHI keys, straight from the server. Locked names which half is off —
+  the infrastructure key (`PHI_READY`, set by engineering, never a toggle
+  here) and the `onboarding_health` flag (Flags page). Both on turns the
+  badge green and a published flow may ask health questions; each still
+  carries a PHI warning in the report.
 - **optional**: the visitor gets "Skip for now".
 
 ## Gates are not copy
