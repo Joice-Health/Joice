@@ -3,6 +3,7 @@ import {
   createBrainConfigService,
   createConversationService,
   createEmbeddingClient,
+  createEvalService,
   createGenerationClient,
   createProfileService,
   createRecommendationService,
@@ -49,11 +50,34 @@ export const ports = env.INTERNAL_API_TOKEN
   : stubPorts;
 console.log(`[brain] platform ports: ${env.INTERNAL_API_TOKEN ? 'HTTP via ' + env.API_URL_INTERNAL : 'stubs (no INTERNAL_API_TOKEN)'}`);
 
+// Hoisted so the eval runner reuses the same client instances (and their
+// retry/connection behavior) rather than constructing a second pair.
+const embeddings = createEmbeddingClient({ region: env.BEDROCK_REGION });
+const generation = createGenerationClient({ region: env.BEDROCK_REGION });
+
 export const recommendations = createRecommendationService(db, {
-  embeddings: createEmbeddingClient({ region: env.BEDROCK_REGION }),
-  generation: createGenerationClient({ region: env.BEDROCK_REGION }),
+  embeddings,
+  generation,
   getConfig: brainConfig.get,
   ports,
+});
+
+/**
+ * The eval console's engine. Each run gets a pipeline pinned to that run's
+ * effective config (stored settings plus the admin's overrides). stubPorts on
+ * purpose: the eval measures the pipeline against the corpus, not member
+ * context or the live catalogue, matching scripts/eval.ts, and keeps a run
+ * from generating internal API traffic.
+ */
+export const evalService = createEvalService(db, {
+  getConfig: brainConfig.get,
+  buildService: (config) =>
+    createRecommendationService(db, {
+      embeddings,
+      generation,
+      getConfig: async () => config,
+      ports: stubPorts,
+    }),
 });
 
 export const transcriber = createTranscribeClient({ region: env.BEDROCK_REGION });
