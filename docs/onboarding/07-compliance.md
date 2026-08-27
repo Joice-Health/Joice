@@ -3,9 +3,10 @@
 The intake asks questions about a person and, from Phase 2, ties the answers to
 an identity. This page is the set of rules that keeps that within the posture
 described in the root `CLAUDE.md` and `docs/rag/07-compliance.md` (Phase 0 holds
-marketing data only; the Before-PHI checklist in `infra/README.md` is open).
-The mechanisms are in code; the numbers and wording marked "counsel" are the
-ones Shaun still owes.
+marketing data only; the Before-PHI infrastructure boxes in `infra/README.md`
+were applied and verified 2026-08-27, with the app-level box, chat audit logging
+and member auth, still open). The mechanisms are in code; the numbers and
+wording marked "counsel" are the ones Shaun still owes.
 
 ## Sensitivity tiers (on the trait, never the question)
 

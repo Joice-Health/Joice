@@ -239,6 +239,12 @@ with the reasoning is `docs/design/01-design-system.md`. Tokens live in
 ## Compliance posture
 
 Phase 0 stores marketing data only (waitlist emails + referral attribution) — treated as not
-PHI. HIPAA-ready pieces are already baked in (encrypted RDS, forced DB TLS, salted IP hashes —
-never store raw IPs). Before any health data ships, work through the "Before PHI" checklist in
-`infra/README.md`. Referral reward copy ("a month free") is gated on counsel review.
+PHI. The AWS BAA is signed and the Before-PHI infrastructure hardening is applied and verified
+(2026-08-27): tasks in private app subnets with no public IPs (NAT + S3/Bedrock endpoints),
+HTTPS on the CloudFront-to-ALB hop, CloudTrail + flow/access logs, RDS Multi-AZ, encrypted RDS,
+forced DB TLS, salted IP hashes (never store raw IPs). One checklist box in `infra/README.md`
+stays open: app-level audit logging and member auth for the chat (the chat-before-members
+workstream in `docs/rag/07-compliance.md`). Health data itself stays locked behind the two PHI
+keys — the `phi_ready` Terraform variable and the `onboarding_health` flag, both off — and
+turning them is a deliberate act, never a side effect. Referral reward copy ("a month free")
+is gated on counsel review.

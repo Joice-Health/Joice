@@ -147,16 +147,19 @@ salted IP hashes (never raw IPs). Before handling any health data (tick each box
 with the date it was **applied**, not merged):
 
 - [x] Confirm scope with counsel; sign the **AWS BAA** in AWS Artifact — signed 2026-08-27
-- [ ] **Custom domain + ACM on the ALB**, CloudFront origin `https-only`
+- [x] **Custom domain + ACM on the ALB**, CloudFront origin `https-only`
       (`origin.joicehealth.com` in `dns.tf` + the :443 listener in `alb.tf`
-      remove the one plaintext hop)
-- [ ] Move tasks to **app subnets** (no public IPs) + NAT Gateway + S3/Bedrock
-      VPC endpoints (`vpc.tf`, `endpoints.tf`)
-- [ ] **CloudTrail** (all regions, CMK, 6y), **VPC flow logs**, ALB + CloudFront
-      access logs to S3 (`audit.tf`)
-- [ ] RDS **Multi-AZ**, 35-day backups. KMS CMKs: adopted for greenfield (labs,
-      CloudTrail); the RDS CMK is consciously deferred — it needs a
-      snapshot-restore migration (see `rds.tf`)
+      remove the one plaintext hop) — applied and verified 2026-08-27; the
+      deprecated :80 listener awaits its cleanup change
+- [x] Move tasks to **app subnets** (no public IPs) + NAT Gateway + S3/Bedrock
+      VPC endpoints (`vpc.tf`, `endpoints.tf`) — applied and verified
+      2026-08-27, incl. CI's migrate task running privately
+- [x] **CloudTrail** (all regions, CMK, 6y), **VPC flow logs**, ALB + CloudFront
+      access logs to S3 (`audit.tf`) — applied 2026-08-27, delivery confirmed
+      for all four log streams
+- [x] RDS **Multi-AZ**, 35-day backups — applied 2026-08-27. KMS CMKs: adopted
+      for greenfield (labs, CloudTrail); the RDS CMK is consciously deferred —
+      it needs a snapshot-restore migration (see `rds.tf`)
 - [ ] App-level: audit logging, access controls, session management for any PHI
       surfaces (chat audit logging + member auth on the chat routes — the
       chat-before-members workstream in `docs/rag/07-compliance.md`)
