@@ -54,6 +54,14 @@ export class NoEvalCasesError extends Error {
   }
 }
 
+/** The question text is a case's identity; the route maps this to 409. */
+export class DuplicateEvalCaseError extends Error {
+  constructor() {
+    super('A question with this exact text already exists');
+    this.name = 'DuplicateEvalCaseError';
+  }
+}
+
 /** A question's answer exceeded its time budget. Internal to the executor. */
 class CaseTimeoutError extends Error {
   constructor(ms: number) {
@@ -183,8 +191,9 @@ export function createEvalService(db: Database, deps: EvalServiceDeps) {
         }
       }
     } catch (err) {
-      // A timed-out generator must be closed, or its Bedrock stream keeps
-      // billing with nobody reading it.
+      // Best-effort close of a timed-out generator (not awaited: return()
+      // queues behind the generator's own pending await, so on a genuine
+      // provider hang it interrupts nothing; the run must keep moving).
       void iterator.return?.(undefined as never)?.catch?.(() => {});
       throw err;
     }
@@ -299,7 +308,7 @@ export function createEvalService(db: Database, deps: EvalServiceDeps) {
         })
         .where(eq(evalRuns.id, run.id))
         .catch?.(() => {});
-    });
+    }).catch?.(() => {}); // the failure handler itself must never reject unobserved
   }
 
   return {
@@ -308,17 +317,27 @@ export function createEvalService(db: Database, deps: EvalServiceDeps) {
     },
 
     async createCase(input: EvalCaseInput): Promise<EvalCase> {
-      const [row] = await db.insert(evalCases).values(input).returning();
-      return row!;
+      try {
+        const [row] = await db.insert(evalCases).values(input).returning();
+        return row!;
+      } catch (err) {
+        if (isUniqueViolation(err)) throw new DuplicateEvalCaseError();
+        throw err;
+      }
     },
 
     async updateCase(id: string, patch: EvalCasePatch): Promise<EvalCase | null> {
-      const [row] = await db
-        .update(evalCases)
-        .set({ ...patch, updatedAt: now() })
-        .where(eq(evalCases.id, id))
-        .returning();
-      return row ?? null;
+      try {
+        const [row] = await db
+          .update(evalCases)
+          .set({ ...patch, updatedAt: now() })
+          .where(eq(evalCases.id, id))
+          .returning();
+        return row ?? null;
+      } catch (err) {
+        if (isUniqueViolation(err)) throw new DuplicateEvalCaseError();
+        throw err;
+      }
     },
 
     async deleteCase(id: string): Promise<boolean> {
@@ -345,6 +364,9 @@ export function createEvalService(db: Database, deps: EvalServiceDeps) {
       const definedOverrides = Object.fromEntries(
         Object.entries(input.overrides).filter(([, v]) => v !== undefined),
       );
+      // showCitations is pinned below whatever the caller sent; recording it
+      // as an applied override would make the run row contradict its snapshot.
+      delete definedOverrides.showCitations;
       // showCitations pinned last: citation honesty is half of what the eval
       // measures, and a config with chips off would blank every citation check.
       const effective = {

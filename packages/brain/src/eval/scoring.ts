@@ -46,7 +46,7 @@ export function soundsLikeRefusal(answer: string, notCoveredMessage: string): bo
   );
 }
 
-/** Nearest-rank percentile over an ascending-sorted array; 0 when empty. */
+/** Floor-indexed percentile over an ascending-sorted array; 0 when empty. */
 export function percentile(sorted: number[], p: number): number {
   if (sorted.length === 0) return 0;
   return sorted[Math.min(sorted.length - 1, Math.floor((p / 100) * sorted.length))]!;

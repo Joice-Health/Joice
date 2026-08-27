@@ -187,7 +187,9 @@ describe('startRun', () => {
   test('a unique violation on the running guard maps to ActiveEvalRunError', async () => {
     const { db, state } = stubDb();
     state.caseRows = [caseOf()];
-    state.failRunInsert = { code: '23505' };
+    // Drizzle wraps driver errors: the pg error rides on `cause`. This is the
+    // shape production actually throws, so it is the shape the test pins.
+    state.failRunInsert = { cause: { code: '23505' } };
     const service = createEvalService(db, {
       getConfig: async () => config(),
       buildService: () => scriptedPipeline({}),
@@ -283,9 +285,13 @@ describe('the executor', () => {
     expect(state.resultInserts[0]).toMatchObject({ caseId: 'c1', pass: false });
     expect(state.resultInserts[0]!.detail as string).toContain('timeout');
     expect(state.resultInserts[1]).toMatchObject({ caseId: 'c2', pass: true });
-    expect(
-      state.updates.some((u) => u.table === evalRuns && u.set.status === 'completed'),
-    ).toBe(true);
+    const finalize = state.updates.find(
+      (u) => u.table === evalRuns && u.set.status === 'completed',
+    );
+    expect(finalize).toBeDefined();
+    // No case reported usage, so token sums are null, never a misleading 0.
+    expect(finalize!.set.inputTokens).toBeNull();
+    expect(finalize!.set.outputTokens).toBeNull();
   });
 
   test('an executor failure marks the run failed with the error, never silently', async () => {

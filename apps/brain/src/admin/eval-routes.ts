@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import {
   ActiveEvalRunError,
+  DuplicateEvalCaseError,
   NoEvalCasesError,
   evalCaseInputSchema,
   evalCasePatchSchema,
@@ -34,16 +35,26 @@ export const adminEvalRoutes = new Hono<AdminEnv>()
     return c.json(await evalService.listCases());
   })
   .post('/cases', zValidator('json', evalCaseInputSchema), async (c) => {
-    return c.json(await evalService.createCase(c.req.valid('json')), 201);
+    try {
+      return c.json(await evalService.createCase(c.req.valid('json')), 201);
+    } catch (err) {
+      if (err instanceof DuplicateEvalCaseError) return c.json({ error: err.message }, 409);
+      throw err;
+    }
   })
   .patch(
     '/cases/:id',
     zValidator('param', evalIdParamSchema),
     zValidator('json', evalCasePatchSchema),
     async (c) => {
-      const updated = await evalService.updateCase(c.req.valid('param').id, c.req.valid('json'));
-      if (!updated) return c.json({ error: 'Case not found' }, 404);
-      return c.json(updated);
+      try {
+        const updated = await evalService.updateCase(c.req.valid('param').id, c.req.valid('json'));
+        if (!updated) return c.json({ error: 'Case not found' }, 404);
+        return c.json(updated);
+      } catch (err) {
+        if (err instanceof DuplicateEvalCaseError) return c.json({ error: err.message }, 409);
+        throw err;
+      }
     },
   )
   .delete('/cases/:id', zValidator('param', evalIdParamSchema), async (c) => {
