@@ -55,7 +55,8 @@ oblique. Emphasis comes from size, case, or a bracket, never weight.
 - **Structure** is hairlines and open lists. A section starts with a `border-t border-line`;
   a list is `border-t` with `border-b` rows. Cards, shadows and glass are gone from the main
   site. Frost is reserved for things that float over content: the full-width sticky nav
-  (frosted cream, no rule beneath it) and the `glass` panels in admin. White surfaces
+  (frosted cream, no rule beneath it) and the `glass` panels in admin. The animated water
+  background belongs to the public pre-launch pages, `/waitlist` and `/coming-soon`. White surfaces
   (`panel`, `Input`, `glass`) carry no frame: the white on the cream is the edge.
 - **The microphone** on Ask Joice is the button made round: a dotted circle on the paper that
   fills with ink while listening, with hairline rings that turn olive and move with the live
