@@ -18,6 +18,7 @@ import {
   createSettingsService,
   createUserService,
   createWaitlistService,
+  type PhiStatus,
 } from '@joice/core';
 import { createKlaviyoClient } from '@joice/marketing';
 import { createBrainConfigService } from '@joice/brain';
@@ -77,10 +78,16 @@ export const profiles = createProfileService(db);
 
 /**
  * Both PHI keys: the Terraform-set env and the admin-visible flag. The flow
- * validator refuses health-tier questions unless both say yes.
+ * validator refuses health-tier questions unless both say yes; the admin
+ * editor shows this state in its header, and the internal profile endpoint
+ * widens to the health tier only when `unlocked` is true.
  */
-const phiEnabled = async () =>
-  env.PHI_READY && (await featureFlags.evaluateAll())[FLAG_KEYS.onboardingHealth] === true;
+export const phiStatus = async (): Promise<PhiStatus> => {
+  const flag = (await featureFlags.evaluateAll())[FLAG_KEYS.onboardingHealth] === true;
+  return { ready: env.PHI_READY, flag, unlocked: env.PHI_READY && flag };
+};
+
+const phiEnabled = async () => (await phiStatus()).unlocked;
 
 export const flows = createFlowService(db, audit, { phiEnabled });
 

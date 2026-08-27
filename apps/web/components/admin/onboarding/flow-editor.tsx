@@ -5,9 +5,11 @@ import {
   PublishRefusedError,
   useAdminFlowVersion,
   useAdminFlowVersions,
+  useAdminFlows,
   useCreateFlowVersion,
   usePublishFlowVersion,
   useSaveFlowVersion,
+  type AdminPhiStatus,
   type ValidationReportView,
 } from '@joice/api-client';
 import { flowDefinitionSchema, type FlowDefinition, type FlowQuestion } from '@joice/core/schemas';
@@ -27,9 +29,11 @@ import { ValidationReportPanel } from './validation-report';
  */
 export function FlowEditor() {
   const versions = useAdminFlowVersions();
+  const flowList = useAdminFlows();
   const createDraft = useCreateFlowVersion();
   const draftRow = versions.data?.items.find((v) => v.status === 'draft');
   const publishedRow = versions.data?.items.find((v) => v.status === 'published');
+  const phi = flowList.data?.phi;
 
   if (versions.isPending) return <p className="mono-label text-muted">Loading…</p>;
   if (versions.error) return <ErrorState error={versions.error} />;
@@ -50,10 +54,18 @@ export function FlowEditor() {
       </Card>
     );
   }
-  return <DraftEditor draftId={draftRow.id} draftVersion={draftRow.version} />;
+  return <DraftEditor draftId={draftRow.id} draftVersion={draftRow.version} phi={phi} />;
 }
 
-function DraftEditor({ draftId, draftVersion }: { draftId: string; draftVersion: number }) {
+function DraftEditor({
+  draftId,
+  draftVersion,
+  phi,
+}: {
+  draftId: string;
+  draftVersion: number;
+  phi: AdminPhiStatus | undefined;
+}) {
   const version = useAdminFlowVersion(draftId);
   const save = useSaveFlowVersion();
   const publish = usePublishFlowVersion();
@@ -113,6 +125,7 @@ function DraftEditor({ draftId, draftVersion }: { draftId: string; draftVersion:
       <Card className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Badge tone="pending">draft v{draftVersion}</Badge>
+          {phi ? <Badge tone={phi.unlocked ? 'on' : 'suspended'}>{phi.unlocked ? 'health unlocked' : 'health locked'}</Badge> : null}
           {dirty ? <span className="mono-label text-muted">unsaved changes</span> : null}
         </div>
         <div className="flex gap-2">
@@ -123,6 +136,13 @@ function DraftEditor({ draftId, draftVersion }: { draftId: string; draftVersion:
             {publish.isPending ? 'Publishing…' : 'Publish +'}
           </Button>
         </div>
+        {phi && !phi.unlocked ? (
+          <p className="basis-full text-xs text-muted">
+            Medical questions can be drafted, never published: publishing is locked until the Before-PHI
+            checklist is complete and both PHI keys are on. Keys now: infrastructure (PHI_READY){' '}
+            {phi.ready ? 'on' : 'off'}, health flag {phi.flag ? 'on' : 'off'}.
+          </p>
+        ) : null}
         {message ? <p className="mono-label basis-full text-muted">{message}</p> : null}
       </Card>
 

@@ -15,6 +15,8 @@ import { useApiClient } from '../provider';
 type OnboardingAdminApi = ApiClient['api']['admin']['onboarding'];
 
 export type AdminFlowList = InferResponseType<OnboardingAdminApi['flows']['$get'], 200>;
+/** The two PHI keys and their AND, as the flows list serves them to the editor. */
+export type AdminPhiStatus = AdminFlowList['phi'];
 export type AdminFlowVersionList = InferResponseType<
   OnboardingAdminApi['flows'][':key']['versions']['$get'],
   200

@@ -8,6 +8,17 @@ import { flowDefinitionSchema } from './schemas';
  * forms off the route chain.
  */
 
+/**
+ * The two PHI keys as the admin editor shows them: the Terraform-set env half
+ * (`PHI_READY`, which the browser can never read directly), the
+ * `onboarding_health` flag half, and their AND. Served on the flows list.
+ */
+export interface PhiStatus {
+  ready: boolean;
+  flag: boolean;
+  unlocked: boolean;
+}
+
 export const FLOW_VERSION_STATUSES = ['draft', 'published', 'archived'] as const;
 export const flowVersionStatusSchema = z.enum(FLOW_VERSION_STATUSES);
 export type FlowVersionStatus = z.infer<typeof flowVersionStatusSchema>;

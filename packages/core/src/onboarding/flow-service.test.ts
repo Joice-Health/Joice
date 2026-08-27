@@ -110,6 +110,20 @@ describe('flow service', () => {
     });
   });
 
+  test('publish awaits an async phiEnabled and succeeds with both keys on', async () => {
+    // The api hands the service an async closure over the env key and the
+    // feature flag; the unlocked path must await it, not truthy-check the promise.
+    const draft = version({ id: 'v2', version: 2, status: 'draft', logicHash: null, publishedAt: null, publishedBy: null });
+    const { db, log } = stubDb(
+      [[draft], [flowRow]],
+      [[{ ...draft, status: 'published' }], [{ id: 'v1' }], [{ id: 'flow-1' }]],
+    );
+    const flows = createFlowService(db, createAuditService(db), { phiEnabled: async () => true });
+    const result = await flows.publish('v2', actor);
+    expect(result.ok).toBe(true);
+    expect(log.filter((l) => l.op === 'update.set').length).toBeGreaterThan(0);
+  });
+
   test('publish and rollback refuse the wrong statuses', async () => {
     const { db } = stubDb([[version({ status: 'published' })]]);
     const flows = createFlowService(db, createAuditService(db), { phiEnabled: () => false });
