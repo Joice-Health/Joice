@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { FLAG_KEYS } from '@joice/core/schemas';
 import { flagEnabled } from '@/lib/flags';
+import { Bracket } from '@joice/ui';
 import { AmbientBackground } from '@/components/ui/ambient-background';
 import { BrandMark } from '@/components/ui/brand-mark';
 
@@ -27,8 +28,8 @@ export default async function ComingSoonPage() {
       <AmbientBackground />
       <main className="relative mx-auto flex min-h-dvh w-full max-w-xl flex-col items-center justify-center px-6 py-10 text-center animate-fade-up">
         <BrandMark />
-        <p className="mt-8 text-balance text-2xl leading-snug text-ink sm:text-3xl">
-          Something special is coming.
+        <p className="mt-8 font-mono text-sm tracking-mono text-ink">
+          <Bracket>something special is coming</Bracket>
         </p>
       </main>
     </>
