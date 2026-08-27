@@ -10,7 +10,7 @@ import {
   useStartEvalRun,
   type StartEvalRunBody,
 } from '@joice/api-client';
-import { Card, Toggle } from '@/components/admin/ui';
+import { Card, ErrorState, Toggle } from '@/components/admin/ui';
 import { MODEL_PRESETS } from '@/components/admin/model-presets';
 import { Field, selectClass } from './form';
 
@@ -59,7 +59,31 @@ export function NewRunPanel({ hasActiveRun }: { hasActiveRun: boolean }) {
     });
   }, [resolved]);
 
-  if (!resolved || !knobs) return null;
+  // Never vanish: a hidden panel with "Start one above" pointing at nothing
+  // is how this shipped broken the first time. Loading and error states render
+  // the card, and a failed settings fetch is visible and retryable.
+  if (settings.isError) {
+    return (
+      <Card className="mb-6">
+        <h2 className="mb-2 text-lg font-semibold text-ink">New run</h2>
+        <p className="mb-2 text-sm text-muted">
+          The brain settings could not be loaded, and a run needs them as its baseline.
+        </p>
+        <ErrorState error={settings.error} />
+        <Button variant="outline" onClick={() => void settings.refetch()}>
+          Try again
+        </Button>
+      </Card>
+    );
+  }
+  if (!resolved || !knobs) {
+    return (
+      <Card className="mb-6">
+        <h2 className="mb-2 text-lg font-semibold text-ink">New run</h2>
+        <p className="text-sm text-muted">Loading the current settings…</p>
+      </Card>
+    );
+  }
 
   const set = <K extends keyof Knobs>(key: K, value: Knobs[K]) =>
     setKnobs((prev) => (prev ? { ...prev, [key]: value } : prev));
