@@ -33,6 +33,10 @@ If a container stops seeing file edits (stale Docker Desktop mount cache — has
 `docker compose up -d --force-recreate api brain web`. If that isn't enough (the container
 sees a *truncated* file and reports a syntax error at a line that looks fine on the host),
 give the file a fresh inode: `cp f /tmp/x && rm f && cp /tmp/x f`, then restart.
+A second overnight failure mode: after the Mac sleeps, a long-running api/brain container's
+pooled Postgres sockets die silently; every db-backed request then hangs ~10s and the browser
+sees `ERR_EMPTY_RESPONSE` (`[Bun.serve]: request timed out` in the container log) while
+Postgres itself is healthy. Fix: `docker restart joice-api-1` (or whichever service hangs).
 
 ## Architecture
 

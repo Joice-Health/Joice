@@ -287,3 +287,155 @@ export const brainProfiles = pgTable(
 
 export type BrainProfile = typeof brainProfiles.$inferSelect;
 export type NewBrainProfile = typeof brainProfiles.$inferInsert;
+
+/**
+ * The golden question set the eval console runs. Each row is one benchmark
+ * question with its expectations; the question text is the case's identity
+ * (unique), which is what makes the seed migration idempotent and lets a
+ * result row outlive its case by snapshotting the question.
+ *
+ * Seeded from apps/brain/fixtures/golden.jsonl by migration; owned by the
+ * admin CRUD on the brain's eval routes after that. The CLI eval script reads
+ * this table too, falling back to the jsonl only when it is empty, so the
+ * console and automation always grade against one set.
+ */
+export const evalCases = pgTable(
+  'eval_cases',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+
+    question: text('question').notNull(),
+
+    /** Every listed source path must appear in the retrieved or cited set. */
+    expectSources: jsonb('expect_sources').$type<string[]>(),
+
+    /** An off-corpus question: the honest outcome is a decline with no citations. */
+    expectRefusal: boolean('expect_refusal').notNull().default(false),
+
+    /** Tool mode: this tool should be among those the model called. */
+    expectTool: text('expect_tool'),
+
+    mustCite: boolean('must_cite').notNull().default(false),
+
+    /** Disabled cases are kept but skipped by runs. */
+    enabled: boolean('enabled').notNull().default(true),
+
+    tags: jsonb('tags').$type<string[]>().notNull().default([]),
+    notes: text('notes'),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex('eval_cases_question_unique').on(table.question)],
+);
+
+export type EvalCase = typeof evalCases.$inferSelect;
+export type NewEvalCase = typeof evalCases.$inferInsert;
+
+/**
+ * One row per eval run: what configuration it exercised, who started it, and
+ * how it scored. The config snapshot is the FULL effective config the run
+ * executed with (stored settings + the admin's overrides, showCitations
+ * pinned true), so a run stays interpretable after settings change.
+ *
+ * The partial unique index on status is the one-active-run guard. The
+ * executor is fire-and-forget inside one ECS task and tasks scale out, so
+ * any in-memory lock multiplies per task; the database admitting at most one
+ * 'running' row is race-free everywhere, and a second start maps the unique
+ * violation to a 409.
+ */
+export const evalRuns = pgTable(
+  'eval_runs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+
+    status: text('status', { enum: ['running', 'completed', 'failed'] })
+      .notNull()
+      .default('running'),
+    mode: text('mode', { enum: ['retrieval', 'full'] }).notNull(),
+
+    /** The full effective ResolvedBrainConfig the run executed with. */
+    configSnapshot: jsonb('config_snapshot').$type<Record<string, unknown>>().notNull(),
+    /** Only the overrides the admin applied on top of the stored settings. */
+    overridesApplied: jsonb('overrides_applied')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+
+    /** Denormalized for the runs list, so it never digs into the snapshot. */
+    model: text('model').notNull(),
+    toolsEnabled: boolean('tools_enabled').notNull().default(false),
+
+    /** Clerk user id of the admin who started the run; email for display. */
+    triggeredBy: text('triggered_by').notNull(),
+    triggeredByEmail: text('triggered_by_email'),
+
+    totalCases: integer('total_cases').notNull().default(0),
+    passedCases: integer('passed_cases'),
+    failedCases: integer('failed_cases'),
+
+    firstTokenP50Ms: integer('first_token_p50_ms'),
+    firstTokenP95Ms: integer('first_token_p95_ms'),
+    totalP50Ms: integer('total_p50_ms'),
+    totalP95Ms: integer('total_p95_ms'),
+
+    inputTokens: integer('input_tokens'),
+    outputTokens: integer('output_tokens'),
+
+    error: text('error'),
+
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp('finished_at', { withTimezone: true }),
+  },
+  (table) => [
+    index('eval_runs_started_idx').on(table.startedAt.desc()),
+    // Previous-completed-run-of-the-same-mode lookup for the compare view.
+    index('eval_runs_mode_status_idx').on(table.mode, table.status, table.startedAt.desc()),
+    // The one-active-run guard: every running row has the same status value,
+    // so a unique index filtered to running rows admits at most one.
+    uniqueIndex('eval_runs_one_running_unique')
+      .on(table.status)
+      .where(sql`${table.status} = 'running'`),
+  ],
+);
+
+export type EvalRun = typeof evalRuns.$inferSelect;
+export type NewEvalRun = typeof evalRuns.$inferInsert;
+
+/**
+ * One row per case per run, inserted as each case finishes; that is what
+ * lets the run detail page show live progress on a plain poll. The question
+ * is snapshotted and case_id is set null on case deletion, so deleting a
+ * case never rewrites history.
+ */
+export const evalResults = pgTable(
+  'eval_results',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+
+    runId: uuid('run_id')
+      .notNull()
+      .references(() => evalRuns.id, { onDelete: 'cascade' }),
+    caseId: uuid('case_id').references(() => evalCases.id, { onDelete: 'set null' }),
+
+    question: text('question').notNull(),
+
+    pass: boolean('pass').notNull(),
+    detail: text('detail').notNull(),
+
+    answer: text('answer'),
+    citations: jsonb('citations').$type<unknown[]>(),
+    toolsCalled: jsonb('tools_called').$type<string[]>(),
+
+    firstTokenMs: integer('first_token_ms'),
+    totalMs: integer('total_ms'),
+    inputTokens: integer('input_tokens'),
+    outputTokens: integer('output_tokens'),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('eval_results_run_idx').on(table.runId, table.createdAt)],
+);
+
+export type EvalResult = typeof evalResults.$inferSelect;
+export type NewEvalResult = typeof evalResults.$inferInsert;

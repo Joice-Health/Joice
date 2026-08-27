@@ -30,7 +30,11 @@ web-specific detail.
 - `/team` — team password login; sets the HMAC cookie from `lib/team-auth.ts`.
 - `/admin/*` — Clerk-gated dashboard (`admin/(dashboard)/` route group); sign-in at
   `/admin/sign-in` (in-app page, not Clerk's hosted portal). Non-admin users are bounced to
-  `/waitlist`, same as anonymous. The onboarding surface lives at `/admin/onboarding/*`
+  `/waitlist`, same as anonymous. The eval console lives at `/admin/eval`
+  (+ `/admin/eval/[id]`) over the brain-service admin hooks in
+  `@joice/api-client` (`useEvalRuns`, `useEvalRun` with its scoped 2s poll,
+  `useStartEvalRun`, case CRUD); `AdminProviders` passes `brainBaseUrl` so those
+  hooks reach the brain in bare-host dev. The onboarding surface lives at `/admin/onboarding/*`
   (hub, flow editor, simulator, versions, service areas, funnel, requests) over the
   `@joice/api-client` admin onboarding hooks; the editor edits drafts only and the inline help
   must keep saying what `docs/onboarding/05-admin-guide.md` says.

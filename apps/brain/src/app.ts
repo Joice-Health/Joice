@@ -27,6 +27,7 @@ import type { WSContext } from 'hono/ws';
 import { allowedOrigins, env } from './env';
 import { upgradeWebSocket } from './ws';
 import { rateLimit } from './middleware/rate-limit';
+import { adminEvalRoutes } from './admin/eval-routes';
 import { requestLog } from './middleware/request-log';
 import { identifyRequester, type RequesterVariables } from './middleware/requester';
 import { checkHealth } from './health';
@@ -65,7 +66,9 @@ app.use(
   '/api/*',
   cors({
     origin: allowedOrigins,
-    allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+    // PATCH for the eval console's case edits; only matters in bare-host dev
+    // (same origin in prod), which is exactly where a 405 would go unnoticed.
+    allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
     // The session cookie must survive cross-origin requests in local dev (web
     // :3000 → brain :4100). Requires a specific origin allowlist above, never
@@ -520,7 +523,13 @@ const routes = app
       conversationService.claim(requester.sessionId, requester.memberId),
     ]);
     return c.json({ claimed: { profiles, conversations } });
-  });
+  })
+  /**
+   * The eval console: the brain's first admin surface of its own (Clerk
+   * admin role, checked in the sub-router). Joined inside the chain so
+   * BrainAppType carries it into the typed client.
+   */
+  .route('/api/brain/admin/eval', adminEvalRoutes);
 
 export type BrainAppType = typeof routes;
 // `routes` is the same instance as `app`, but typed with the full route chain.

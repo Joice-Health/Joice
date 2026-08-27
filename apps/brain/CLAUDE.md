@@ -45,8 +45,13 @@ client, and an upgrade handler has no place in `BrainAppType`.
 
 ## Cost is the operating constraint
 
-Every endpoint here is unauthenticated and metered. Rate limits are the only thing in front of
-them, so they are load-bearing rather than decorative:
+Every PUBLIC endpoint here is unauthenticated and metered; rate limits are the only thing in
+front of them, so they are load-bearing rather than decorative. The one exception is the eval
+console (`/api/brain/admin/eval/*`, `src/admin/eval-routes.ts`): the brain's first admin
+surface of its own, gated by `src/middleware/admin.ts` (a deliberate copy of the api's
+`requireAdmin` over the app-level Clerk middleware; role rides the session-token metadata
+claim). Eval runs execute fire-and-forget in this process; the one-active-run guard is a
+partial unique index, not memory (docs/rag/12-eval-console.md).
 
 - Client IP comes from the `TRUSTED_PROXY_HOPS`-th hop **from the right** of `x-forwarded-for`
   (`src/middleware/client-ip.ts`). Never the leftmost — CloudFront appends to a client-supplied
@@ -68,8 +73,10 @@ the ALB drains the task.
 
 ## Scripts
 
-`scripts/ingest.ts` and `scripts/prep-vault.ts` ship in this image (the ingestion ECS task
-reuses it with a different command). `prep-vault.ts` is local-only and must never run in a
+`scripts/ingest.ts`, `scripts/prep-vault.ts`, `scripts/retention.ts` and `scripts/eval.ts`
+ship in this image (the one-off ECS tasks reuse it with different commands). `eval.ts` reads
+the golden set from `eval_cases` (the same set `/admin/eval` manages), falling back to
+`fixtures/golden.jsonl` only when the table is empty. `prep-vault.ts` is local-only and must never run in a
 deployed container — it reads a raw clinical vault. Its PHI report is written *outside* the
 upload folder, and `ingest.ts` refuses to run if it finds one in the source; both guards exist
 because a report inside the corpus would be embedded and quoted back to a member.
