@@ -1,6 +1,6 @@
 ---
 name: wrap-up
-description: "Close the loop when Joice work ships: bring docs/ to as-built, sweep Shortcut story states and post a product-voiced epic status comment, and write or update the feature's Notion page under Product Docs in the Engineering workspace. MANDATORY TRIGGERS: a feature, phase, or epic just finished; before claiming an epic done; the user says 'wrap up', 'wrap-up', 'close out', 'ship the docs'. ALSO TRIGGER after a batch of fixes that touched shipped behavior, to refresh the Notion changelog. Do NOT trigger mid-build for a single story; story states move with the code as part of normal work."
+description: "Close the loop when Joice work ships: bring docs/ to as-built, sweep Shortcut story states and post a product-voiced epic status comment, and write or update the feature's Notion page under the Documentation page in the Joice Health workspace. MANDATORY TRIGGERS: a feature, phase, or epic just finished; before claiming an epic done; the user says 'wrap up', 'wrap-up', 'close out', 'ship the docs'. ALSO TRIGGER after a batch of fixes that touched shipped behavior, to refresh the Notion changelog. Do NOT trigger mid-build for a single story; story states move with the code as part of normal work."
 ---
 
 # Wrap-up: three surfaces current when work ships
@@ -26,11 +26,12 @@ Docs normally land PR-by-PR (a story is not done until its docs are in the same 
 
 ## Step 3: Notion product doc
 
-Target: a sub-page per feature under the top-level **Product Docs** page in the Engineering workspace.
+Target: a sub-page per feature under the **Documentation** page in the **Joice Health** Notion workspace, and nowhere else:
+`https://app.notion.com/p/Documentation-3587e3a92b3980328d06cf9a71b0f7d7` (page id `3587e3a92b3980328d06cf9a71b0f7d7`). Never create a different home and never write into another workspace; a Notion authorization is granted per workspace, so a wrong grant silently lands pages in the wrong place.
 
-**Auth check first.** The Notion MCP server may not be authenticated. If a Notion call fails as unauthenticated or unauthorized: stop this leg, tell the user to authenticate via `/mcp` in an interactive session, and leave a "Notion docs pending" comment on the epic so it is not forgotten. Never fail silently.
+**Check the connection first.** Fetch the Documentation page by that id before writing anything. If the fetch fails as unauthenticated, or the page cannot be found (the token points at a workspace other than Joice Health): stop this leg, tell the user to re-authenticate the Notion server via `/mcp` in an interactive session and pick **Joice Health** on the authorization screen, and leave a "Notion docs pending" comment on the epic so it is not forgotten. Never fail silently and never fall back to a different location.
 
-1. Find the **Product Docs** page (`Notion:search` or `Notion:find` skill). If it does not exist, create it once at the top level of the Engineering workspace (`Notion:create-page`), with one intro line: what lives here and that pages are updated when features ship.
+1. Open the **Documentation** page by its id (the `Notion:search` and `Notion:create-page` skills wrap the Notion tools). Sub-pages live directly under it, one per feature.
 2. Create or update the feature's sub-page:
    - **What it is / Who it's for**: plain language, two or three sentences.
    - **How to use it**: numbered steps a teammate can follow today, in the voice of `docs/onboarding/05-admin-guide.md` (where to click, what they will see, what the words on screen mean). If something needs a flag, a login, or an open service area first, say so as step 1.

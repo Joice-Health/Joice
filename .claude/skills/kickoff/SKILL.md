@@ -11,7 +11,7 @@ Joice work is visible on three surfaces, each with its own audience and voice:
 |---|---|---|---|
 | `docs/` in the repo | engineers | technical: flows, diagrams, file:line refs | at kickoff, kept as-built in every PR |
 | Shortcut | product managers and stakeholders | product: outcomes, plain words, no code identifiers | at kickoff, states move with the code |
-| Notion "Product Docs" | the whole team | how to use the feature | at wrap-up |
+| Notion "Documentation" page (Joice Health workspace) | the whole team | how to use the feature | at wrap-up |
 
 This skill sets up the first two before implementation starts. The companion skill `wrap-up` closes the loop when the work ships. Same facts, three voices; never paste the technical doc into Shortcut or Notion.
 

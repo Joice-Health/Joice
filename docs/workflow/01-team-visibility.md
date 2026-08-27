@@ -16,7 +16,7 @@ updating them a step of the work itself rather than an afterthought.
 |---|---|---|---|---|
 | `docs/` (this directory) | engineers | technical: Mermaid flows, file:line refs, "why" paragraphs | at kickoff | every PR (docs in the same PR as code) |
 | Shortcut (Engineering team) | PMs and stakeholders | product: outcomes, plain words, no code identifiers | at kickoff | story states move with the code; epic comments at wrap-up |
-| Notion (Product Docs page, Engineering workspace) | the whole team | instructional: what it is, how to use it | at wrap-up | changelog rows on later wrap-ups |
+| Notion ([Documentation page](https://app.notion.com/p/Documentation-3587e3a92b3980328d06cf9a71b0f7d7), Joice Health workspace) | the whole team | instructional: what it is, how to use it | at wrap-up | changelog rows on later wrap-ups |
 
 ## The lifecycle
 
@@ -65,6 +65,11 @@ The same fact on each surface:
 
 ## Notion access
 
-The Notion MCP server needs a one-time authentication (`/mcp` in an interactive Claude Code
-session). Until then, wrap-up completes the other surfaces and leaves a "Notion docs pending"
-comment on the epic rather than failing silently.
+Product pages live under one page and nowhere else: **Documentation** in the **Joice Health**
+workspace (`https://app.notion.com/p/Documentation-3587e3a92b3980328d06cf9a71b0f7d7`).
+A Notion authorization is granted per workspace, chosen on the authorization screen, so a
+grant to the wrong workspace silently lands pages in the wrong place; wrap-up therefore
+fetches the Documentation page by id before writing and stops if it cannot. When the fetch
+fails (no auth, or a wrong-workspace token), re-authenticate via `/mcp` in an interactive
+Claude Code session and pick Joice Health; until then, wrap-up completes the other surfaces
+and leaves a "Notion docs pending" comment on the epic rather than failing silently.
