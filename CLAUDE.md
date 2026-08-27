@@ -123,6 +123,11 @@ product, Notion to the whole team. Same facts, three voices. Full doc:
   first commit) means In Progress and assigned; PR opened means the PR URL attached to the
   story and In Review; PR merged means Done (with a story comment if scope changed).
   `wrap-up` is the catch-all sweep, not the mechanism.
+- **The root `README.md` is the repo's front door and rots fastest.** A PR that adds, removes
+  or renames an app, package, service, route namespace, root script, or docs area (or changes
+  how the stack is run) updates the root README in the same PR. It stays a short orientation
+  page: stack, layout, how to run, where the surfaces are. Depth belongs in CLAUDE.md and
+  `docs/`, which the README points at instead of duplicating.
 - **Docs house style** (repo-wide, from the onboarding brief section 7): Mermaid for anything
   with more than two boxes, file:line references where a doc points at code, one "why"
   paragraph per decision, no em dashes anywhere (docs, stories, commits, copy), and
