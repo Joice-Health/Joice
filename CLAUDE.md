@@ -113,7 +113,7 @@ product, Notion to the whole team. Same facts, three voices. Full doc:
   code** (engineering docs under `docs/<area>/`, the `docs/README.md` index, a Shortcut epic
   with product-voiced stories under the Engineering team, all cross-linked). When it ships,
   run the `wrap-up` skill (as-built docs, story sweep + a plain-language epic status comment,
-  the feature's Notion page under Product Docs in the Engineering workspace).
+  the feature's Notion page under the Documentation page in the Joice Health workspace).
 - **Fixes and small updates**: no new epic. One story on the relevant epic (or the standing
   "Maintenance" epic), and the affected `docs/*` and CLAUDE.md updated **in the same PR** as
   the change; this generalizes the onboarding rule above to the whole repo. If member-visible
