@@ -24,13 +24,16 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
-import { createDatabase } from '@joice/db';
+import { asc, createDatabase, eq, evalCases } from '@joice/db';
 import {
   createBrainConfigService,
   createEmbeddingClient,
   createGenerationClient,
   createRecommendationService,
   noopAuditPort,
+  percentile,
+  scoreFullCase,
+  scoreRetrievalCase,
   stubPorts,
   type RecommendationStreamEvent,
 } from '@joice/brain';
@@ -70,13 +73,41 @@ const goldenCaseSchema = z.object({
 });
 type GoldenCase = z.infer<typeof goldenCaseSchema>;
 
-const cases: GoldenCase[] = readFileSync(join(import.meta.dir, '../fixtures/golden.jsonl'), 'utf8')
-  .split('\n')
-  .filter((line) => line.trim())
-  .map((line) => goldenCaseSchema.parse(JSON.parse(line)))
-  .slice(0, LIMIT);
-
 const db = createDatabase(env.DATABASE_URL);
+
+/**
+ * One question set, two front ends: the database is the source of truth (the
+ * admin console manages it at /admin/eval), and the checked-in golden.jsonl
+ * is only the fallback for a fresh database with no migrations seeded.
+ */
+const dbCases = await db
+  .select()
+  .from(evalCases)
+  .where(eq(evalCases.enabled, true))
+  .orderBy(asc(evalCases.createdAt));
+
+const cases: GoldenCase[] =
+  dbCases.length > 0
+    ? dbCases
+        .map((row) => ({
+          q: row.question,
+          expectSources: row.expectSources ?? undefined,
+          expectRefusal: row.expectRefusal,
+          expectTool: row.expectTool ?? undefined,
+          mustCite: row.mustCite,
+        }))
+        .slice(0, LIMIT)
+    : readFileSync(join(import.meta.dir, '../fixtures/golden.jsonl'), 'utf8')
+        .split('\n')
+        .filter((line) => line.trim())
+        .map((line) => goldenCaseSchema.parse(JSON.parse(line)))
+        .slice(0, LIMIT);
+
+console.log(
+  dbCases.length > 0
+    ? `Cases from the database (eval_cases, ${dbCases.length} enabled)`
+    : 'Cases from fixtures/golden.jsonl (eval_cases table is empty)',
+);
 const embeddings = createEmbeddingClient({ region: env.BEDROCK_REGION });
 const generation = createGenerationClient({ region: env.BEDROCK_REGION });
 const brainConfig = createBrainConfigService(db, noopAuditPort, {
@@ -105,21 +136,11 @@ interface CaseResult {
   totalMs?: number;
 }
 
-function percentile(sorted: number[], p: number): number {
-  if (sorted.length === 0) return 0;
-  return sorted[Math.min(sorted.length - 1, Math.floor((p / 100) * sorted.length))]!;
-}
-
 async function runRetrievalCase(c: GoldenCase): Promise<CaseResult> {
-  if (!c.expectSources) {
-    return { q: c.q, pass: true, detail: 'skipped (no expectSources; needs --full)' };
-  }
-  const chunks = await service.retrieve(c.q, config);
+  const chunks = c.expectSources ? await service.retrieve(c.q, config) : [];
   const paths = new Set(chunks.map((chunk) => chunk.sourcePath));
-  const missing = c.expectSources.filter((s) => !paths.has(s));
-  return missing.length === 0
-    ? { q: c.q, pass: true, detail: `recall ok (${paths.size} chunks)` }
-    : { q: c.q, pass: false, detail: `missing from top-${config.topK}: ${missing.join(', ')}` };
+  const score = scoreRetrievalCase({ question: c.q, ...c }, paths, config.topK);
+  return { q: c.q, pass: score.pass, detail: score.detail };
 }
 
 async function runFullCase(c: GoldenCase): Promise<CaseResult> {
@@ -140,53 +161,13 @@ async function runFullCase(c: GoldenCase): Promise<CaseResult> {
   const totalMs = performance.now() - started;
   if (!complete) return { q: c.q, pass: false, detail: 'stream ended without complete' };
 
-  const cited = new Set(complete.recommendation.citations.map((cit) => cit.sourcePath));
-  const problems: string[] = [];
-
-  if (c.expectRefusal) {
-    // Zero citations is necessary but NOT sufficient: in tools mode a model
-    // can answer off-corpus questions confidently from parametric knowledge
-    // with no [n] markers at all, which is the exact residual risk this
-    // harness exists to measure. The answer itself must read as a refusal. Models
-    // phrase refusals many ways ("not within my scope of knowledge", "I can't
-    // provide advice on"), so the detector errs broad; a false PASS here is
-    // worse than a false FAIL, but a detector that flags honest refusals
-    // trains people to ignore the eval.
-    const answer = complete.recommendation.answer;
-    const REFUSAL_SHAPES = [
-      /\b(doesn'?t|does not|don'?t|can'?t|cannot|won'?t|unable to)\b.{0,80}\b(cover|answer|help|provide|advis|advice|assist|speak|write|create|share)/i,
-      /\b(outside|beyond|not within|not in)\b.{0,40}\b(scope|library|notes|knowledge)\b/i,
-      /\bno (information|notes?|research)\b/i,
-      /\bnot (something|a topic)\b/i,
-      /\bi(?:'|’)?m sorry,? but\b/i,
-      /\brecommend (checking|consulting|speaking)\b/i,
-    ];
-    const soundsLikeRefusal =
-      answer.includes(config.notCoveredMessage) ||
-      REFUSAL_SHAPES.some((shape) => shape.test(answer));
-    if (cited.size > 0) {
-      problems.push(`expected refusal but cited: ${[...cited].join(', ')}`);
-    } else if (!soundsLikeRefusal) {
-      problems.push(`expected refusal but got an uncited answer: "${answer.slice(0, 120)}…"`);
-    }
-  }
-  if (c.mustCite && cited.size === 0) problems.push('expected citations, got none');
-  for (const s of c.expectSources ?? []) {
-    if (!cited.has(s)) problems.push(`expected citation of ${s}`);
-  }
-  if (c.expectTool && config.toolsEnabled && !toolsCalled.has(c.expectTool)) {
-    problems.push(`expected tool ${c.expectTool}; called: ${[...toolsCalled].join(', ') || 'none'}`);
-  }
-
-  return {
-    q: c.q,
-    pass: problems.length === 0,
-    detail:
-      problems.join('; ') ||
-      `ok (${cited.size} citations${toolsCalled.size ? `, tools: ${[...toolsCalled].join(',')}` : ''})`,
-    firstTokenMs,
-    totalMs,
-  };
+  const citedPaths = new Set(complete.recommendation.citations.map((cit) => cit.sourcePath));
+  const score = scoreFullCase(
+    { question: c.q, ...c },
+    { answer: complete.recommendation.answer, citedPaths, toolsCalled },
+    { notCoveredMessage: config.notCoveredMessage, toolsEnabled: config.toolsEnabled },
+  );
+  return { q: c.q, pass: score.pass, detail: score.detail, firstTokenMs, totalMs };
 }
 
 console.log(
