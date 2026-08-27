@@ -76,10 +76,13 @@ a list subscription only when `consent_marketing` was ticked.
 
 ## The brain's side
 
-The brain recognises a member without ever holding the Clerk secret:
-`clerkMiddleware` verifies the bearer token networklessly with the instance's
-**public JWT key** (`CLERK_JWT_KEY`; the secret key is only a local-dev
-fallback), and `identifyRequester` reads `metadata.memberId`. Anonymous
+The brain recognises a member without ever holding the Clerk secret: its own
+`clerkAuth` middleware (`apps/brain/src/middleware/clerk.ts`) verifies the
+bearer token networklessly with the instance's **public JWT key**
+(`CLERK_JWT_KEY`; the secret key is only a local-dev fallback), and
+`identifyRequester` reads `metadata.memberId`. It calls the Clerk SDK's
+`verifyToken` directly rather than the `@hono/clerk-auth` wrapper, which
+refuses to run without the secret key even when handed the public one. Anonymous
 requests are unchanged. `POST /api/brain/profile/claim` attaches the
 browser's lead and threads to the member (only unclaimed rows; a session id
 is a bearer token). This honours the IAM stance that the brain task cannot

@@ -1,5 +1,4 @@
 import { Hono, type Context } from 'hono';
-import { clerkMiddleware } from '@hono/clerk-auth';
 import { cors } from 'hono/cors';
 import { requestId, type RequestIdVariables } from 'hono/request-id';
 import { secureHeaders } from 'hono/secure-headers';
@@ -29,6 +28,7 @@ import { upgradeWebSocket } from './ws';
 import { rateLimit } from './middleware/rate-limit';
 import { adminEvalRoutes } from './admin/eval-routes';
 import { requestLog } from './middleware/request-log';
+import { createClerkAuth } from './middleware/clerk';
 import { identifyRequester, type RequesterVariables } from './middleware/requester';
 import { checkHealth } from './health';
 import {
@@ -50,16 +50,12 @@ app.use('*', requestId());
 app.use('*', requestLog);
 app.use('*', secureHeaders());
 // Who is asking: the opaque session cookie always, plus the member id from a
-// Clerk bearer token when the browser sends one (clerkMiddleware verifies it;
-// without a token it simply sets no user). See middleware/requester.ts.
+// Clerk bearer token when the browser sends one (clerkAuth verifies it
+// networklessly with the public JWT key; without a token, or with an invalid
+// one, it simply sets no user). See middleware/clerk.ts and requester.ts.
 app.use(
   '/api/brain/*',
-  clerkMiddleware({
-    publishableKey: env.CLERK_PUBLISHABLE_KEY,
-    // Networkless verification with the public JWT key in prod; the secret key
-    // only as a local fallback (see env.ts). Never both unset in a real env.
-    ...(env.CLERK_JWT_KEY ? { jwtKey: env.CLERK_JWT_KEY } : { secretKey: env.CLERK_SECRET_KEY || 'sk_test_placeholder' }),
-  }),
+  createClerkAuth({ jwtKey: env.CLERK_JWT_KEY, secretKey: env.CLERK_SECRET_KEY }),
 );
 app.use('/api/brain/*', identifyRequester);
 app.use(
