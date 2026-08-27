@@ -107,17 +107,19 @@ Already true today (inherited from the existing stack + this feature):
   see the gate below
 
 **Required before real members use the chat** (the "Before PHI" checklist in
-`infra/README.md`, plus feature-specific items):
+`infra/README.md`, plus feature-specific items). The infrastructure half
+shipped and was verified in production on 2026-08-27 (PR 45, story sc-181);
+the application half is the remaining workstream:
 
-| Item | Why it matters here |
-|---|---|
-| Private subnets + NAT / VPC endpoints (incl. a Bedrock VPC endpoint) | Today tasks sit in public subnets with public IPs; Bedrock/S3 calls traverse the public internet (TLS, but still) |
-| RDS Multi-AZ, longer backups, KMS CMKs | Member questions may eventually be persisted (conversation history) |
-| CloudTrail, VPC flow logs, ALB/CloudFront access logs | Audit trail for PHI access |
-| ALB HTTPS origin (CloudFront → ALB is currently plaintext HTTP) | Encrypt the last hop |
-| Member auth on the chat routes | Replace public+rate-limit with Clerk member sessions; enables per-member accountability |
-| Redis-backed rate limiting | The in-memory limiter is per-task and resets on deploy |
-| App-level audit logging for chat | Who asked what, when — required once questions are PHI |
+| Item | Status | Why it matters here |
+|---|---|---|
+| Private subnets + NAT / VPC endpoints (incl. a Bedrock VPC endpoint) | **Done 2026-08-27** — tasks carry no public IPs; Bedrock resolves to the VPC endpoint | Bedrock/S3 calls stay on the AWS backbone |
+| RDS Multi-AZ, longer backups, KMS CMKs | **Done 2026-08-27** — Multi-AZ, 35-day backups; CMKs on the greenfield labs/CloudTrail resources, the RDS CMK consciously deferred (snapshot-restore migration) | Member questions may eventually be persisted (conversation history) |
+| CloudTrail, VPC flow logs, ALB/CloudFront access logs | **Done 2026-08-27** — multi-region trail on a CMK (6y retention), parquet flow logs, ALB + CloudFront v2 logs delivering | Audit trail for PHI access |
+| ALB HTTPS origin | **Done 2026-08-27** — CloudFront speaks https-only to `origin.joicehealth.com`; the deprecated :80 listener awaits a cleanup change | Encrypt the last hop |
+| Member auth on the chat routes | Open | Replace public+rate-limit with Clerk member sessions; enables per-member accountability |
+| Redis-backed rate limiting | Open | The in-memory limiter is per-task and resets on deploy |
+| App-level audit logging for chat | Open | Who asked what, when — required once questions are PHI |
 
 ## The conversation-persistence gate
 
@@ -139,7 +141,7 @@ id. Storing it makes this a system that holds PHI, with everything that follows.
 | Retention period, and what deletes the data | The **mechanism is built**: `apps/brain/scripts/retention.ts` deletes threads idle past the window, run nightly by a scheduled ECS task (`infra/retention.tf` — always enabled; a sweep of an empty table is free, and expiry must not stop when storage does). What's missing is the **number** — counsel must set the retention period; indefinite retention of health questions is not defensible |
 | Member deletion / right-to-erasure path | The **mechanism is built**: `deleteForRequester` on both services erases the requester's threads (messages cascade) and their lead profile, suppressing the email in Klaviyo first. What's missing is the **authenticated endpoint** that exposes it — that arrives with member auth |
 | AWS AI-services opt-out policy applied at the org | Keeps prompts out of AWS service-improvement pipelines |
-| The Before-PHI checklist items below | Private subnets, KMS CMKs, CloudTrail, encrypted last hop — all of them become required, not recommended |
+| The Before-PHI checklist items below | The infrastructure items (private subnets, CloudTrail, encrypted last hop, Multi-AZ) shipped 2026-08-27; the app-level items (member auth, chat audit logging) remain |
 | Member auth on the chat routes | An anonymous session cookie is not an accountability boundary |
 
 One deliberate property of the erasure path: **Klaviyo suppression is
