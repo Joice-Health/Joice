@@ -13,11 +13,11 @@ export const evalCaseInputSchema = z.object({
   question: z.string().trim().min(1).max(1000),
   expectSources: z.array(z.string().trim().min(1).max(300)).max(20).optional(),
   expectRefusal: z.boolean().default(false),
-  expectTool: z.string().trim().min(1).max(100).optional(),
+  expectTool: z.string().trim().min(1).max(100).nullable().optional(),
   mustCite: z.boolean().default(false),
   enabled: z.boolean().default(true),
   tags: z.array(z.string().trim().min(1).max(50)).max(10).default([]),
-  notes: z.string().trim().max(2000).optional(),
+  notes: z.string().trim().max(2000).nullable().optional(),
 });
 export type EvalCaseInput = z.infer<typeof evalCaseInputSchema>;
 

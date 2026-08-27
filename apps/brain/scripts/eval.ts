@@ -24,7 +24,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
-import { asc, createDatabase, eq, evalCases } from '@joice/db';
+import { asc, createDatabase, evalCases } from '@joice/db';
 import {
   createBrainConfigService,
   createEmbeddingClient,
@@ -77,14 +77,26 @@ const db = createDatabase(env.DATABASE_URL);
 
 /**
  * One question set, two front ends: the database is the source of truth (the
- * admin console manages it at /admin/eval), and the checked-in golden.jsonl
- * is only the fallback for a fresh database with no migrations seeded.
+ * admin console manages it at /admin/eval). The checked-in golden.jsonl is
+ * the fallback ONLY when the table holds nothing at all (fresh or
+ * unmigrated database); a table where every case is disabled is a deliberate
+ * admin state and gets a refusal, not a silent stale fallback.
  */
-const dbCases = await db
-  .select()
-  .from(evalCases)
-  .where(eq(evalCases.enabled, true))
-  .orderBy(asc(evalCases.createdAt));
+let allRows: (typeof evalCases.$inferSelect)[] = [];
+let tableMissing = false;
+try {
+  allRows = await db.select().from(evalCases).orderBy(asc(evalCases.createdAt));
+} catch {
+  tableMissing = true; // relation does not exist: migrations have not run
+}
+const dbCases = allRows.filter((row) => row.enabled);
+
+if (!tableMissing && allRows.length > 0 && dbCases.length === 0) {
+  console.error(
+    'Every eval case is disabled. Enable some in /admin/eval; the golden.jsonl fallback only applies when the table is empty.',
+  );
+  process.exit(2);
+}
 
 const cases: GoldenCase[] =
   dbCases.length > 0
@@ -106,7 +118,9 @@ const cases: GoldenCase[] =
 console.log(
   dbCases.length > 0
     ? `Cases from the database (eval_cases, ${dbCases.length} enabled)`
-    : 'Cases from fixtures/golden.jsonl (eval_cases table is empty)',
+    : tableMissing
+      ? 'Cases from fixtures/golden.jsonl (eval_cases table missing; run migrations)'
+      : 'Cases from fixtures/golden.jsonl (eval_cases table is empty)',
 );
 const embeddings = createEmbeddingClient({ region: env.BEDROCK_REGION });
 const generation = createGenerationClient({ region: env.BEDROCK_REGION });

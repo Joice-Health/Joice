@@ -46,8 +46,16 @@ export class EvalRunActiveError extends Error {
 
 async function unwrap<T>(res: Response): Promise<T> {
   if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? `Request failed (${res.status})`);
+    // zValidator 400s carry a ZodError object under `error`; stringify the
+    // first issue instead of rendering "[object Object]" in the UI.
+    const body = (await res.json().catch(() => ({}))) as { error?: unknown };
+    const raw = body.error;
+    const message =
+      typeof raw === 'string'
+        ? raw
+        : ((raw as { issues?: { message?: string }[] } | undefined)?.issues?.[0]?.message ??
+          `Request failed (${res.status})`);
+    throw new Error(message);
   }
   return res.json() as Promise<T>;
 }

@@ -43,9 +43,13 @@ export default function AdminEvalRunPage({ params }: { params: Promise<{ id: str
     run.status === 'running' ? `${results.length} of ${run.totalCases} graded` : null;
 
   const applyOverrides = async () => {
-    await promote.mutateAsync(overrides as BrainSettingsPatchInput);
-    setConfirming(false);
-    setPromoted(true);
+    try {
+      await promote.mutateAsync(overrides as BrainSettingsPatchInput);
+      setConfirming(false);
+      setPromoted(true);
+    } catch {
+      // promote.isError renders below; the confirm box stays open for retry.
+    }
   };
 
   return (

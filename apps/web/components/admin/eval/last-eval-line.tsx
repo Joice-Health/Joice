@@ -10,7 +10,7 @@ import { relativeTime } from './form';
  * a run has completed.
  */
 export function LastEvalLine() {
-  const runs = useEvalRuns({ page: 1, limit: 5 });
+  const runs = useEvalRuns({ page: 1, limit: 10 });
   const last = runs.data?.items.find((r) => r.status === 'completed' && r.passedCases !== null);
   if (!last) return null;
 

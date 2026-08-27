@@ -89,13 +89,14 @@ export function CasesSection() {
         .map((s) => s.trim())
         .filter(Boolean),
       expectRefusal: draft.expectRefusal,
-      ...(draft.expectTool ? { expectTool: draft.expectTool } : {}),
+      // null clears; omitting would mean "unchanged" through the partial schema.
+      expectTool: draft.expectTool ? draft.expectTool : null,
       mustCite: draft.mustCite,
       tags: draft.tags
         .split(',')
         .map((s) => s.trim())
         .filter(Boolean),
-      ...(draft.notes.trim() ? { notes: draft.notes.trim() } : {}),
+      notes: draft.notes.trim() ? draft.notes.trim() : null,
     };
     try {
       if (draft.id) await update.mutateAsync({ id: draft.id, patch: body });

@@ -118,9 +118,9 @@ export function NewRunPanel({ hasActiveRun }: { hasActiveRun: boolean }) {
           <div className="flex gap-2">
             <select
               value={modelIsPreset ? knobs.model : 'custom'}
-              onChange={(e) => {
-                if (e.target.value !== 'custom') set('model', e.target.value);
-              }}
+              // 'custom' empties the model so the free-text input appears;
+              // the Run button stays disabled until an id is typed.
+              onChange={(e) => set('model', e.target.value === 'custom' ? '' : e.target.value)}
               className={selectClass}
             >
               {MODEL_PRESETS.map((m) => (
@@ -162,7 +162,7 @@ export function NewRunPanel({ hasActiveRun }: { hasActiveRun: boolean }) {
                 min={1}
                 max={20}
                 value={knobs.topK}
-                onChange={(e) => set('topK', Math.round(Number(e.target.value)) || 1)}
+                onChange={(e) => set('topK', Math.min(20, Math.max(1, Math.round(Number(e.target.value)) || 1)))}
                 className="h-11 max-w-28"
               />
             </Field>
@@ -199,7 +199,7 @@ export function NewRunPanel({ hasActiveRun }: { hasActiveRun: boolean }) {
                 min={128}
                 max={4096}
                 value={knobs.maxAnswerTokens}
-                onChange={(e) => set('maxAnswerTokens', Math.round(Number(e.target.value)) || 128)}
+                onChange={(e) => set('maxAnswerTokens', Math.min(4096, Math.max(128, Math.round(Number(e.target.value)) || 128)))}
                 className="h-11 max-w-32"
               />
             </Field>
@@ -216,7 +216,7 @@ export function NewRunPanel({ hasActiveRun }: { hasActiveRun: boolean }) {
       ) : null}
 
       <div className="mt-5 flex flex-wrap items-center gap-4">
-        <Button onClick={() => void run()} disabled={hasActiveRun || start.isPending || enabledCases === 0}>
+        <Button onClick={() => void run()} disabled={hasActiveRun || start.isPending || enabledCases === 0 || knobs.model.trim().length === 0}>
           {start.isPending ? 'Starting…' : hasActiveRun ? 'A run is in progress' : 'Run the eval'}
         </Button>
         <span className="text-sm text-muted">{costHint}</span>
