@@ -17,10 +17,22 @@ resource "aws_security_group" "alb" {
   description = "ALB - ingress from CloudFront origin-facing IPs only"
   vpc_id      = aws_vpc.main.id
 
+  # NOTE: the CloudFront origin-facing prefix list has rule weight 55, so the
+  # :80 + :443 pair below needs the "rules per security group" quota raised to
+  # 120 (default 60) BEFORE this applies - see README, Before-PHI apply order.
+  # The :80 rule goes away with the HTTP listener once HTTPS is verified.
   ingress {
     description     = "HTTP from CloudFront"
     from_port       = 80
     to_port         = 80
+    protocol        = "tcp"
+    prefix_list_ids = [data.aws_ec2_managed_prefix_list.cloudfront.id]
+  }
+
+  ingress {
+    description     = "HTTPS from CloudFront"
+    from_port       = 443
+    to_port         = 443
     protocol        = "tcp"
     prefix_list_ids = [data.aws_ec2_managed_prefix_list.cloudfront.id]
   }
@@ -38,6 +50,16 @@ resource "aws_lb" "main" {
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
   subnets            = aws_subnet.public[*].id
+
+  access_logs {
+    bucket  = aws_s3_bucket.logs.id
+    prefix  = "alb"
+    enabled = true
+  }
+
+  # ELB validates log delivery at modify time; without this the access_logs
+  # block can fail with Access Denied when the policy lands in the same apply.
+  depends_on = [aws_s3_bucket_policy.logs]
 }
 
 resource "aws_lb_target_group" "web" {
@@ -82,6 +104,30 @@ resource "aws_lb_target_group" "api" {
   deregistration_delay = 15
 }
 
+# The TLS listener CloudFront's https-only origin talks to (Before-PHI: this
+# removes the plaintext CloudFront -> ALB hop). Same origin lock as :80 had:
+# default 403, only requests carrying the secret header are forwarded.
+resource "aws_lb_listener" "https" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = 443
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+  certificate_arn   = aws_acm_certificate_validation.origin.certificate_arn
+
+  default_action {
+    type = "fixed-response"
+
+    fixed_response {
+      content_type = "text/plain"
+      message_body = "Forbidden"
+      status_code  = "403"
+    }
+  }
+}
+
+# DEPRECATED: kept only through the HTTPS cutover as a fallback path. Once
+# CloudFront is verified on the https-only origin, a follow-up change deletes
+# this listener, its three rules, and the :80 SG ingress above.
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.main.arn
   port              = 80
@@ -96,6 +142,46 @@ resource "aws_lb_listener" "http" {
       message_body = "Forbidden"
       status_code  = "403"
     }
+  }
+}
+
+resource "aws_lb_listener_rule" "api_https" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 10
+
+  condition {
+    http_header {
+      http_header_name = "X-Origin-Verify"
+      values           = [random_password.origin_verify.result]
+    }
+  }
+
+  condition {
+    path_pattern {
+      values = ["/api/*"]
+    }
+  }
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.api.arn
+  }
+}
+
+resource "aws_lb_listener_rule" "web_https" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 20
+
+  condition {
+    http_header {
+      http_header_name = "X-Origin-Verify"
+      values           = [random_password.origin_verify.result]
+    }
+  }
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.web.arn
   }
 }
 

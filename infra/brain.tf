@@ -60,6 +60,30 @@ resource "aws_lb_target_group" "brain" {
 # Priority 5 — must be LOWER than the api rule's 10, because rules are evaluated
 # in priority order and `/api/*` would otherwise match `/api/brain/*` first and
 # send every chat request to the api service.
+resource "aws_lb_listener_rule" "brain_https" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 5
+
+  condition {
+    http_header {
+      http_header_name = "X-Origin-Verify"
+      values           = [random_password.origin_verify.result]
+    }
+  }
+
+  condition {
+    path_pattern {
+      values = ["/api/brain/*"]
+    }
+  }
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.brain.arn
+  }
+}
+
+# DEPRECATED: goes away with the HTTP listener after the HTTPS cutover.
 resource "aws_lb_listener_rule" "brain" {
   listener_arn = aws_lb_listener.http.arn
   priority     = 5
@@ -158,9 +182,9 @@ resource "aws_ecs_service" "brain" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets          = aws_subnet.public[*].id
+    subnets          = aws_subnet.app[*].id
     security_groups  = [aws_security_group.brain.id]
-    assign_public_ip = true
+    assign_public_ip = false # egress via NAT; Bedrock via the VPC endpoint
   }
 
   load_balancer {
@@ -179,5 +203,7 @@ resource "aws_ecs_service" "brain" {
     ignore_changes = [desired_count]
   }
 
-  depends_on = [aws_lb_listener_rule.brain]
+  # The route-table association is load-bearing: new tasks must never launch in
+  # an app subnet before its NAT default route exists, or they flap on egress.
+  depends_on = [aws_lb_listener_rule.brain_https, aws_route_table_association.app]
 }

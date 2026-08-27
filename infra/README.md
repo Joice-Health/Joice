@@ -7,13 +7,16 @@ and the rest to the web service, so there is no CORS and the web image bakes
 
 ```
 Browser ─► CloudFront (TLS, edge cache for /_next/static + *.mp4)
-             ├── default  ─► ALB ─► ECS web (Next.js :3000)
-             └── /api/*   ─► ALB ─► ECS api (Hono :4000; migrations run as a one-off task)
-                                     └─► RDS Postgres 17 (private subnets, encrypted, TLS forced)
+             ├── default  ─► ALB (HTTPS origin) ─► ECS web (Next.js :3000)
+             └── /api/*   ─► ALB (HTTPS origin) ─► ECS api (Hono :4000; migrations run as a one-off task)
+                                                    └─► RDS Postgres 17 (private subnets, encrypted, TLS forced, Multi-AZ)
 ```
 
-Cost: ~$50–55/mo baseline (no NAT Gateway — tasks run in public subnets with
-SG-only ingress from the ALB; RDS is in private subnets with no internet path).
+Cost: ~$110–125/mo baseline. The Before-PHI hardening added the NAT Gateway
+(~$32/mo + data), the Bedrock interface endpoint (~$15/mo) and RDS Multi-AZ
+(~$15/mo) on top of the original ~$50–55. Tasks run in the app subnets with no
+public IPs (egress via the NAT); the ALB and NAT sit in the public subnets;
+RDS keeps its own private subnets with no internet path.
 
 ## Bootstrap (one-time)
 
@@ -92,8 +95,9 @@ Each also sends an OK notification, so a resolved incident closes itself out.
 - **Scaling:** target-tracking on CPU (70%), min `desired_count` (1) → max `max_count` (4)
   per service. RDS `db.t4g.micro` is fine for the one-table waitlist; scale the
   instance class before a launch spike.
-- **Origin lock:** hitting the ALB directly returns 403 (secret `X-Origin-Verify`
-  header is injected by CloudFront; ALB SG also only admits CloudFront IPs).
+- **Origin lock:** hitting the ALB directly (including `origin.joicehealth.com`,
+  the HTTPS origin hostname) returns 403 — the secret `X-Origin-Verify` header
+  is injected by CloudFront, and the ALB SG only admits CloudFront IPs.
 - **Fargate arch:** `cpu_architecture=X86_64` matches default GitHub runners.
   Flip to `ARM64` (+ `runs-on: ubuntu-24.04-arm` and `platforms: linux/arm64`
   in the workflow) for ~20% cheaper compute.
@@ -138,17 +142,64 @@ confirms). First run after an apply is worth a manual dry-run
 
 Phase 0 stores marketing data only (email + referral attribution) — not PHI.
 Already baked in: encrypted RDS storage, forced TLS to the DB (`rds.force_ssl` +
-`sslmode=require`), 7-day backups, deletion protection, HIPAA-eligible services only,
-salted IP hashes (never raw IPs). Before handling any health data:
+`sslmode=require`), 35-day backups, deletion protection, HIPAA-eligible services only,
+salted IP hashes (never raw IPs). Before handling any health data (tick each box
+with the date it was **applied**, not merged):
 
-- [ ] Confirm scope with counsel; sign the **AWS BAA** in AWS Artifact
+- [x] Confirm scope with counsel; sign the **AWS BAA** in AWS Artifact — signed 2026-08-27
 - [ ] **Custom domain + ACM on the ALB**, CloudFront origin `https-only`
-      (removes the one plaintext hop: CloudFront → ALB is HTTP today because
-      bare ALB DNS names can't carry an ACM cert)
-- [ ] Move tasks to **private subnets** + NAT Gateway or VPC endpoints (~+$30/mo)
-- [ ] **CloudTrail** (all regions), **VPC flow logs**, ALB + CloudFront access logs to S3
-- [ ] RDS **Multi-AZ**, longer backup retention, consider KMS CMKs over AWS-managed keys
-- [ ] App-level: audit logging, access controls, session management for any PHI surfaces
+      (`origin.joicehealth.com` in `dns.tf` + the :443 listener in `alb.tf`
+      remove the one plaintext hop)
+- [ ] Move tasks to **app subnets** (no public IPs) + NAT Gateway + S3/Bedrock
+      VPC endpoints (`vpc.tf`, `endpoints.tf`)
+- [ ] **CloudTrail** (all regions, CMK, 6y), **VPC flow logs**, ALB + CloudFront
+      access logs to S3 (`audit.tf`)
+- [ ] RDS **Multi-AZ**, 35-day backups. KMS CMKs: adopted for greenfield (labs,
+      CloudTrail); the RDS CMK is consciously deferred — it needs a
+      snapshot-restore migration (see `rds.tf`)
+- [ ] App-level: audit logging, access controls, session management for any PHI
+      surfaces (chat audit logging + member auth on the chat routes — the
+      chat-before-members workstream in `docs/rag/07-compliance.md`)
+
+Onboarding's health tier hangs off this checklist (docs/onboarding/07-compliance.md):
+
+- Health-tier traits unlock behind **two keys**: `phi_ready` (Terraform variable
+  → api task env `PHI_READY`; set it in `terraform.tfvars` only after every box
+  above is ticked) **and** the `onboarding_health` feature flag (`/admin/flags`).
+  Publishing a flow version that asks a health-tier trait fails `phi_locked`
+  until both are on.
+- Member lab uploads land in the dedicated PHI bucket (`labs.tf`, CMK-encrypted,
+  versioned); the upload scaffold is story 5.3.
+
+### Before-PHI apply order
+
+Everything is in code on one branch; apply **from the branch, before merging** —
+merging changes `scripts/ci`, which triggers a full deploy whose migrate task
+already expects the app subnets. Sequence:
+
+0. One-time console prep: raise the VPC quota **"Inbound or outbound rules per
+   security group"** to 120 (the CloudFront prefix list weighs 55; the :80+:443
+   pair exceeds the default 60). Syntax-check any edit with
+   `terraform init -backend=false && terraform validate`.
+1. `terraform apply` — everything lands in one apply; the ordering that matters
+   is encoded as `depends_on` (HTTPS listener rules before the CloudFront
+   origin flip; NAT route before the services move; log-bucket policy before
+   ALB access logs). Cert validation takes minutes (zone already live);
+   the CloudFront update blocks until fully propagated; services roll with the
+   circuit breaker. Schedule it off-peak: the RDS Multi-AZ conversion runs in
+   the background with a brief I/O pause.
+2. Verify: site + `/api/health` up through CloudFront; chat answers (Bedrock via
+   the endpoint); waitlist signup works (Klaviyo via NAT);
+   `aws ecs describe-services` shows tasks without public IPs;
+   `curl https://origin.joicehealth.com/` returns 403 (origin lock).
+3. Update the GitHub repo variable `SUBNET_IDS` to the app subnet ids (the
+   `github_repo_variables` output prints the new value), then merge the PR and
+   let the triggered full deploy prove CI's migrate path works privately.
+4. After ~15 min, confirm logs are landing: `alb/`, `vpc-flow/`, `cloudfront/`
+   prefixes in the logs bucket and the CloudTrail bucket's `AWSLogs/`.
+5. Tick the boxes above with dates. Follow-up change once HTTPS is verified:
+   delete the deprecated :80 listener, its rules and the :80 SG ingress
+   (marked DEPRECATED in `alb.tf`/`brain.tf`).
 
 ## Team preview gate
 

@@ -135,6 +135,20 @@ variable "onboarding_session_ttl_days" {
   default     = 90
 }
 
+# ---- PHI ----
+
+variable "phi_ready" {
+  description = <<-EOT
+    PHI key 1 of 2: infrastructure attests the Before-PHI checklist is complete.
+    Lands on the api task as PHI_READY. With the onboarding_health feature flag
+    (key 2, /admin/flags) it unlocks publishing flow versions that ask
+    health-tier traits. Set by Terraform only, never an admin toggle; flip it
+    only after every checklist box in README.md is ticked.
+  EOT
+  type        = bool
+  default     = false
+}
+
 # ---- Klaviyo (waitlist marketing sync) ----
 
 variable "klaviyo_api_key" {

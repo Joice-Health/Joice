@@ -61,6 +61,58 @@ resource "aws_acm_certificate_validation" "main" {
   validation_record_fqdns = [for r in aws_route53_record.cert_validation : r.fqdn]
 }
 
+# ---- Origin certificate (ALB HTTPS; Before-PHI checklist) ----
+# CloudFront validates the origin cert against the origin domain_name, and a
+# bare ALB DNS name can never carry an ACM cert, so the ALB gets its own
+# hostname. A dedicated single-domain cert rather than a new SAN on
+# aws_acm_certificate.main: a SAN change replaces that cert and redeploys
+# CloudFront; the two lifecycles stay decoupled this way.
+
+resource "aws_acm_certificate" "origin" {
+  domain_name       = "origin.${var.domain_name}"
+  validation_method = "DNS"
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_route53_record" "origin_cert_validation" {
+  for_each = {
+    for dvo in aws_acm_certificate.origin.domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      type   = dvo.resource_record_type
+      record = dvo.resource_record_value
+    }
+  }
+
+  zone_id         = aws_route53_zone.main[var.domain_name].zone_id
+  name            = each.value.name
+  type            = each.value.type
+  records         = [each.value.record]
+  ttl             = 300
+  allow_overwrite = true
+}
+
+resource "aws_acm_certificate_validation" "origin" {
+  certificate_arn         = aws_acm_certificate.origin.arn
+  validation_record_fqdns = [for r in aws_route53_record.origin_cert_validation : r.fqdn]
+}
+
+# The zone is already live at the registrars, so validation completes in
+# minutes, not the hours the main cert's first validation took.
+resource "aws_route53_record" "origin" {
+  zone_id = aws_route53_zone.main[var.domain_name].zone_id
+  name    = "origin.${var.domain_name}"
+  type    = "A"
+
+  alias {
+    name                   = aws_lb.main.dns_name
+    zone_id                = aws_lb.main.zone_id
+    evaluate_target_health = false
+  }
+}
+
 # ---- Clerk (auth + email) CNAMEs on the canonical domain ----
 # Values come from the Clerk dashboard (Domains) and must match exactly.
 
