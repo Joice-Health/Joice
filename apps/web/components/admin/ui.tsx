@@ -66,6 +66,12 @@ const badgeTones: Record<string, string> = {
   capturing: 'bg-ink/10 text-muted',
   exploring: 'bg-sky-100 text-sky-800',
   ready: 'bg-brand-400/20 text-brand-800',
+  // Eval runs and their per-question outcomes.
+  running: 'bg-sky-100 text-sky-800',
+  completed: 'bg-emerald-100 text-emerald-800',
+  failed: 'bg-red-100 text-red-700',
+  pass: 'bg-emerald-100 text-emerald-800',
+  fail: 'bg-red-100 text-red-700',
 };
 
 export function Badge({ tone, children }: { tone: string; children: ReactNode }) {

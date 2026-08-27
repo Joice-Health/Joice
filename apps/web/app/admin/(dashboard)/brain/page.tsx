@@ -9,17 +9,10 @@ import {
   type AdminBrain,
 } from '@joice/api-client';
 import { Card, ErrorState, PageHeader, Toggle } from '@/components/admin/ui';
+import { MODEL_PRESETS } from '@/components/admin/model-presets';
+import { LastEvalLine } from '@/components/admin/eval/last-eval-line';
 
 type BrainForm = AdminBrain['resolved'];
-
-// Preset ids must be REAL Bedrock inference-profile ids — dated, with the
-// version suffix. Confirm what the account can see with
-// `aws bedrock list-inference-profiles` before adding one; a plausible-looking
-// undated id ("us.anthropic.claude-sonnet-5") fails at invoke time.
-const MODEL_PRESETS = [
-  { value: 'us.amazon.nova-pro-v1:0', label: 'Amazon Nova Pro' },
-  { value: 'us.anthropic.claude-sonnet-4-5-20250929-v1:0', label: 'Claude Sonnet 4.5' },
-] as const;
 
 const REWRITE_MODEL_PRESETS = [
   { value: 'us.amazon.nova-lite-v1:0', label: 'Amazon Nova Lite (fast)' },
@@ -513,6 +506,7 @@ export default function AdminBrainPage() {
                 </span>
               </span>
             </div>
+            <LastEvalLine />
             {form.toolsEnabled ? (
               <Field
                 label="Max tool rounds"
