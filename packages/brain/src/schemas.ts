@@ -36,6 +36,31 @@ export { citedIndexes, stripCitationMarkers } from './conversation/citations';
 export { speakRequestSchema, type SpeakRequest } from './voice/schemas';
 
 export {
+  MAX_ENABLED_CASES,
+  evalCaseInputSchema,
+  evalCasePatchSchema,
+  evalRunModeSchema,
+  startEvalRunSchema,
+  evalRunsQuerySchema,
+  evalIdParamSchema,
+  type EvalCaseInput,
+  type EvalCasePatch,
+  type EvalRunMode,
+  type StartEvalRunInput,
+  type EvalRunsQuery,
+} from './eval/schemas';
+
+export {
+  REFUSAL_SHAPES,
+  percentile,
+  scoreFullCase,
+  scoreRetrievalCase,
+  soundsLikeRefusal,
+  type CaseScore,
+  type EvalExpectations,
+} from './eval/scoring';
+
+export {
   conversationIdParamSchema,
   storedConversationSchema,
   type StoredConversationView,
