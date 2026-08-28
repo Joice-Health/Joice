@@ -13,6 +13,14 @@ export const metadata: Metadata = {
   description: 'Clinician-set peptide protocols with live pricing.',
 };
 
+/**
+ * Render per request, never prerender: at image build time no API exists, so a
+ * prerender would bake requireShopEnabled's flag-off redirect into the static
+ * artifact and the live flag could never open the page (the /coming-soon
+ * precedent). The CarePortals data cache keeps its own revalidate window.
+ */
+export const dynamic = 'force-dynamic';
+
 /** The hues that keep neighbouring image fields from reading as one tile. */
 const HUES = [128, 96, 60, 150];
 

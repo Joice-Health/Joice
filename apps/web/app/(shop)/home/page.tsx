@@ -10,6 +10,14 @@ export const metadata: Metadata = {
 };
 
 /**
+ * Render per request, never prerender: at image build time no API exists, so a
+ * prerender would bake requireShopEnabled's flag-off redirect into the static
+ * artifact and the live flag could never open the page (the /coming-soon
+ * precedent). The CarePortals data cache keeps its own revalidate window.
+ */
+export const dynamic = 'force-dynamic';
+
+/**
  * The storefront landing: the main-site landing stripped to hero, the three
  * steps (HowItWorks is link-free, so it is shared, not copied) and the closing
  * statement. Every action leads to /shop.
