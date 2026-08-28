@@ -123,3 +123,4 @@ URLs directly.
 | 2026-08-28 | Legal pages in their own `(legal)` group, not the shop | they are permanent, must survive the shop flag going off, and adopt the main-site chrome at launch |
 | 2026-08-28 | Browser-direct cart calls, no proxy | no secret exists to protect; the API is CORS-open by design for custom storefronts |
 | 2026-08-28 | Checkout lines offer Remove, no quantity stepper | CarePortals pins subscription quantities to 1 server-side; a stepper would echo a change the backend then reverts |
+| 2026-08-28 | Legal pages wear the storefront chrome | one look across the audit surface; they keep their own flag-free group so the kill switch never touches them |
