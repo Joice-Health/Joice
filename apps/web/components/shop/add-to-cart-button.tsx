@@ -15,7 +15,7 @@ export function AddToCartButton({
   label = 'Add to cart +',
 }: {
   productId: string;
-  /** Visible label; the Glutathione hero says "Get Started" per its spec. */
+  /** Visible label; every product page uses the default (Shaun, 2026-08-28). */
   label?: string;
 }) {
   const router = useRouter();

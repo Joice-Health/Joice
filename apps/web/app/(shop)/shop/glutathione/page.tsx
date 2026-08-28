@@ -46,7 +46,7 @@ const STEPS: { icon: 'clipboard' | 'stethoscope' | 'package'; title: string; bod
 /**
  * The Glutathione page, built module by module to the approved spec (Shaun's
  * doc, 2026-08-28). Copy is the record of what we tell visitors; edits come
- * from an approved doc, not ad hoc. Get Started puts the product in the
+ * from an approved doc, not ad hoc. Add to cart puts the product in the
  * CarePortals cart and lands on /checkout, which hands off to the hosted
  * checkout; the price beside it is live from CarePortals and simply hides if
  * the read fails (the copy never breaks with it).
@@ -82,7 +82,7 @@ export default async function GlutathionePage() {
             </p>
           ) : null}
           <div className="mt-8">
-            <AddToCartButton productId={GLUTATHIONE_ID} label="Get Started" />
+            <AddToCartButton productId={GLUTATHIONE_ID} />
           </div>
           <p className="mt-4 max-w-md text-sm leading-relaxed text-muted">
             Requires a short medical intake and physician review. Must be 18 or older.

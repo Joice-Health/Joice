@@ -23,7 +23,7 @@ web-specific detail.
   localStorage); the curated shelf is the `SHOP_PRODUCT_IDS` const in `lib/shop-products.ts`
   (Glutathione only for the certification). Glutathione has a bespoke page at
   `/shop/glutathione` (static segment beats `[id]`; copy is the approved spec of record,
-  its Get Started adds the product to the cart and lands on /checkout, and the hero price
+  its Add to cart button puts the product in the cart and lands on /checkout, and the hero price
   is live from CarePortals). Checkout hands off to the hosted portal
   (care.joicehealth.com); no payment code here.
   Line quantities are pinned to 1 by CarePortals for subscription products, so the cart UI
