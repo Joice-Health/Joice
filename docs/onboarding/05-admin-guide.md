@@ -26,7 +26,8 @@ started with; only pure copy changes reach them silently.
 
 ## Add a question
 
-1. In a section that is not locked, "Add a question +".
+1. "Add a question +" under the section it belongs in (locked sections
+   accept new questions too; only their core is protected).
 2. Write the wording; pick the Type (choice pills, text, number, date...).
 3. Pick the trait it writes. Use a registered trait when one fits; otherwise
    the `custom.your_key` field appears; name it in snake_case. Custom traits
@@ -38,18 +39,39 @@ started with; only pure copy changes reach them silently.
    value, joined by ALL or ANY.
 6. Save, read the report, simulate, publish.
 
+## Remove a question or a section
+
+The small × on a question row or a section header takes it out of the draft.
+You confirm first, and nothing is live until you publish. Two rules:
+
+- Only the eligibility core has no ×: the state and date-of-birth questions,
+  and the eligibility section with its age and state gates. Publishing refuses
+  a flow without them. Everything else can go, the consent section included.
+- Removing a section takes its questions with it. If a "show when" rule
+  somewhere still points at a trait nobody asks any more, the report flags it
+  before you can publish.
+
+A removal is a logic change, so visitors mid-intake keep the version they
+started on; only new sessions see the shorter flow.
+
+If you remove the terms consent, the Terms and Privacy agreement must be
+presented somewhere else before the account exists: turn on legal consent on
+the Clerk sign-up screen (Clerk Dashboard, under sign-up settings). And
+without the marketing opt-in question, completion never subscribes anyone to
+Klaviyo; that is the designed fail-safe, not a bug.
+
 ## What the badges and locks mean
 
-- **locked** on a section or question (eligibility, consent terms): the
-  wording is yours; the structure is not. Publishing refuses a flow that
-  removes the state or date-of-birth questions, the age or state gates, or
-  the required terms consent.
+- **locked** on a section or question (the eligibility core): the wording is
+  yours; the structure is not. Publishing refuses a flow that removes the
+  state or date-of-birth questions or the age and state gates. Nothing else
+  is locked.
 - **marketing / personal / health** on a question: the sensitivity tier of
   the trait it writes. **health** means "Medical question. Publishing is
   locked until the Before-PHI checklist is complete and both PHI keys are
-  on" — you can draft it, never publish it, until engineering turns the key.
+  on": you can draft it, never publish it, until engineering turns the key.
 - **health locked / health unlocked** in the editor header: the state of the
-  two PHI keys, straight from the server. Locked names which half is off —
+  two PHI keys, straight from the server. Locked names which half is off:
   the infrastructure key (`PHI_READY`, set by engineering, never a toggle
   here) and the `onboarding_health` flag (Flags page). Both on turns the
   badge green and a published flow may ask health questions; each still

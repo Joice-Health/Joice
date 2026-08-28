@@ -175,7 +175,33 @@ export type FlowDefinitionInput = z.input<typeof flowDefinitionSchema>;
 
 /** The locked sections every intake flow must carry, and where. */
 export const ELIGIBILITY_SECTION_KEY = 'eligibility';
-export const CONSENT_SECTION_KEY = 'consent';
+
+/**
+ * The locked core, shared by the publish validator and the editor so they can
+ * never disagree about what is removable: each entry names a section that must
+ * exist and the traits it must still ask (locked and, where listed, required).
+ * Only eligibility is here. The consent section used to be too; by decision
+ * (Shaun, 2026-08-26) terms acceptance is the flow author's to place, in the
+ * flow or on the Clerk sign-up screen, so it is ordinary content now.
+ */
+export const LOCKED_SECTIONS: Readonly<
+  Record<string, { traits: readonly string[]; requiredTraits: readonly string[] }>
+> = {
+  [ELIGIBILITY_SECTION_KEY]: {
+    traits: ['us_state', 'date_of_birth'],
+    requiredTraits: ['us_state', 'date_of_birth'],
+  },
+};
+
+/** True when the editor must not offer removing this section. */
+export function isProtectedSection(sectionKey: string): boolean {
+  return sectionKey in LOCKED_SECTIONS;
+}
+
+/** True when the editor must not offer removing or restructuring this question. */
+export function isProtectedQuestion(sectionKey: string, trait: string): boolean {
+  return LOCKED_SECTIONS[sectionKey]?.traits.includes(trait) ?? false;
+}
 
 /* ------------------------------------------------------------------------- */
 /* Wire contracts: what the browser sends and sees                           */

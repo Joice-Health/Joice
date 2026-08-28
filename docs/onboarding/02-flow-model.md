@@ -39,10 +39,11 @@ erDiagram
 | `copy{}` | key to text | Intro, resume note, gate copy (`<copyKey>.title/.body/.cta/.done`); `{first_name}` and `{state_name}` are substituted |
 | `completion` | `title`, `body`, `cta` | The last screen before sign-up |
 
-Two sections are **locked**: `eligibility` (first; asks `us_state` and
-`date_of_birth`; keeps an `age` gate and a `state` gate) and `consent` (asks
-`consent_terms`, required). The validator refuses a definition that removes,
-unlocks or loosens them.
+One section is **locked**: `eligibility` (first; asks `us_state` and
+`date_of_birth`; keeps an `age` gate and a `state` gate). The validator
+refuses a definition that removes, unlocks or loosens it. The consent section
+is ordinary content by decision (2026-08-26): terms acceptance is the flow
+author's to place, in the flow or on the Clerk sign-up screen.
 
 Question types: `single_select`, `multi_select`, `number`, `text`, `date`,
 `us_state`, `height_weight`, `boolean`, `scale`. Custom traits (`custom.<slug>`)
@@ -191,6 +192,6 @@ warnings are shown.
 | `condition` | error | any rule the registry validator rejects (path points into the rule) |
 | `trait_never_asked` | warning | a rule reads a trait nothing in this flow asks |
 | `missing_copy` | error | a gate without its copy keys |
-| `locked_section_missing`, `locked_section_altered` | error | eligibility or consent removed, unlocked or loosened |
+| `locked_section_missing`, `locked_section_altered` | error | the eligibility core removed, unlocked or loosened |
 | `phi_locked` | error (warning once unlocked) | a health-tier trait asked before both PHI keys are on |
 | `duplicate_segment` | warning | a segment with more than one rule |
