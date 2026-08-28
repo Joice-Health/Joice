@@ -1,8 +1,12 @@
 # Joice
 
-A peptide/supplement membership platform, pre-launch. The public surface today is the
-waitlist with its referral loop at https://joicehealth.com: sign up with an email, get a
-shareable referral link and QR "membership card", and move up the line as friends join.
+A peptide/supplement membership platform, pre-launch. The public surfaces today are the
+waitlist with its referral loop at https://joicehealth.com (sign up with an email, get a
+shareable referral link and QR "membership card", and move up the line as friends join)
+and the certification storefront at `/home` → `/shop` → `/checkout` (live products and
+carts from the CarePortals Public API, checkout completing on the hosted care portal;
+behind the `shop` flag, built for the certification audit), plus the permanent `/terms`,
+`/privacy` and `/faq` pages.
 
 Behind access gates in the same repo, waiting for launch: the main site, the admin
 dashboard at `/admin`, the "Ask Joice" companion (a retrieval-grounded chatbot running as
@@ -29,7 +33,8 @@ checklist are in [infra/README.md](infra/README.md).
 apps/
   api/          platform Hono server: waitlist, onboarding, member, admin (exports AppType)
   brain/        the Ask Joice service; everything under /api/brain/* (exports BrainAppType)
-  web/          Next.js app: waitlist, main site, /get-started intake, /admin dashboard
+  web/          Next.js app: waitlist, cert storefront (/home, /shop, /checkout), main site,
+                /get-started intake, /admin dashboard
 packages/
   db/           Drizzle schema (one file per owning service), client, migrations
   core/         platform domain: waitlist, admin, onboarding engine, profile, rules

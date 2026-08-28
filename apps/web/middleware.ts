@@ -29,7 +29,22 @@ const isMemberRoute = createRouteMatcher(['/welcome(.*)']);
 
 // /health is the ALB liveness check (app/health/route.ts): it must answer 200
 // with no cookie, so it sits outside the gate.
-const PUBLIC_PATHS = ['/waitlist', '/coming-soon', '/team', '/health'];
+// /home through /checkout are the certification storefront (docs/shop/00-plan.md):
+// the pages themselves check the `shop` flag and redirect to /waitlist when it
+// is off. /terms, /privacy and /faq are permanent legal pages, flag-free.
+// Note /shop covers /shop/[id] via the prefix match; /products stays gated.
+const PUBLIC_PATHS = [
+  '/waitlist',
+  '/coming-soon',
+  '/team',
+  '/health',
+  '/home',
+  '/shop',
+  '/checkout',
+  '/terms',
+  '/privacy',
+  '/faq',
+];
 
 const clerkConfigured = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 

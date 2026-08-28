@@ -85,6 +85,13 @@ export const FLAG_KEYS = {
    * published. No effect unless PHI_READY is also set on the api (Terraform).
    */
   onboardingHealth: 'onboarding_health',
+  /**
+   * The public certification storefront: /home, /shop, /shop/[id], /checkout.
+   * Off: those pages redirect to /waitlist. The permanent /terms /privacy /faq
+   * pages ignore it. Seeded ON (the audit is the point); toggling it off in
+   * /admin/flags is the post-audit kill switch.
+   */
+  shop: 'shop',
 } as const;
 
 export type FlagKey = (typeof FLAG_KEYS)[keyof typeof FLAG_KEYS];

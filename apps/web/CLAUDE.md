@@ -15,6 +15,18 @@ web-specific detail.
 - `/coming-soon`: public. The bare "Something special is coming." page shown while the waitlist
   flag is off; redirects back to `/waitlist` once it is on. Must stay in `PUBLIC_PATHS` or the
   preview gate bounces it to `/waitlist` and loops.
+- `/home`, `/shop`, `/shop/[id]`, `/checkout` — public, the certification storefront
+  (`app/(shop)/`, docs: `docs/shop/00-plan.md`). Every page opens with
+  `requireShopEnabled()` (`lib/shop-gate.ts`): the `shop` flag off redirects to `/waitlist`.
+  Products and carts come live from the CarePortals Public API via `lib/careportals/`
+  (`products.server.ts` is server-only; `cart.client.ts` is browser-only, cart id in
+  localStorage); the curated shelf is the `SHOP_PRODUCT_IDS` const in `lib/shop-products.ts`.
+  Checkout hands off to the hosted portal (care.joicehealth.com); no payment code here.
+  Line quantities are pinned to 1 by CarePortals for subscription products, so the cart UI
+  offers Remove, never a stepper. `/products` (gated site PDP) is deliberately not reused.
+- `/terms`, `/privacy`, `/faq` — public, permanent, flag-free (`app/(legal)/`, minimal
+  chrome). Placeholder copy until the approved content lands; they move under the main-site
+  shell at launch.
 - `/` and future site pages — final URLs, gated by `middleware.ts` until `SITE_LAUNCHED=true`;
   anonymous → redirected to `/waitlist` (public must never see a login).
 - `/get-started`: the intake flow. The server component reads the `onboarding` flag

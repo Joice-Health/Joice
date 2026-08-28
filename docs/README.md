@@ -47,6 +47,16 @@ on. Work lands on the `onboarding/intake` branch; the design brief is the place 
 
 Page 10 (protocol readiness) arrives with Phase 5; see section 7 of the brief. **New here? Read 01, then 02, then 08 to run it.**
 
+## Shop (CarePortals certification storefront)
+
+The bare-bones public shopping flow built for the certification audit: `/home` → `/shop` →
+`/shop/[id]` → `/checkout`, handing off to CarePortals' hosted checkout. Behind the `shop`
+flag; the permanent `/terms` `/privacy` `/faq` pages ship alongside it.
+
+| Doc | What it covers |
+|---|---|
+| [00 Design brief (approved plan)](shop/00-plan.md) | Why a separate public route group, the flow, every CarePortals endpoint used and why there is no proxy, the two gates (allowlist + `shop` flag), slices, decisions log |
+
 ## CI/CD
 
 | Doc | What it covers |
