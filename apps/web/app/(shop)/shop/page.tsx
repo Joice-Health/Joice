@@ -4,6 +4,7 @@ import { getCuratedProducts } from '@/lib/careportals/products.server';
 import { PRODUCT_PAGES, SHOP_PRODUCT_IDS } from '@/lib/shop-products';
 import { PageIntro } from '@/components/ui/page-intro';
 import { ShopProductRow } from '@/components/shop/shop-product-row';
+import { FeaturedProtocol, OrderingSteps } from '@/components/shop/featured-protocol';
 import { ShopUnavailable } from '@/components/shop/shop-unavailable';
 import { Eyebrow } from '@/components/ui/eyebrow';
 
@@ -18,7 +19,9 @@ const HUES = [128, 96, 60, 150];
 /**
  * The shelf: the curated CarePortals products, live names and prices. One
  * upstream read per cache window; an unreadable upstream or an emptied
- * curation renders a quiet section, never an error.
+ * curation renders a quiet section, never an error. A shelf of exactly one
+ * product drops the row list for the featured spread (featured-protocol.tsx);
+ * the list idiom returns with the second product.
  */
 export default async function ShopPage() {
   await requireShopEnabled();
@@ -40,6 +43,11 @@ export default async function ShopPage() {
             New protocols are on the way.
           </p>
         </section>
+      ) : products.length === 1 ? (
+        <>
+          <FeaturedProtocol product={products[0]!} href={PRODUCT_PAGES[products[0]!._id]} />
+          <OrderingSteps />
+        </>
       ) : (
         <ul className="border-t border-line pb-8">
           {products.map((product, i) => (
