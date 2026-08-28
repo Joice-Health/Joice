@@ -100,9 +100,9 @@ resource "aws_scheduler_schedule" "onboarding_retention" {
       launch_type         = "FARGATE"
 
       network_configuration {
-        subnets          = aws_subnet.public[*].id
+        subnets          = aws_subnet.app[*].id
         security_groups  = [aws_security_group.api.id]
-        assign_public_ip = true
+        assign_public_ip = false
       }
     }
   }

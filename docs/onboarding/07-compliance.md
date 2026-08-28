@@ -3,9 +3,10 @@
 The intake asks questions about a person and, from Phase 2, ties the answers to
 an identity. This page is the set of rules that keeps that within the posture
 described in the root `CLAUDE.md` and `docs/rag/07-compliance.md` (Phase 0 holds
-marketing data only; the Before-PHI checklist in `infra/README.md` is open).
-The mechanisms are in code; the numbers and wording marked "counsel" are the
-ones Shaun still owes.
+marketing data only; the Before-PHI infrastructure boxes in `infra/README.md`
+were applied and verified 2026-08-27, with the app-level box, chat audit logging
+and member auth, still open). The mechanisms are in code; the numbers and
+wording marked "counsel" are the ones Shaun still owes.
 
 ## Sensitivity tiers (on the trait, never the question)
 
@@ -31,10 +32,13 @@ Publishing a flow version that references a health-tier trait requires both:
    Before-PHI checklist, never an admin toggle (`apps/api/src/env.ts`).
 2. The `onboarding_health` feature flag, the admin-visible half (`/admin/flags`).
 
-`apps/api/src/services.ts` combines them into the flow service's `phiEnabled`;
-`validateFlowDefinition` refuses with `phi_locked` otherwise, and the admin
-editor shows the lock on the question in plain words. The internal profile
-endpoint (Phase 4) applies the same rule to what the brain may read.
+`apps/api/src/services.ts` combines them into `phiStatus` (ready, flag,
+unlocked) and the flow service's `phiEnabled`; `validateFlowDefinition`
+refuses with `phi_locked` otherwise, and the admin editor shows the lock on
+the question in plain words plus the key state in its header (the flows list
+serves `phi`, since the browser can never read the env half). The internal
+profile endpoint applies the same rule to what the brain may read: marketing
+and personal tiers always, the health tier only while `unlocked` is true.
 
 ## Minors
 

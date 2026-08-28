@@ -11,6 +11,7 @@ const LINKS = [
   { href: '/admin/users', label: 'Users' },
   { href: '/admin/admins', label: 'Admins' },
   { href: '/admin/brain', label: 'Brain' },
+  { href: '/admin/eval', label: 'Eval' },
   { href: '/admin/onboarding', label: 'Onboarding' },
   { href: '/admin/flags', label: 'Feature flags' },
   { href: '/admin/settings', label: 'Settings' },

@@ -104,10 +104,12 @@ pipeline byte-for-byte, live within ~30s, no deploy.
 2. AWS **AI-services opt-out** at the Organizations level (also in the
    standing manual-steps list).
 3. Counsel review of disclaimer/companion copy (pre-existing gate).
-4. The **Before-PHI infra list** (infra/README.md): BAA in Artifact, ALB HTTPS
-   via custom domain + ACM, private subnets + VPC endpoints (incl. Bedrock),
-   CloudTrail/flow logs/access logs, RDS Multi-AZ + KMS CMKs, Redis-backed
-   rate limiting, app-level chat audit logging.
+4. ~~The **Before-PHI infra list**~~ — done 2026-08-27 (story sc-181): BAA
+   signed, ALB HTTPS via `origin.joicehealth.com`, private app subnets + NAT +
+   S3/Bedrock endpoints, CloudTrail/flow logs/access logs, RDS Multi-AZ (RDS
+   CMK consciously deferred). Still open from the original line: Redis-backed
+   rate limiting and app-level chat audit logging, which live with the
+   chat-before-members workstream, not infra.
 
 **Engineering follow-ups (none block merging this branch):**
 5. **No alarms on the brain service at all** — 5xx, unhealthy tasks, Bedrock

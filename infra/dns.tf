@@ -61,6 +61,58 @@ resource "aws_acm_certificate_validation" "main" {
   validation_record_fqdns = [for r in aws_route53_record.cert_validation : r.fqdn]
 }
 
+# ---- Origin certificate (ALB HTTPS; Before-PHI checklist) ----
+# CloudFront validates the origin cert against the origin domain_name, and a
+# bare ALB DNS name can never carry an ACM cert, so the ALB gets its own
+# hostname. A dedicated single-domain cert rather than a new SAN on
+# aws_acm_certificate.main: a SAN change replaces that cert and redeploys
+# CloudFront; the two lifecycles stay decoupled this way.
+
+resource "aws_acm_certificate" "origin" {
+  domain_name       = "origin.${var.domain_name}"
+  validation_method = "DNS"
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_route53_record" "origin_cert_validation" {
+  for_each = {
+    for dvo in aws_acm_certificate.origin.domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      type   = dvo.resource_record_type
+      record = dvo.resource_record_value
+    }
+  }
+
+  zone_id         = aws_route53_zone.main[var.domain_name].zone_id
+  name            = each.value.name
+  type            = each.value.type
+  records         = [each.value.record]
+  ttl             = 300
+  allow_overwrite = true
+}
+
+resource "aws_acm_certificate_validation" "origin" {
+  certificate_arn         = aws_acm_certificate.origin.arn
+  validation_record_fqdns = [for r in aws_route53_record.origin_cert_validation : r.fqdn]
+}
+
+# The zone is already live at the registrars, so validation completes in
+# minutes, not the hours the main cert's first validation took.
+resource "aws_route53_record" "origin" {
+  zone_id = aws_route53_zone.main[var.domain_name].zone_id
+  name    = "origin.${var.domain_name}"
+  type    = "A"
+
+  alias {
+    name                   = aws_lb.main.dns_name
+    zone_id                = aws_lb.main.zone_id
+    evaluate_target_health = false
+  }
+}
+
 # ---- Clerk (auth + email) CNAMEs on the canonical domain ----
 # Values come from the Clerk dashboard (Domains) and must match exactly.
 
@@ -179,4 +231,39 @@ resource "aws_route53_record" "google_dkim" {
   ttl     = 3600
   # Route53 caps each TXT character-string at 255 chars; "" splices the halves back together.
   records = ["${substr(local.google_dkim, 0, 255)}\"\"${substr(local.google_dkim, 255, 255)}"]
+}
+
+# ---- SendGrid domain authentication + link branding ----
+# Values come from the SendGrid dashboard (Settings > Sender Authentication)
+# and must match exactly. em7695 is the sending domain, s1/s2 are DKIM,
+# url2049 + 24224351 are branded link/click tracking.
+
+locals {
+  sendgrid_cnames = {
+    "em7695"        = "u24224351.wl102.sendgrid.net"
+    "s1._domainkey" = "s1.domainkey.u24224351.wl102.sendgrid.net"
+    "s2._domainkey" = "s2.domainkey.u24224351.wl102.sendgrid.net"
+    "url2049"       = "sendgrid.net"
+    "24224351"      = "sendgrid.net"
+  }
+}
+
+resource "aws_route53_record" "sendgrid" {
+  for_each = local.sendgrid_cnames
+
+  zone_id = aws_route53_zone.main[var.domain_name].zone_id
+  name    = "${each.key}.${var.domain_name}"
+  type    = "CNAME"
+  ttl     = 300
+  records = [each.value]
+}
+
+# p=none: monitor only, no delivery impact; tighten once SendGrid + Google
+# have both been observed passing DMARC.
+resource "aws_route53_record" "dmarc" {
+  zone_id = aws_route53_zone.main[var.domain_name].zone_id
+  name    = "_dmarc.${var.domain_name}"
+  type    = "TXT"
+  ttl     = 3600
+  records = ["v=DMARC1; p=none;"]
 }

@@ -59,16 +59,26 @@ resource "aws_cloudfront_distribution" "main" {
   is_ipv6_enabled = true
   aliases         = local.all_hosts
 
-  depends_on = [aws_acm_certificate_validation.main]
+  # The HTTPS listener rules must exist before any POP starts using the
+  # https-only origin below, or propagated edges would 502 during the apply.
+  # This ordering is what makes the HTTPS cutover safe in a single apply.
+  depends_on = [
+    aws_acm_certificate_validation.main,
+    aws_lb_listener_rule.api_https,
+    aws_lb_listener_rule.web_https,
+    aws_lb_listener_rule.brain_https,
+  ]
 
   origin {
-    domain_name = aws_lb.main.dns_name
+    # origin.joicehealth.com: an ALB alias that can carry an ACM cert, which the
+    # bare ALB DNS name cannot - that was the one plaintext hop (Before-PHI).
+    domain_name = aws_route53_record.origin.fqdn
     origin_id   = local.alb_origin_id
 
     custom_origin_config {
       http_port              = 80
       https_port             = 443
-      origin_protocol_policy = "http-only" # ALB has no cert without a custom domain; see Before-PHI checklist
+      origin_protocol_policy = "https-only"
       origin_ssl_protocols   = ["TLSv1.2"]
     }
 

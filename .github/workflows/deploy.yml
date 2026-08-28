@@ -53,7 +53,7 @@ jobs:
       contents: read
       actions: read # affected-apps.sh reads this workflow's run history
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # affected-apps.sh diffs against the last deployed commit
 
@@ -91,7 +91,7 @@ jobs:
 
       - name: Configure AWS credentials (OIDC)
         if: steps.affected.outputs.any == 'true'
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
@@ -102,7 +102,7 @@ jobs:
 
       - name: Set up Docker Buildx
         if: steps.affected.outputs.any == 'true'
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       # provenance: false on every build. These are single-arch images for ECR;
       # the default attestation manifest shows up there as an untagged image and
@@ -112,7 +112,7 @@ jobs:
       # web and api from one origin, so the browser calls a relative /api/... path.
       - name: Build and push web image
         if: steps.affected.outputs.web == 'true'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: apps/web/Dockerfile
@@ -133,7 +133,7 @@ jobs:
 
       - name: Build and push api image
         if: steps.affected.outputs.api == 'true'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: apps/api/Dockerfile
@@ -151,7 +151,7 @@ jobs:
 
       - name: Build and push brain image
         if: steps.affected.outputs.brain == 'true'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: apps/brain/Dockerfile

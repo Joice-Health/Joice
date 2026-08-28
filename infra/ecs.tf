@@ -1,6 +1,7 @@
-# ECS cluster + two Fargate services. Tasks live in public subnets with public
-# IPs (no NAT by design); their SGs accept traffic only from the ALB. The API
-# container's CMD runs Drizzle migrations before serving (see apps/api/Dockerfile).
+# ECS cluster + two Fargate services. Tasks live in the app subnets (no public
+# IPs; egress via the NAT Gateway - vpc.tf); their SGs accept traffic only from
+# the ALB. The API container's CMD runs Drizzle migrations before serving (see
+# apps/api/Dockerfile).
 
 resource "aws_ecs_cluster" "main" {
   name = var.project
@@ -163,6 +164,14 @@ resource "aws_ecs_task_definition" "api" {
         { name = "POLLY_VOICE_ID", value = var.polly_voice_id },
         # Klaviyo waitlist sync — the list id is visible in the list URL, not a secret.
         { name = "KLAVIYO_LIST_ID", value = var.klaviyo_list_id },
+        # PHI key 1 of 2 (with the onboarding_health flag): set by Terraform
+        # only, never an admin toggle. Stays false until the Before-PHI
+        # checklist above it in the README is complete.
+        { name = "PHI_READY", value = tostring(var.phi_ready) },
+        # Same knobs the nightly sweep uses (onboarding-retention.tf); the api
+        # reads them too, so the two must never drift apart.
+        { name = "ONBOARDING_SESSION_IDLE_DAYS", value = tostring(var.onboarding_session_idle_days) },
+        { name = "ONBOARDING_SESSION_TTL_DAYS", value = tostring(var.onboarding_session_ttl_days) },
       ]
       secrets = [
         { name = "DATABASE_URL", valueFrom = aws_secretsmanager_secret.database_url.arn },
@@ -193,9 +202,9 @@ resource "aws_ecs_service" "web" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets          = aws_subnet.public[*].id
+    subnets          = aws_subnet.app[*].id
     security_groups  = [aws_security_group.web.id]
-    assign_public_ip = true # no NAT; SG restricts ingress to the ALB
+    assign_public_ip = false # egress via NAT (vpc.tf)
   }
 
   load_balancer {
@@ -214,7 +223,9 @@ resource "aws_ecs_service" "web" {
     ignore_changes = [desired_count]
   }
 
-  depends_on = [aws_lb_listener_rule.web]
+  # The route-table association is load-bearing: new tasks must never launch in
+  # an app subnet before its NAT default route exists, or they flap on egress.
+  depends_on = [aws_lb_listener_rule.web_https, aws_route_table_association.app]
 }
 
 resource "aws_ecs_service" "api" {
@@ -225,9 +236,9 @@ resource "aws_ecs_service" "api" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets          = aws_subnet.public[*].id
+    subnets          = aws_subnet.app[*].id
     security_groups  = [aws_security_group.api.id]
-    assign_public_ip = true
+    assign_public_ip = false # egress via NAT (vpc.tf)
   }
 
   load_balancer {
@@ -245,7 +256,7 @@ resource "aws_ecs_service" "api" {
     ignore_changes = [desired_count]
   }
 
-  depends_on = [aws_lb_listener_rule.api]
+  depends_on = [aws_lb_listener_rule.api_https, aws_route_table_association.app]
 }
 
 # ---- Autoscaling (target-tracking on CPU) ----

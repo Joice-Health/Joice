@@ -62,10 +62,18 @@ flowchart LR
   lower **topK**.
 - Test every persona/tone change with one on-corpus question, one off-corpus
   question, and one restricted topic — the floor should hold in all three.
-- **The eval harness is the gate for `toolsEnabled` in prod**: tool-mode
-  grounding is behavioral, so run `apps/brain/scripts/eval.ts` (its golden
+- **The eval console is the gate for `toolsEnabled` in prod**: tool-mode
+  grounding is behavioral, so run the golden set from `/admin/eval` (the
   refusal cases measure the residual off-corpus risk) before flipping the
-  toggle anywhere real.
+  toggle anywhere real. The "Last eval" line beside the toggle links to the
+  latest run; the full story is `12-eval-console.md`. The CLI form,
+  `apps/brain/scripts/eval.ts`, grades identically and reads the same
+  question set.
+- **Tuning workflow**: start a run from `/admin/eval` with the change as a
+  run-only override (model, topK, threshold, tool mode), compare against the
+  previous run on the detail page, and promote the overrides with "Apply
+  these settings" only when the numbers hold. Promotions land in the audit
+  log as ordinary settings changes.
 - The full config surface is `brainSettingsSchema` in
   `packages/brain/src/config/schemas.ts`; prompt assembly is
   `buildSystemPrompt()` in `packages/brain/src/generation/prompt.ts`

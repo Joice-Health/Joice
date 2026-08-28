@@ -5,15 +5,16 @@ import { z } from 'zod';
 import { env } from '../env';
 import { requireInternalToken } from '../middleware/internal-token';
 import { rateLimit } from '../middleware/rate-limit';
-import { onboarding, profiles } from '../services';
+import { onboarding, phiStatus, profiles } from '../services';
 
 /**
  * Service-to-service routes, today for the brain. Registered on the app
  * OUTSIDE the typed chain: not a browser API, must not leak into the RPC
  * types. Behind the internal bearer token; see middleware/internal-token.ts
  * for the trust story. What crosses is bounded by tier: marketing and
- * personal traits only until the PHI keys are on, and never consent rows;
- * the same rule memberProfileView applies to the member themselves.
+ * personal traits only, widening to health-tier traits solely while both
+ * PHI keys are on (phiStatus), and never consent rows; the same rule
+ * memberProfileView applies to the member themselves.
  */
 
 const memberParamSchema = z.object({ memberId: z.string().uuid() });
@@ -40,9 +41,22 @@ export const internalRoutes = new Hono()
   /** What the brain may know about a member when answering them. */
   .get('/profile/:memberId', zValidator('param', memberParamSchema), async (c) => {
     const { memberId } = c.req.valid('param');
-    const [profile, intake] = await Promise.all([profiles.getForMember(memberId), onboarding.stateForMember(memberId)]);
+    const [profile, intake, phi] = await Promise.all([
+      profiles.getForMember(memberId),
+      onboarding.stateForMember(memberId),
+      phiStatus(),
+    ]);
     if (!profile && !intake) return c.json({ error: 'Unknown member' }, 404);
-    const view = memberProfileView({ memberId, email: null, firstName: null, profile, intake: null });
+    const view = memberProfileView({
+      memberId,
+      email: null,
+      firstName: null,
+      profile,
+      intake: null,
+      // Fail-closed: memberProfileView's default is marketing + personal, so
+      // the health tier appears only while both PHI keys are on.
+      tiers: phi.unlocked ? (['marketing', 'personal', 'health'] as const) : undefined,
+    });
     return c.json({
       memberId,
       firstName: view.firstName,

@@ -22,7 +22,7 @@ jobs:
   checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -35,7 +35,7 @@ jobs:
       # Keys are per commit; the prefix restore pulls the newest earlier entry
       # (on main, the previous deploy's), so packages whose inputs did not change
       # replay their type-check, lint and test results instead of re-running.
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v6
         with:
           path: .turbo/cache
           key: turbo-${{ runner.os }}-${{ github.sha }}
@@ -49,7 +49,7 @@ jobs:
 
       # Saved with always() so a red lint does not throw away the green
       # type-check entries produced in the same run.
-      - uses: actions/cache/save@v4
+      - uses: actions/cache/save@v6
         if: always()
         with:
           path: .turbo/cache

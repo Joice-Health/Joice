@@ -1,5 +1,4 @@
 import { Hono, type Context } from 'hono';
-import { clerkMiddleware } from '@hono/clerk-auth';
 import { cors } from 'hono/cors';
 import { requestId, type RequestIdVariables } from 'hono/request-id';
 import { secureHeaders } from 'hono/secure-headers';
@@ -27,7 +26,9 @@ import type { WSContext } from 'hono/ws';
 import { allowedOrigins, env } from './env';
 import { upgradeWebSocket } from './ws';
 import { rateLimit } from './middleware/rate-limit';
+import { adminEvalRoutes } from './admin/eval-routes';
 import { requestLog } from './middleware/request-log';
+import { createClerkAuth } from './middleware/clerk';
 import { identifyRequester, type RequesterVariables } from './middleware/requester';
 import { checkHealth } from './health';
 import {
@@ -49,23 +50,21 @@ app.use('*', requestId());
 app.use('*', requestLog);
 app.use('*', secureHeaders());
 // Who is asking: the opaque session cookie always, plus the member id from a
-// Clerk bearer token when the browser sends one (clerkMiddleware verifies it;
-// without a token it simply sets no user). See middleware/requester.ts.
+// Clerk bearer token when the browser sends one (clerkAuth verifies it
+// networklessly with the public JWT key; without a token, or with an invalid
+// one, it simply sets no user). See middleware/clerk.ts and requester.ts.
 app.use(
   '/api/brain/*',
-  clerkMiddleware({
-    publishableKey: env.CLERK_PUBLISHABLE_KEY,
-    // Networkless verification with the public JWT key in prod; the secret key
-    // only as a local fallback (see env.ts). Never both unset in a real env.
-    ...(env.CLERK_JWT_KEY ? { jwtKey: env.CLERK_JWT_KEY } : { secretKey: env.CLERK_SECRET_KEY || 'sk_test_placeholder' }),
-  }),
+  createClerkAuth({ jwtKey: env.CLERK_JWT_KEY, secretKey: env.CLERK_SECRET_KEY }),
 );
 app.use('/api/brain/*', identifyRequester);
 app.use(
   '/api/*',
   cors({
     origin: allowedOrigins,
-    allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+    // PATCH for the eval console's case edits; only matters in bare-host dev
+    // (same origin in prod), which is exactly where a 405 would go unnoticed.
+    allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
     // The session cookie must survive cross-origin requests in local dev (web
     // :3000 → brain :4100). Requires a specific origin allowlist above, never
@@ -520,7 +519,13 @@ const routes = app
       conversationService.claim(requester.sessionId, requester.memberId),
     ]);
     return c.json({ claimed: { profiles, conversations } });
-  });
+  })
+  /**
+   * The eval console: the brain's first admin surface of its own (Clerk
+   * admin role, checked in the sub-router). Joined inside the chain so
+   * BrainAppType carries it into the typed client.
+   */
+  .route('/api/brain/admin/eval', adminEvalRoutes);
 
 export type BrainAppType = typeof routes;
 // `routes` is the same instance as `app`, but typed with the full route chain.

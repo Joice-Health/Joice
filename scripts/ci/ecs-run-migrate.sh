@@ -17,7 +17,7 @@ run=$(aws ecs run-task \
   --cluster "$CLUSTER" \
   --task-definition "$TASK_DEF" \
   --launch-type FARGATE \
-  --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SECURITY_GROUP],assignPublicIp=ENABLED}" \
+  --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SECURITY_GROUP],assignPublicIp=DISABLED}" \
   --output json)
 task_arn=$(jq -r '.tasks[0].taskArn // empty' <<<"$run")
 if [ -z "$task_arn" ]; then

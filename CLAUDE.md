@@ -33,6 +33,10 @@ If a container stops seeing file edits (stale Docker Desktop mount cache — has
 `docker compose up -d --force-recreate api brain web`. If that isn't enough (the container
 sees a *truncated* file and reports a syntax error at a line that looks fine on the host),
 give the file a fresh inode: `cp f /tmp/x && rm f && cp /tmp/x f`, then restart.
+A second overnight failure mode: after the Mac sleeps, a long-running api/brain container's
+pooled Postgres sockets die silently; every db-backed request then hangs ~10s and the browser
+sees `ERR_EMPTY_RESPONSE` (`[Bun.serve]: request timed out` in the container log) while
+Postgres itself is healthy. Fix: `docker restart joice-api-1` (or whichever service hangs).
 
 ## Architecture
 
@@ -98,6 +102,39 @@ The intake flow on `/get-started` (design brief: `docs/onboarding/00-plan.md`; m
   visitor carries companion data over and confirms it.
 - Every onboarding change lands on the `onboarding/intake` branch with its docs
   (`docs/onboarding/*`) and the relevant CLAUDE.md in the same PR.
+
+## Team visibility workflow
+
+Every piece of work is visible on three surfaces: `docs/` speaks to engineers, Shortcut to
+product, Notion to the whole team. Same facts, three voices. Full doc:
+`docs/workflow/01-team-visibility.md`.
+
+- **Feature-sized work**: after the plan is approved, run the `kickoff` skill **before writing
+  code** (engineering docs under `docs/<area>/`, the `docs/README.md` index, a Shortcut epic
+  with product-voiced stories under the Engineering team, all cross-linked). When it ships,
+  run the `wrap-up` skill (as-built docs, story sweep + a plain-language epic status comment,
+  the feature's Notion page under the Documentation page in the Joice Health workspace).
+- **Fixes and small updates**: no new epic. One story on the relevant epic (or the standing
+  "Maintenance" epic), and the affected `docs/*` and CLAUDE.md updated **in the same PR** as
+  the change; this generalizes the onboarding rule above to the whole repo. If member-visible
+  or admin-visible behavior changed, the feature's Notion page gets a changelog row at the
+  next wrap-up.
+- **Shortcut moves in lockstep with the code**, via the Shortcut MCP: story started (branch or
+  first commit) means In Progress and assigned; PR opened means the PR URL attached to the
+  story and In Review; PR merged means Done (with a story comment if scope changed).
+  `wrap-up` is the catch-all sweep, not the mechanism.
+- **The root `README.md` is the repo's front door and rots fastest.** A PR that adds, removes
+  or renames an app, package, service, route namespace, root script, or docs area (or changes
+  how the stack is run) updates the root README in the same PR. It stays a short orientation
+  page: stack, layout, how to run, where the surfaces are. Depth belongs in CLAUDE.md and
+  `docs/`, which the README points at instead of duplicating.
+- **Docs house style** (repo-wide, from the onboarding brief section 7): Mermaid for anything
+  with more than two boxes, file:line references where a doc points at code, one "why"
+  paragraph per decision, no em dashes anywhere (docs, stories, commits, copy), and
+  `docs/README.md` indexes every new doc.
+- **Conventions**: branch `<area>/<phase>-<story>-<slug>` (like `onboarding/2-1-member-clerk`);
+  PR title `[P<phase>] <story#> <Title> (sc-NNN)`; commit bodies are prose ending with a story
+  reference line, `Story sc-NNN (epic NNN).`
 
 ## Access model (four tiers)
 
@@ -196,11 +233,18 @@ with the reasoning is `docs/design/01-design-system.md`. Tokens live in
 - Frost is for things that float over content: the full-width sticky nav (frosted cream, no
   rule beneath it) and the `glass` panels in admin. White surfaces (`panel`, `Input`, `glass`)
   carry no frame; the white on the cream is the edge. The animated water/video background
-  (`water-background.tsx`) belongs to `/waitlist` only.
+  (`water-background.tsx`) belongs to the public pre-launch pages only: `/waitlist` and
+  `/coming-soon`.
 
 ## Compliance posture
 
 Phase 0 stores marketing data only (waitlist emails + referral attribution) — treated as not
-PHI. HIPAA-ready pieces are already baked in (encrypted RDS, forced DB TLS, salted IP hashes —
-never store raw IPs). Before any health data ships, work through the "Before PHI" checklist in
-`infra/README.md`. Referral reward copy ("a month free") is gated on counsel review.
+PHI. The AWS BAA is signed and the Before-PHI infrastructure hardening is applied and verified
+(2026-08-27): tasks in private app subnets with no public IPs (NAT + S3/Bedrock endpoints),
+HTTPS on the CloudFront-to-ALB hop, CloudTrail + flow/access logs, RDS Multi-AZ, encrypted RDS,
+forced DB TLS, salted IP hashes (never store raw IPs). One checklist box in `infra/README.md`
+stays open: app-level audit logging and member auth for the chat (the chat-before-members
+workstream in `docs/rag/07-compliance.md`). Health data itself stays locked behind the two PHI
+keys — the `phi_ready` Terraform variable and the `onboarding_health` flag, both off — and
+turning them is a deliberate act, never a side effect. Referral reward copy ("a month free")
+is gated on counsel review.

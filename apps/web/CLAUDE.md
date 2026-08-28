@@ -7,7 +7,8 @@ web-specific detail.
 ## Route map & gates
 
 - `/waitlist` — public. Join form + referral confirmation (same route, two views switched by
-  the persisted Zustand store). Owns the animated video background (`AmbientBackground`).
+  the persisted Zustand store). Shows the animated water background (`AmbientBackground`),
+  shared with `/coming-soon`.
   The whole thing sits behind the `waitlist` feature flag (seeded by migration, toggled in
   `/admin/flags`). Flag off: the page and the public `/api/waitlist*` endpoints close, and the
   page redirects to `/coming-soon`.
@@ -30,7 +31,11 @@ web-specific detail.
 - `/team` — team password login; sets the HMAC cookie from `lib/team-auth.ts`.
 - `/admin/*` — Clerk-gated dashboard (`admin/(dashboard)/` route group); sign-in at
   `/admin/sign-in` (in-app page, not Clerk's hosted portal). Non-admin users are bounced to
-  `/waitlist`, same as anonymous. The onboarding surface lives at `/admin/onboarding/*`
+  `/waitlist`, same as anonymous. The eval console lives at `/admin/eval`
+  (+ `/admin/eval/[id]`) over the brain-service admin hooks in
+  `@joice/api-client` (`useEvalRuns`, `useEvalRun` with its scoped 2s poll,
+  `useStartEvalRun`, case CRUD); `AdminProviders` passes `brainBaseUrl` so those
+  hooks reach the brain in bare-host dev. The onboarding surface lives at `/admin/onboarding/*`
   (hub, flow editor, simulator, versions, service areas, funnel, requests) over the
   `@joice/api-client` admin onboarding hooks; the editor edits drafts only and the inline help
   must keep saying what `docs/onboarding/05-admin-guide.md` says.

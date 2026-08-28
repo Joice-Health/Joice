@@ -22,6 +22,7 @@ want the shape of the system before the detail.
 | [09 — Admin Brain Settings](rag/09-admin-brain.md) | The `/admin/brain` control panel: persona, tone, guardrails, retrieval, model, voice |
 | [10 — The Brain as Its Own Service](rag/10-architecture.md) | Why it's a separate deployable, the URL namespace, ports, schema ownership, migrations, how to deploy it |
 | [11 — The Brain Audit](rag/11-brain-audit.md) | What the audit found and what the `brain-v2` branch changed: tool mode, source types, the corpus inventory, retention/erasure — and what is deliberately still open |
+| [12 — The Eval Console](rag/12-eval-console.md) | `/admin/eval`: run the golden set from the admin, run history and comparison, one-click promote of winning settings, golden-set CRUD, the one-active-run guard |
 
 **New here? Read 01 and 10, then 05 to get it running.**
 
@@ -63,6 +64,15 @@ Page 10 (protocol readiness) arrives with Phase 5; see section 7 of the brief. *
 | Doc | What it covers |
 |---|---|
 | [01 — Klaviyo Waitlist Sync](marketing/01-klaviyo.md) | Architecture (shared client → per-domain ports), the fire-and-forget sync, what data leaves the DB, config/secrets, the checkpoint extension recipe, troubleshooting |
+
+## Workflow
+
+How work stays visible to the whole team: this docs directory for engineers, Shortcut for
+product, Notion for everyone. Run by the `kickoff` and `wrap-up` skills in `.claude/skills/`.
+
+| Doc | What it covers |
+|---|---|
+| [01 Team visibility](workflow/01-team-visibility.md) | The three surfaces and their voices, the plan-to-shipped lifecycle (flowchart), the small-fix path, branch/PR/commit conventions, the Notion auth caveat |
 
 > Diagrams are [Mermaid](https://mermaid.js.org/). GitHub renders them natively.
 > **Cursor/VS Code's markdown preview needs a one-time extension:**
