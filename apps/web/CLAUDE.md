@@ -24,8 +24,9 @@ web-specific detail.
   Checkout hands off to the hosted portal (care.joicehealth.com); no payment code here.
   Line quantities are pinned to 1 by CarePortals for subscription products, so the cart UI
   offers Remove, never a stepper. `/products` (gated site PDP) is deliberately not reused.
-- `/terms`, `/privacy`, `/faq` — public, permanent, flag-free (`app/(legal)/`, minimal
-  chrome); they move under the main-site shell at launch. `/faq` carries the approved
+- `/terms`, `/privacy`, `/faq` — public, permanent, flag-free (`app/(legal)/`, wearing the
+  storefront's ShopNav/ShopFooter); they move under the main-site shell at launch. `/faq`
+  carries the approved
   answers (edits come from an approved doc, and the insurance answer deliberately tracks
   Terms section 5); `/terms` and `/privacy` are placeholder until their copy lands.
 - `/` and future site pages — final URLs, gated by `middleware.ts` until `SITE_LAUNCHED=true`;

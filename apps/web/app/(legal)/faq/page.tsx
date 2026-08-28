@@ -148,7 +148,7 @@ export default function FaqPage() {
       <PageIntro eyebrow="Support" title="Questions, answered">
         About the medication, the pharmacy behind it, and how paying works.
       </PageIntro>
-      <ol className="border-t border-line pb-8">
+      <ol className="mx-auto w-full max-w-3xl border-t border-line pb-8">
         {FAQ_ITEMS.map((item, i) => (
           <li
             key={item.question}
