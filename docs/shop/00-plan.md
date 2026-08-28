@@ -123,3 +123,6 @@ URLs directly.
 | 2026-08-28 | Legal pages in their own `(legal)` group, not the shop | they are permanent, must survive the shop flag going off, and adopt the main-site chrome at launch |
 | 2026-08-28 | Browser-direct cart calls, no proxy | no secret exists to protect; the API is CORS-open by design for custom storefronts |
 | 2026-08-28 | Checkout lines offer Remove, no quantity stepper | CarePortals pins subscription quantities to 1 server-side; a stepper would echo a change the backend then reverts |
+| 2026-08-28 | The shelf narrows to Glutathione only | the certification runs on one product; the curated const makes widening back a one-file change |
+| 2026-08-28 | Glutathione gets a bespoke page at /shop/glutathione (static segment beats /shop/[id]) | the approved four-module spec (hero, molecule, process, safety) is copy of record, not a template render; the generic PDP stays underneath untouched |
+| 2026-08-28 | The Glutathione hero's Get Started opens CarePortals' hosted buy flow directly (`/buy/<id>`, url fixed by CarePortals) | intake, physician review and payment all live in their funnel; our cart/checkout remain for the generic PDP path |

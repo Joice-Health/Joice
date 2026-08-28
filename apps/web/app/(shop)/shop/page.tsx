@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { requireShopEnabled } from '@/lib/shop-gate';
 import { getCuratedProducts } from '@/lib/careportals/products.server';
-import { SHOP_PRODUCT_IDS } from '@/lib/shop-products';
+import { PRODUCT_PAGES, SHOP_PRODUCT_IDS } from '@/lib/shop-products';
 import { PageIntro } from '@/components/ui/page-intro';
 import { ShopProductRow } from '@/components/shop/shop-product-row';
 import { ShopUnavailable } from '@/components/shop/shop-unavailable';
@@ -43,7 +43,12 @@ export default async function ShopPage() {
       ) : (
         <ul className="border-t border-line pb-8">
           {products.map((product, i) => (
-            <ShopProductRow key={product._id} product={product} hue={HUES[i % HUES.length]} />
+            <ShopProductRow
+              key={product._id}
+              product={product}
+              hue={HUES[i % HUES.length]}
+              href={PRODUCT_PAGES[product._id]}
+            />
           ))}
         </ul>
       )}
