@@ -138,10 +138,16 @@ product, Notion to the whole team. Same facts, three voices. Full doc:
 
 ## Access model (four tiers)
 
-1. **Public**: `/waitlist` (+ `?ref=` referral links) — the only public surface until launch.
-   The waitlist itself sits behind the `waitlist` feature flag (seeded on by migration, toggled
-   in `/admin/flags`); off, `/waitlist` and the public `/api/waitlist*` endpoints close and
-   visitors land on `/coming-soon` ("Something special is coming"). The intake flow
+1. **Public**: `/waitlist` (+ `?ref=` referral links), the certification storefront, and the
+   legal pages. The waitlist sits behind the `waitlist` feature flag (seeded on by migration,
+   toggled in `/admin/flags`); off, `/waitlist` and the public `/api/waitlist*` endpoints close
+   and visitors land on `/coming-soon` ("Something special is coming"). The **storefront**
+   (`/home`, `/shop`, `/shop/[id]`, `/checkout` — `apps/web/app/(shop)/`, docs in
+   `docs/shop/00-plan.md`) pulls products and carts live from the CarePortals Public API
+   (`lib/careportals/`) and hands checkout off to the hosted portal at care.joicehealth.com;
+   it sits behind the `shop` flag (seeded ON — the audit is the point; toggling it off in
+   `/admin/flags` is the post-audit kill switch). `/terms`, `/privacy`, `/faq`
+   (`app/(legal)/`) are permanent, flag-free public pages. The intake flow
    (`/get-started`, `/api/onboarding/*`) sits behind the `onboarding` flag (seeded off) and,
    like every other page, behind the team gate until launch.
 2. **Team preview**: everything else redirects anonymous visitors to `/waitlist` via
