@@ -15,23 +15,24 @@ export function ShopProductRow({
   product: CareportalsProduct;
   hue?: number;
 }) {
+  const dosing = product.subLabel ?? product.description;
   return (
     <li className="border-b border-line">
       <div className="grid grid-cols-[1fr_1.4fr] gap-6 py-6 sm:gap-10 sm:py-8">
-        <div className="flex flex-col gap-4">
-          <h3 className="mono-label text-ink">{product.label}</h3>
-          <ImageSlot
-            src={`products/${product._id}.jpg`}
-            alt=""
-            sizes="(min-width: 640px) 160px, 112px"
-            hue={hue}
-            className="h-28 w-28 rounded-sm sm:h-40 sm:w-40"
-          />
-        </div>
+        <ImageSlot
+          src={`products/${product._id}.jpg`}
+          alt=""
+          sizes="(min-width: 640px) 160px, 112px"
+          hue={hue}
+          className="h-28 w-28 rounded-sm sm:h-40 sm:w-40"
+        />
         <div className="flex flex-col items-start justify-between gap-5">
-          <p className="max-w-sm text-lg leading-snug text-ink sm:text-xl">
-            {product.subLabel ?? product.description ?? 'Clinician-guided protocol.'}
-          </p>
+          <div className="flex flex-col gap-2">
+            <h3 className="max-w-sm text-balance text-xl leading-snug text-ink sm:text-2xl">
+              {product.label}
+            </h3>
+            {dosing ? <p className="text-sm text-muted">{dosing}</p> : null}
+          </div>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
             <CtaLink href={`/shop/${product._id}`}>View +</CtaLink>
             <span className="font-mono text-sm text-muted">

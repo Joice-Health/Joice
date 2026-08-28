@@ -26,7 +26,7 @@ export default async function ShopPage() {
 
   return (
     <>
-      <PageIntro eyebrow="The shop" title="Protocols">
+      <PageIntro title="Shop">
         Set by clinicians, priced near cost. Payment and prescription review complete on our
         secure care portal.
       </PageIntro>
