@@ -11,9 +11,12 @@ import { formatPrice, type CareportalsProduct } from '@/lib/careportals/types';
 export function ShopProductRow({
   product,
   hue = 128,
+  href = `/shop/${product._id}`,
 }: {
   product: CareportalsProduct;
   hue?: number;
+  /** Override for products with a bespoke page (lib/shop-products.ts PRODUCT_PAGES). */
+  href?: string;
 }) {
   const dosing = product.subLabel ?? product.description;
   return (
@@ -34,7 +37,7 @@ export function ShopProductRow({
             {dosing ? <p className="text-sm text-muted">{dosing}</p> : null}
           </div>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-            <CtaLink href={`/shop/${product._id}`}>View +</CtaLink>
+            <CtaLink href={href}>View +</CtaLink>
             <span className="font-mono text-sm text-muted">
               {formatPrice(product.price, product.currency)}
               {product.isSubscription ? <span className="text-xs">/mo</span> : null}

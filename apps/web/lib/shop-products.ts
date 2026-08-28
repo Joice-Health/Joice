@@ -5,16 +5,19 @@
  * `curl -H 'organization: joicehealth_com' https://public-api.portals.care/v2/products`.
  * Disabled products and unknown ids are dropped at render, so a stale entry
  * degrades to "not shown", never to a broken page.
+ *
+ * Glutathione only for the certification (decided 2026-08-28): the 1 month
+ * 6000mg/30mL preparation, the 200 mg/mL solution the FAQ describes.
  */
-export const SHOP_PRODUCT_IDS: readonly string[] = [
-  '6a7a18253c411544080c25ba', // GHK-CU Biocosmetic Cream, 1 month / 30mL, $88
-  '6a7a18a99d94da87b1d1d956', // Glutathione Injectable, 1 month / 6000mg / 30mL, $68
-  '6a7a18a99d94da87b1d1d95a', // Lipo-B (B12 / MIC) Injectable, 1 month / 10mL, $114
-  '6a7a18a99d94da87b1d1d958', // NAD+ Injectable, 1 month / 10mL, $196
-  '6a7a198c9d94da87b1d1d992', // Naltrexone Capsules, 1 month / 30 capsules, $28
-  '6a7a1d139d94da87b1d1da37', // PT-141 Nasal Spray For Men, $128
-  '6a7a19c69d94da87b1d1d9a1', // PT-141 Nasal Spray For Women, $128
-  '6a6cadd7b68fb8c53595be30', // Sermorelin Injectable, 6 weeks / 15mg / 5mL, $78
-  '6a6cadd7b68fb8c53595be32', // Tesamorelin Injectable, 6 weeks / 24mg / 3mL, $198
-  '6a847e8f0537e0d78a3a0980', // Tirzepatide/B12, Standard (Rung 3), $248
-];
+/** Glutathione Injectable, 1 month / 6000mg / 30mL (200 mg/mL), $68. */
+export const GLUTATHIONE_ID = '6a7a18a99d94da87b1d1d956';
+
+export const SHOP_PRODUCT_IDS: readonly string[] = [GLUTATHIONE_ID];
+
+/**
+ * Products with a bespoke page. A shelf row for one of these links here
+ * instead of the generic /shop/[id] template.
+ */
+export const PRODUCT_PAGES: Record<string, string> = {
+  [GLUTATHIONE_ID]: '/shop/glutathione',
+};
