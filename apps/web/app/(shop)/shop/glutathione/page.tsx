@@ -19,6 +19,14 @@ export const metadata: Metadata = {
     'An injectable antioxidant compounded by a licensed 503A pharmacy. Available only with a prescription, after an independent licensed physician reviews your health history.',
 };
 
+/**
+ * Render per request, never prerender: at image build time no API exists, so a
+ * prerender would bake requireShopEnabled's flag-off redirect into the static
+ * artifact and the live flag could never open the page (the /coming-soon
+ * precedent). The CarePortals data cache keeps its own revalidate window.
+ */
+export const dynamic = 'force-dynamic';
+
 const TRUST_ROW = [
   'Prescription only',
   'Independent licensed physicians',

@@ -17,7 +17,10 @@ web-specific detail.
   preview gate bounces it to `/waitlist` and loops.
 - `/home`, `/shop`, `/shop/[id]`, `/checkout` — public, the certification storefront
   (`app/(shop)/`, docs: `docs/shop/00-plan.md`). Every page opens with
-  `requireShopEnabled()` (`lib/shop-gate.ts`): the `shop` flag off redirects to `/waitlist`.
+  `requireShopEnabled()` (`lib/shop-gate.ts`) AND exports `dynamic = 'force-dynamic'`: a
+  statically prerendered page bakes the build-time flag answer (always off, CI has no API)
+  into the artifact as a 307, and the live flag can never open it. The `shop` flag off
+  redirects to `/waitlist` per request.
   Products and carts come live from the CarePortals Public API via `lib/careportals/`
   (`products.server.ts` is server-only; `cart.client.ts` is browser-only, cart id in
   localStorage); the curated shelf is the `SHOP_PRODUCT_IDS` const in `lib/shop-products.ts`
