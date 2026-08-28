@@ -1,8 +1,12 @@
 import type { Metadata } from 'next';
-import { Index, buttonClasses } from '@joice/ui';
+import { Index } from '@joice/ui';
 import { requireShopEnabled } from '@/lib/shop-gate';
+import { getProduct } from '@/lib/careportals/products.server';
+import { formatPrice } from '@/lib/careportals/types';
+import { GLUTATHIONE_ID } from '@/lib/shop-products';
 import { Eyebrow } from '@/components/ui/eyebrow';
 import { ImageSlot } from '@/components/ui/image-slot';
+import { AddToCartButton } from '@/components/shop/add-to-cart-button';
 import {
   TripeptideFigure,
   RedoxFigure,
@@ -14,9 +18,6 @@ export const metadata: Metadata = {
   description:
     'An injectable antioxidant compounded by a licensed 503A pharmacy. Available only with a prescription, after an independent licensed physician reviews your health history.',
 };
-
-/** Do not change without checking with CarePortals. */
-const BUY_URL = 'https://care.joicehealth.com/buy/6a6cad4fb68fb8c53595be12';
 
 const TRUST_ROW = [
   'Prescription only',
@@ -45,11 +46,14 @@ const STEPS: { icon: 'clipboard' | 'stethoscope' | 'package'; title: string; bod
 /**
  * The Glutathione page, built module by module to the approved spec (Shaun's
  * doc, 2026-08-28). Copy is the record of what we tell visitors; edits come
- * from an approved doc, not ad hoc. The Get Started action opens the
- * CarePortals purchase flow (intake, physician review, payment) directly.
+ * from an approved doc, not ad hoc. Get Started puts the product in the
+ * CarePortals cart and lands on /checkout, which hands off to the hosted
+ * checkout; the price beside it is live from CarePortals and simply hides if
+ * the read fails (the copy never breaks with it).
  */
 export default async function GlutathionePage() {
   await requireShopEnabled();
+  const product = await getProduct(GLUTATHIONE_ID);
   return (
     <>
       {/* Module 01: hero */}
@@ -66,9 +70,20 @@ export default async function GlutathionePage() {
             with a prescription, after an independent licensed physician reviews your health
             history.
           </p>
-          <a href={BUY_URL} className={buttonClasses({ variant: 'solid', size: 'lg', className: 'mt-9' })}>
-            Get Started
-          </a>
+          {product ? (
+            <p className="mt-8 font-mono text-2xl text-ink">
+              {formatPrice(product.price, product.currency)}
+              {product.isSubscription ? (
+                <span className="text-base text-muted">/mo</span>
+              ) : null}
+              {product.subLabel ? (
+                <span className="ml-4 text-sm text-muted">{product.subLabel}</span>
+              ) : null}
+            </p>
+          ) : null}
+          <div className="mt-8">
+            <AddToCartButton productId={GLUTATHIONE_ID} label="Get Started" />
+          </div>
           <p className="mt-4 max-w-md text-sm leading-relaxed text-muted">
             Requires a short medical intake and physician review. Must be 18 or older.
             Available only in states where our physicians and pharmacy are licensed.

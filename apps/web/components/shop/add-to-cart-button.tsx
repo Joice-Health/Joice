@@ -10,7 +10,14 @@ import { addToCart } from '@/lib/careportals/cart.client';
  * cart, then lands on /checkout: the flow is deliberately linear, so the cart
  * is always one click ahead of the visitor and the nav needs no badge.
  */
-export function AddToCartButton({ productId }: { productId: string }) {
+export function AddToCartButton({
+  productId,
+  label = 'Add to cart +',
+}: {
+  productId: string;
+  /** Visible label; the Glutathione hero says "Get Started" per its spec. */
+  label?: string;
+}) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -30,7 +37,7 @@ export function AddToCartButton({ productId }: { productId: string }) {
   return (
     <div className="flex flex-col items-start gap-3">
       <Button variant="solid" size="lg" disabled={pending} onClick={handleAdd}>
-        {pending ? 'Adding…' : 'Add to cart +'}
+        {pending ? 'Adding…' : label}
       </Button>
       {failed ? (
         <p className="mono-label text-muted" role="status">

@@ -9,14 +9,15 @@
  * Glutathione only for the certification (decided 2026-08-28): the 1 month
  * 6000mg/30mL preparation, the 200 mg/mL solution the FAQ describes.
  */
-export const SHOP_PRODUCT_IDS: readonly string[] = [
-  '6a7a18a99d94da87b1d1d956', // Glutathione Injectable, 1 month / 6000mg / 30mL, $68
-];
+/** Glutathione Injectable, 1 month / 6000mg / 30mL (200 mg/mL), $68. */
+export const GLUTATHIONE_ID = '6a7a18a99d94da87b1d1d956';
+
+export const SHOP_PRODUCT_IDS: readonly string[] = [GLUTATHIONE_ID];
 
 /**
  * Products with a bespoke page. A shelf row for one of these links here
  * instead of the generic /shop/[id] template.
  */
 export const PRODUCT_PAGES: Record<string, string> = {
-  '6a7a18a99d94da87b1d1d956': '/shop/glutathione',
+  [GLUTATHIONE_ID]: '/shop/glutathione',
 };
