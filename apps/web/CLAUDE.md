@@ -34,7 +34,8 @@ web-specific detail.
   storefront's ShopNav/ShopFooter); they move under the main-site shell at launch. `/faq`
   carries the approved
   answers (edits come from an approved doc, and the insurance answer deliberately tracks
-  Terms section 5); `/terms` and `/privacy` are placeholder until their copy lands.
+  Terms section 5); `/privacy` carries the approved Privacy Policy verbatim (the copy of
+  record, its own punctuation kept); `/terms` is placeholder until its copy lands.
 - `/` and future site pages — final URLs, gated by `middleware.ts` until `SITE_LAUNCHED=true`;
   anonymous → redirected to `/waitlist` (public must never see a login).
 - `/get-started`: the intake flow. The server component reads the `onboarding` flag
