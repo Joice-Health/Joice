@@ -36,7 +36,7 @@ schemas from `@joice/core`, call the service, return JSON.
 | `/api/admin/*` | `src/admin/routes.ts` (+ `src/admin/onboarding-routes.ts` at `/api/admin/onboarding`) | Clerk + `requireAdmin` | yes (`.route('/api/admin', ...)`) |
 | `/api/me/*`, `/api/onboarding/session/claim` | (Phase 2) | Clerk + `requireMember`, which also creates the member's `users` row on its first call after sign-up (no webhook) | yes |
 | `/api/me/labs*` | `src/member/routes.ts` | Clerk + `requireMember`; 404 unless both PHI keys are on and `LABS_BUCKET` is set; presigned browser-to-S3 PUTs, bytes never transit the api | yes |
-| `/api/internal/*` | (Phase 4) | internal bearer token | **no**: registered on the app outside the chain, not a browser API |
+| `/api/internal/*` | (Phase 4) | internal bearer token; with `INTERNAL_EDGE_BLOCKED` (Service Connect, story 4.7) anything carrying the CloudFront origin header is refused outright | **no**: registered on the app outside the chain, not a browser API |
 
 The intake routes (`src/onboarding/routes.ts`): `GET`/`POST /session`,
 `/session/answer`, `/skip`, `/back`, `/restart`, `/notify`. The engine runs on this side;

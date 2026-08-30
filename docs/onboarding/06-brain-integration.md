@@ -75,15 +75,19 @@ the member chats exactly like an anonymous visitor, with one warning in the
 brain's log (`platform profile read failed`). A chat answer never waits on,
 or fails because of, the platform.
 
-## The trust boundary today, and 4.7
+## The trust boundary (Service Connect, story 4.7)
 
-The only route between tasks today is the public canonical URL (the ALB
-admits only CloudFront; tasks admit only the ALB), so `/api/internal/*` is
-internet-reachable and the bearer token is the boundary: constant-time
-compare, 503 when unset, never logged, high rate limit, outside the typed
-RPC chain. Story 4.7 (Shaun) adds ECS Service Connect so brain → api becomes
-VPC-private and the middleware can additionally refuse anything that arrived
-through CloudFront (the `X-Origin-Verify` header marks it).
+Brain-to-api traffic is VPC-private: ECS Service Connect
+(`infra/service-connect.tf`) gives the brain the name `http://api:4000`
+inside the `joice.local` namespace, with a security-group rule admitting the
+brain tasks into the api's group. With `INTERNAL_EDGE_BLOCKED=true` on the
+api task (flipped by the same apply), `requireInternalToken` refuses any
+request that carries CloudFront's `X-Origin-Verify` header, token or no
+token, so `/api/internal/*` is unreachable from the internet. The bearer
+token remains the second lock on the private path: constant-time compare,
+503 when unset, never logged, outside the typed RPC chain. Dev compose keeps
+direct http between containers with the edge block off, and the rollback is
+one apply (the old public URL plus the flag off).
 
 ## Who asks what
 

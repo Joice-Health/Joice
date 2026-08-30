@@ -238,3 +238,12 @@ since the consuming route landed, the api task-role grant (`s3:PutObject` on
 `labs/*` plus the KMS encrypt grant) and the `LABS_BUCKET` env on the api task
 (`ecs.tf`). One `terraform apply` turns it on; with the env empty or the PHI
 keys off, `/api/me/labs` answers 404 and nothing is reachable.
+
+## Service Connect (story 4.7)
+
+`service-connect.tf`: the `joice.local` namespace, the api exposed privately
+as `http://api:4000`, and the brain admitted into the api's security group.
+The same apply sets `INTERNAL_EDGE_BLOCKED=true` on the api task, after which
+`/api/internal/*` refuses anything that arrived through CloudFront, token or
+not. Rollback: `API_URL_INTERNAL` back to the canonical URL and the flag off,
+one apply.

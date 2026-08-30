@@ -143,7 +143,7 @@ resource "aws_ecs_task_definition" "api" {
       image     = "${aws_ecr_repository.app["api"].repository_url}:${var.image_tag}"
       essential = true
       portMappings = [
-        { containerPort = 4000, protocol = "tcp" }
+        { containerPort = 4000, protocol = "tcp", name = "api" }
       ]
       environment = [
         { name = "NODE_ENV", value = "production" },
@@ -169,6 +169,7 @@ resource "aws_ecs_task_definition" "api" {
         # checklist above it in the README is complete.
         { name = "PHI_READY", value = tostring(var.phi_ready) },
         { name = "LABS_BUCKET", value = aws_s3_bucket.labs.bucket },
+        { name = "INTERNAL_EDGE_BLOCKED", value = "true" },
         # Same knobs the nightly sweep uses (onboarding-retention.tf); the api
         # reads them too, so the two must never drift apart.
         { name = "ONBOARDING_SESSION_IDLE_DAYS", value = tostring(var.onboarding_session_idle_days) },
@@ -246,6 +247,21 @@ resource "aws_ecs_service" "api" {
     target_group_arn = aws_lb_target_group.api.arn
     container_name   = "api"
     container_port   = 4000
+  }
+
+  # The private name the brain calls (service-connect.tf has the why).
+  service_connect_configuration {
+    enabled   = true
+    namespace = aws_service_discovery_http_namespace.main.arn
+
+    service {
+      port_name = "api"
+
+      client_alias {
+        dns_name = "api"
+        port     = 4000
+      }
+    }
   }
 
   deployment_circuit_breaker {

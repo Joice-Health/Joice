@@ -36,7 +36,7 @@ const observationsSchema = z.object({
 
 export const internalRoutes = new Hono()
   .use('*', rateLimit({ windowMs: 60_000, max: 600 }))
-  .use('*', requireInternalToken(env.INTERNAL_API_TOKEN))
+  .use('*', requireInternalToken(env.INTERNAL_API_TOKEN, { edgeBlocked: env.INTERNAL_EDGE_BLOCKED }))
 
   /** What the brain may know about a member when answering them. */
   .get('/profile/:memberId', zValidator('param', memberParamSchema), async (c) => {
