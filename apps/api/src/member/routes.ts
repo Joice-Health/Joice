@@ -1,9 +1,10 @@
 import { Hono } from 'hono';
 import { clerkMiddleware } from '@hono/clerk-auth';
-import { memberProfileView } from '@joice/core';
+import { createLabUploadSchema, memberProfileView, uuidParamSchema } from '@joice/core';
+import { zValidator } from '@hono/zod-validator';
 import { env } from '../env';
 import { rateLimit } from '../middleware/rate-limit';
-import { onboarding, profiles } from '../services';
+import { labUploads, onboarding, phiStatus, profiles } from '../services';
 import { requireMember } from './index';
 import type { MemberEnv } from './auth';
 
@@ -42,4 +43,26 @@ export const memberRoutes = new Hono<MemberEnv>()
         intake,
       }),
     );
+  })
+
+  /**
+   * Lab and concern uploads (story 5.3). The whole surface answers 404 until
+   * BOTH PHI keys are on AND a labs bucket is configured: a member cannot even
+   * discover the door before the compliance posture allows the room. Bytes go
+   * browser-to-S3 with the presigned URL; only records live here.
+   */
+  .get('/labs', async (c) => {
+    if (!labUploads || !(await phiStatus()).unlocked) return c.json({ error: 'Not available' }, 404);
+    return c.json({ items: await labUploads.listForMember(c.get('memberId')) });
+  })
+  .post('/labs', zValidator('json', createLabUploadSchema), async (c) => {
+    if (!labUploads || !(await phiStatus()).unlocked) return c.json({ error: 'Not available' }, 404);
+    const result = await labUploads.create(c.get('memberId'), c.req.valid('json'));
+    return c.json(result, 201);
+  })
+  .delete('/labs/:id', zValidator('param', uuidParamSchema), async (c) => {
+    if (!labUploads || !(await phiStatus()).unlocked) return c.json({ error: 'Not available' }, 404);
+    const removed = await labUploads.remove(c.get('memberId'), c.req.valid('param').id);
+    if (!removed) return c.json({ error: 'Not found' }, 404);
+    return c.json({ removed: true });
   });

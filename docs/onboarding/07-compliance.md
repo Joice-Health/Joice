@@ -51,6 +51,22 @@ Klaviyo suppression first). The stop screen says so once and offers no
 notify-me. Tested in `engine.test.ts` (rows 4, 5, 14) and
 `onboarding-service.test.ts`.
 
+## Lab uploads (story 5.3)
+
+- Files are PHI from the first byte, so they never transit our services: the
+  browser PUTs directly to the labs bucket (`infra/labs.tf`: its own KMS key,
+  versioning, TLS-only) with a presigned URL scoped to one key, content type
+  and length, expiring in fifteen minutes.
+- The whole surface (`/api/me/labs`) answers 404 unless BOTH PHI keys are on
+  and a bucket is configured; before that a member cannot even discover it.
+- We hold records, not bytes: `lab_uploads` rows (filename, type, size, key)
+  are soft-removed so "what did we ever hold, and when" stays a query. Keys
+  look like `labs/<memberId>/<uuid>`; the member never sees the key.
+- Accepted types are a code-level allowlist (PDF, JPEG, PNG, 25 MB cap);
+  widening it is a deploy, not a config change.
+- The Comprehend scan reuse from the RAG pipeline is deliberately deferred:
+  this story lands the storage path only.
+
 ## Notice and consent
 
 - The intro copy says why state and age are asked. When the flow carries a

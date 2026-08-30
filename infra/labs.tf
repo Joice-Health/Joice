@@ -93,3 +93,28 @@ resource "aws_s3_bucket_policy" "labs" {
     ]
   })
 }
+
+# The api task's grant, arriving with story 5.3's consuming route as the file
+# header promised: presigned PUTs (the browser uploads directly; the api never
+# reads the objects back today, so no GetObject until a consumer exists) plus
+# the KMS grant S3 needs to encrypt with the labs key on the api's behalf.
+resource "aws_iam_role_policy" "api_labs_upload" {
+  name = "labs-presigned-upload"
+  role = aws_iam_role.task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["s3:PutObject"]
+        Resource = ["${aws_s3_bucket.labs.arn}/labs/*"]
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["kms:Encrypt", "kms:GenerateDataKey"]
+        Resource = [aws_kms_key.labs.arn]
+      },
+    ]
+  })
+}

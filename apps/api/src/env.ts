@@ -63,6 +63,12 @@ const envSchema = z.object({
    */
   INTERNAL_API_TOKEN: z.string().default(''),
   /**
+   * The PHI labs bucket (infra/labs.tf). Empty disables the member labs
+   * surface entirely; the routes then answer 404 like any other locked door.
+   * The SDK resolves the region from the task's own AWS_REGION.
+   */
+  LABS_BUCKET: z.string().default(''),
+  /**
    * Git SHA of the image, baked in at build time and reported by /health.
    * "dev" locally, where the running code is whatever is bind-mounted.
    */

@@ -1,6 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
+import type { LAB_CONTENT_TYPES } from '@joice/core/schemas';
 import type {
   ActionError,
   AnswerInput,
@@ -26,6 +27,7 @@ import { useApiClient } from './provider';
 export const onboardingKeys = {
   session: ['onboarding', 'session'] as const,
   me: ['onboarding', 'me'] as const,
+  labs: ['onboarding', 'me', 'labs'] as const,
 };
 
 /** The `onboarding` flag is off: the page should show the lead summary instead. */
@@ -147,6 +149,61 @@ export function useClaimOnboarding() {
 }
 
 /** The member's own profile view (traits, segment, intake state). Creates the member record on first call. */
+type LabContentType = (typeof LAB_CONTENT_TYPES)[number];
+
+/**
+ * Lab uploads (story 5.3). The server answers 404 while the PHI keys are off
+ * or no bucket is configured, so the query resolves to null then and the
+ * panel simply does not render: absence of the feature, not an error.
+ */
+export function useMyLabUploads() {
+  const client = useApiClient();
+  return useQuery({
+    queryKey: onboardingKeys.labs,
+    queryFn: async () => {
+      const res = await client.api.me.labs.$get();
+      if (res.status === 404) return null;
+      if (!res.ok) throw new Error(`Failed to load your uploads (${res.status})`);
+      return res.json();
+    },
+  });
+}
+
+export function useCreateLabUpload() {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { filename: string; contentType: LabContentType; sizeBytes: number; file: File }) => {
+      const res = await client.api.me.labs.$post({
+        json: { filename: input.filename, contentType: input.contentType, sizeBytes: input.sizeBytes },
+      });
+      if (!res.ok) throw new Error(`Could not start the upload (${res.status})`);
+      const { upload, uploadUrl } = await res.json();
+      const put = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': input.contentType },
+        body: input.file,
+      });
+      if (!put.ok) throw new Error(`The upload did not complete (${put.status})`);
+      return upload;
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: onboardingKeys.labs }),
+  });
+}
+
+export function useRemoveLabUpload() {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await client.api.me.labs[':id'].$delete({ param: { id } });
+      if (!res.ok) throw new Error(`Could not remove the file (${res.status})`);
+      return res.json();
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: onboardingKeys.labs }),
+  });
+}
+
 export function useMyProfile(options?: Partial<UseQueryOptions<MemberProfileView>>) {
   const client = useApiClient();
   return useQuery({

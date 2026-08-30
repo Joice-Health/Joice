@@ -281,3 +281,34 @@ export const profiles = pgTable(
 
 export type Profile = typeof profiles.$inferSelect;
 export type NewProfile = typeof profiles.$inferInsert;
+
+/**
+ * Member lab and concern uploads (story 5.3): the RECORD of a file in the PHI
+ * labs bucket, never the bytes. Written only by the api service through
+ * @joice/core's lab-uploads-service; the browser PUTs directly to S3 with a
+ * presigned URL, so file content never transits our services. Rows are
+ * soft-removed (status) so "what did we ever hold, and when" stays a query;
+ * the S3 object lifecycle is the bucket's concern.
+ */
+export const labUploads = pgTable(
+  'lab_uploads',
+  {
+    id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+    memberId: uuid('member_id').notNull(),
+    /** Object key in the labs bucket: labs/<memberId>/<uuid>. */
+    s3Key: text('s3_key').notNull(),
+    filename: text('filename').notNull(),
+    contentType: text('content_type').notNull(),
+    sizeBytes: integer('size_bytes').notNull(),
+    status: text('status').notNull().default('uploaded'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('lab_uploads_member_idx').on(table.memberId, table.createdAt.desc()),
+    uniqueIndex('lab_uploads_key_unique').on(table.s3Key),
+  ],
+);
+
+export type LabUpload = typeof labUploads.$inferSelect;
+export type NewLabUpload = typeof labUploads.$inferInsert;
