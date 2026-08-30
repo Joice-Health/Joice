@@ -11,7 +11,9 @@
 # pair reversed, one apply.
 
 resource "aws_service_discovery_http_namespace" "main" {
-  name        = "joice.local"
+  # Project-prefixed so a second environment (the staging branch) in the same
+  # account gets its own namespace from its own project slug, no edits.
+  name        = "${var.project}.local"
   description = "Service Connect namespace: private names between the platform's services"
 }
 
