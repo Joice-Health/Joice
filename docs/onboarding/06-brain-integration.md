@@ -43,6 +43,14 @@ flowchart LR
    `random_password` on both tasks). This is the promised port evolution:
    "the stubs become HTTP clients to the api service and nothing in the
    domain changes" (docs/rag/10-architecture.md).
+4. **The write path (story 5.5)**: when a signed-in member sets their goal in
+   chat, the companion records one observation through `ObservationSinkPort`
+   (source `companion`, confidence 0.6): the vocabulary token only, never the
+   free-text note, per the port contract. Anonymous visitors record nothing.
+   The call is fire-and-forget with the same tolerance as the reads: a dead
+   api never fails a capture turn. In the fold, onboarding answers outrank
+   companion observations (`packages/core/src/profile/projector.ts`), so chat
+   can never overwrite what the intake asked properly.
 
 ## What may cross, and what never does
 
