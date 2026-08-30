@@ -38,17 +38,25 @@ describe('trait registry', () => {
   });
 
   test('derived traits are flagged and never asked directly', () => {
-    for (const key of ['age', 'age_band', 'age_eligible', 'state_status', 'segment']) {
+    for (const key of ['age', 'age_band', 'age_eligible', 'state_status', 'bmi', 'segment']) {
       expect(isDerivedTrait(key)).toBe(true);
     }
     expect(isDerivedTrait('goal')).toBe(false);
     expect(isDerivedTrait('custom.anything')).toBe(false);
   });
 
-  test('v1 registry holds no health-tier traits', () => {
-    // Health traits arrive with the PHI keys (story 5.2). Until then the
-    // registry itself guarantees a flow cannot ask one.
-    expect(traitsWithSensitivity('health')).toEqual([]);
+  test('health-tier traits are registered (story 5.2) and exactly these', () => {
+    // The registry says what the intake CAN ask; the publish validator still
+    // refuses these until both PHI keys are on. Growing this list is a
+    // deliberate act with compliance review, so the test pins it exactly.
+    expect(traitsWithSensitivity('health').map((t) => t.key)).toEqual([
+      'height_weight',
+      'bmi',
+      'medications',
+      'conditions',
+      'glp1_history',
+      'pregnancy',
+    ]);
     expect(traitsWithSensitivity('personal').map((t) => t.key)).toContain('date_of_birth');
     expect(traitsWithSensitivity('marketing').map((t) => t.key)).toContain('goal');
   });

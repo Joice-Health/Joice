@@ -219,9 +219,39 @@ describe('locked sections', () => {
 });
 
 describe('PHI lock', () => {
-  // The v1 registry holds no health-tier trait by construction (story 5.2
-  // registers the first), so these tests inject the tier through the tierOf
-  // override the validator exposes for exactly this reason.
+  // Story 5.2 registered real health traits, so the lock has a real subject
+  // now. The tierOf-override tests below stay: they pin the injection seam the
+  // validator exposes so the lock is testable independent of registry content.
+  test('a real health trait (glp1_history) blocks off-keys and publishes on-keys', () => {
+    const def = base();
+    def.questions.glp1_history = {
+      key: 'glp1_history',
+      trait: 'glp1_history',
+      type: 'single_select',
+      copy: { label: 'Have you used a GLP-1 medication?' },
+      options: [
+        { value: 'none', label: 'Never' },
+        { value: 'past', label: 'In the past' },
+        { value: 'current', label: 'Currently' },
+      ],
+      required: true,
+      locked: false,
+    };
+    def.sections.find((s) => s.key === 'about')!.questions.push('glp1_history');
+
+    const locked = validateFlowDefinition(def, { phiEnabled: false });
+    expect(locked.ok).toBe(false);
+    expect(locked.errors).toContainEqual(
+      expect.objectContaining({ code: 'phi_locked', path: 'questions.glp1_history.trait' }),
+    );
+
+    const unlocked = validateFlowDefinition(def, { phiEnabled: true });
+    expect(unlocked.ok).toBe(true);
+    expect(unlocked.warnings).toContainEqual(
+      expect.objectContaining({ code: 'phi_locked', path: 'questions.glp1_history.trait' }),
+    );
+  });
+
   const asHealth =
     (trait: string) =>
     (key: string) =>

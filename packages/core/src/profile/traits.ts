@@ -119,6 +119,29 @@ const REGISTRY = [
   // Consent (personal, versioned by the flow version that asked)
   { key: 'consent_terms', type: 'boolean', sensitivity: 'personal', label: 'Agreed to Terms and Privacy' },
   { key: 'consent_marketing', type: 'boolean', sensitivity: 'personal', label: 'Marketing emails opt-in' },
+
+  // Health (PHI the moment it is tied to a person). Registered so the intake
+  // CAN ask them, not so it does: the publish validator refuses a flow that
+  // binds any of these until both PHI keys are on, and the brain's member
+  // context never carries this tier (profile-view filters by sensitivity).
+  { key: 'height_weight', type: 'height_weight', sensitivity: 'health', label: 'Height and weight' },
+  { key: 'bmi', type: 'number', sensitivity: 'health', label: 'BMI', derived: true },
+  { key: 'medications', type: 'string', sensitivity: 'health', label: 'Current medications' },
+  { key: 'conditions', type: 'string', sensitivity: 'health', label: 'Health conditions' },
+  {
+    key: 'glp1_history',
+    type: 'enum',
+    sensitivity: 'health',
+    label: 'GLP-1 history',
+    values: ['none', 'past', 'current'],
+  },
+  {
+    key: 'pregnancy',
+    type: 'enum',
+    sensitivity: 'health',
+    label: 'Pregnancy status',
+    values: ['no', 'yes', 'trying', 'not_applicable'],
+  },
 ] as const satisfies readonly TraitDef[];
 
 export type TraitKey = (typeof REGISTRY)[number]['key'];

@@ -46,7 +46,11 @@ is ordinary content by decision (2026-08-26): terms acceptance is the flow
 author's to place, in the flow or on the Clerk sign-up screen.
 
 Question types: `single_select`, `multi_select`, `number`, `text`, `date`,
-`us_state`, `height_weight`, `boolean`, `scale`. Custom traits (`custom.<slug>`)
+`us_state`, `height_weight`, `boolean`, `scale`. A `height_weight` answer is
+stored metric (`{ heightCm, weightKg }`, `heightWeightSchema` in
+`packages/core/src/profile/traits.ts`); the web runner collects feet, inches
+and pounds and converts at the submit boundary, so the wire and the store only
+ever see metric. Custom traits (`custom.<slug>`)
 take their type from the question that asks them; a `single_select` on a custom
 trait is an enum over its own options. A `boolean` question is a checkbox:
 `required` means it must be ticked (the consent step); a yes/no question that
