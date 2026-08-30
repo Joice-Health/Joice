@@ -100,6 +100,54 @@ function stubDb() {
 
 const anon: Requester = { memberId: null, sessionId: 'sess-1' };
 
+describe('goal observations (story 5.5)', () => {
+  const sinkFor = (calls: unknown[]) => ({
+    record: async (input: unknown) => {
+      calls.push(input);
+    },
+  });
+
+  test("a member's goal is recorded through the sink, vocabulary token only", async () => {
+    const { db } = stubDb();
+    const calls: unknown[] = [];
+    const svc = createProfileService(db, { observations: sinkFor(calls) });
+    const member: Requester = { memberId: 'user-1', sessionId: 'sess-1' };
+    await svc.applyField(member, 'goal', 'stress-sleep', 'cannot sleep before 2am');
+    await new Promise((r) => setTimeout(r, 0));
+    expect(calls).toEqual([
+      { memberId: 'user-1', observations: [{ trait: 'goal', value: 'stress-sleep', confidence: 0.6 }] },
+    ]);
+  });
+
+  test('an anonymous goal records nothing', async () => {
+    const { db } = stubDb();
+    const calls: unknown[] = [];
+    const svc = createProfileService(db, { observations: sinkFor(calls) });
+    await svc.applyField(anon, 'goal', 'energy');
+    await new Promise((r) => setTimeout(r, 0));
+    expect(calls).toEqual([]);
+  });
+
+  test('name and email never reach the sink, and a failing sink never fails the turn', async () => {
+    const { db } = stubDb();
+    const calls: unknown[] = [];
+    const failing = {
+      record: async (input: unknown) => {
+        calls.push(input);
+        throw new Error('api down');
+      },
+    };
+    const svc = createProfileService(db, { observations: failing });
+    const member: Requester = { memberId: 'user-2', sessionId: 'sess-2' };
+    await svc.applyField(member, 'name', 'Sam');
+    await svc.applyField(member, 'email', 'sam@example.com');
+    const row = await svc.applyField(member, 'goal', 'energy');
+    expect(row.goal).toBe('energy');
+    await new Promise((r) => setTimeout(r, 0));
+    expect(calls).toHaveLength(1);
+  });
+});
+
 describe('nextField order', () => {
   test('asks name, then email, then goal, then nothing', async () => {
     const { db } = stubDb();

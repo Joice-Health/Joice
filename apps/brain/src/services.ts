@@ -137,4 +137,4 @@ console.log(`[brain] Klaviyo lead sync: ${env.KLAVIYO_API_KEY ? 'enabled' : 'dis
  * unconditionally — it is deliberately NOT gated by the conversation-persistence
  * flag, which governs health-question content only.
  */
-export const profileService = createProfileService(db, { leadSync });
+export const profileService = createProfileService(db, { leadSync, observations: ports.observations });
