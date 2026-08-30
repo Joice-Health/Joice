@@ -194,6 +194,32 @@ function ResultView({ result }: { result: SimulateResult }) {
       </Card>
 
       <Card>
+        <p className="mono-label text-muted">Protocols this persona matches</p>
+        <p className="mt-1 text-xs text-muted">
+          A recommendation preview from the stored protocol rules: ranked, clinician review
+          always required, never shown to a member.
+        </p>
+        {result.protocols.length === 0 ? (
+          <p className="mt-3 text-sm text-muted">No protocol rule matches these traits.</p>
+        ) : (
+          <ul className="mt-3 flex flex-col gap-2">
+            {result.protocols.map((match) => (
+              <li key={match.protocolKey}>
+                <details>
+                  <summary className="cursor-pointer text-sm text-ink">
+                    <span className="mono-label mr-2 text-muted">[ {match.protocolKey} ]</span>
+                    {match.label}
+                    <span className="mono-label ml-2 text-muted">priority {match.priority}</span>
+                  </summary>
+                  <pre className="mt-2 overflow-x-auto rounded-xl bg-canvas p-3 text-xs">{JSON.stringify(match.why, null, 2)}</pre>
+                </details>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
+      <Card>
         <p className="mono-label text-muted">Derived traits at the end</p>
         <pre className="mt-2 overflow-x-auto rounded-xl bg-canvas p-3 text-xs">{JSON.stringify(result.traits, null, 2)}</pre>
       </Card>
