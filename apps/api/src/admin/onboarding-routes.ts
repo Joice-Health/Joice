@@ -3,9 +3,12 @@ import { zValidator } from '@hono/zod-validator';
 import {
   FLOW_KEY,
   FlowServiceError,
+  ProtocolRulesInvalidError,
   createFlowVersionSchema,
+  evaluateProtocolRules,
   funnelQuerySchema,
   onboardingSettingsPatchSchema,
+  protocolRulesSchema,
   publishFlowVersionSchema,
   rollbackFlowSchema,
   serviceAreaRequestsQuerySchema,
@@ -27,6 +30,7 @@ import {
   onboardingEvents,
   phiStatus,
   profiles,
+  protocolRules,
   serviceAreaRequests,
   serviceAreas,
   userService,
@@ -151,7 +155,27 @@ export const adminOnboardingRoutes = new Hono<AdminEnv>()
     };
     const result = simulate(definition, input.persona, ctx);
     const { snapshot: _snapshot, ...view } = result;
-    return c.json(view);
+    // The protocol preview: every stored rule the persona's final traits
+    // match, ranked, with why-traces. A recommendation preview for admins
+    // and (later) clinicians; nothing here ever reaches a member.
+    const protocols = evaluateProtocolRules(await protocolRules.get(), result.traits);
+    return c.json({ ...view, protocols });
+  })
+
+  // --- Protocol rules (the sketch: same condition language, own audit) ---
+  .get('/protocol-rules', async (c) => {
+    return c.json({ rules: await protocolRules.get() });
+  })
+  .put('/protocol-rules', zValidator('json', z.object({ rules: protocolRulesSchema })), async (c) => {
+    try {
+      const rules = await protocolRules.save(c.req.valid('json').rules, actorOf(c));
+      return c.json({ rules });
+    } catch (err) {
+      if (err instanceof ProtocolRulesInvalidError) {
+        return c.json({ error: err.message, issues: err.issues }, 422);
+      }
+      throw err;
+    }
   })
 
   // --- Service areas and the minimum age (their own audit actions) ---

@@ -68,7 +68,7 @@ The whole surface answers 404 until an admin turns the `onboarding` flag on.
 - Onboarding audit actions to keep distinct: `onboarding.publish`, `onboarding.rollback`,
   `onboarding.draft_created`, `onboarding.draft_saved`, `service_area.update`,
   `onboarding.settings`. Gate changes (service areas, minimum age) must never share an action
-  with copy edits.
+  with copy edits. Protocol rule saves are `protocols.rules_saved`, their own entity again.
 - `PHI_READY` (env, set by Terraform) and the `onboarding_health` flag are the two PHI keys;
   `services.ts` combines them into the flow service's `phiEnabled`. Never expose a route that
   lets an admin set the env half.

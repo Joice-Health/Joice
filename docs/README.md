@@ -44,6 +44,7 @@ on. Work lands on the `onboarding/intake` branch; the design brief is the place 
 | [07 Compliance](onboarding/07-compliance.md) | Sensitivity tiers, the two PHI keys, minors, notice and consent, identity linking, retention, analytics rules, what is open for counsel |
 | [08 Running it locally](onboarding/08-local-development.md) | Migrate, open the flag, click through, drive the API with curl, look at the data, tests, reset |
 | [09 Troubleshooting](onboarding/09-troubleshooting.md) | Symptom, cause, fix: flags and caches, cookie and credentials, action error codes, publish refusals, rollback and schema versions, local Docker quirks |
+| [10 Protocol readiness](onboarding/10-protocol-readiness.md) | The protocol_rules sketch: the rule shape, the settings-row storage, the simulator preview, what is deliberately not built |
 
 Page 10 (protocol readiness) arrives with Phase 5; see section 7 of the brief. **New here? Read 01, then 02, then 08 to run it.**
 
