@@ -1,0 +1,181 @@
+{
+  "insertAfterSection": "weight",
+  "sections": [
+    {
+      "key": "recovery",
+      "title": "Body comp and recovery",
+      "showIf": { "trait": "goal", "op": "eq", "value": "body-comp-recovery" },
+      "questions": ["recovery_focus", "recovery_timeline"],
+      "gates": [],
+      "locked": false
+    },
+    {
+      "key": "beauty",
+      "title": "Beauty and skin",
+      "showIf": { "trait": "goal", "op": "eq", "value": "beauty-skin" },
+      "questions": ["beauty_focus", "beauty_tried"],
+      "gates": [],
+      "locked": false
+    },
+    {
+      "key": "energy",
+      "title": "Energy",
+      "showIf": { "trait": "goal", "op": "eq", "value": "energy" },
+      "questions": ["energy_pattern", "energy_tried"],
+      "gates": [],
+      "locked": false
+    },
+    {
+      "key": "sleep",
+      "title": "Stress and sleep",
+      "showIf": { "trait": "goal", "op": "eq", "value": "stress-sleep" },
+      "questions": ["sleep_challenge", "sleep_tried"],
+      "gates": [],
+      "locked": false
+    },
+    {
+      "key": "help_choose",
+      "title": "Help me choose",
+      "showIf": { "trait": "goal", "op": "eq", "value": "not-sure" },
+      "questions": ["explore_interest"],
+      "gates": [],
+      "locked": false
+    }
+  ],
+  "questions": {
+    "recovery_focus": {
+      "key": "recovery_focus",
+      "trait": "custom.recovery_focus",
+      "type": "single_select",
+      "copy": {
+        "label": "What are you working back from?",
+        "help": "This shapes which protocols we show you first."
+      },
+      "options": [
+        { "value": "injury_rehab", "label": "An injury" },
+        { "value": "joint_tendon", "label": "Joint or tendon trouble" },
+        { "value": "muscle_repair", "label": "Muscle repair and lean mass" },
+        { "value": "general_resilience", "label": "General resilience" }
+      ],
+      "required": true,
+      "locked": false
+    },
+    "recovery_timeline": {
+      "key": "recovery_timeline",
+      "trait": "goal_timeline",
+      "type": "single_select",
+      "copy": { "label": "Your timeline?" },
+      "options": [
+        { "value": "3mo", "label": "Next 3 months" },
+        { "value": "6mo", "label": "6 months" },
+        { "value": "12mo", "label": "A year" },
+        { "value": "no_rush", "label": "No rush" }
+      ],
+      "required": true,
+      "locked": false
+    },
+    "beauty_focus": {
+      "key": "beauty_focus",
+      "trait": "custom.beauty_focus",
+      "type": "single_select",
+      "copy": { "label": "What would you change first?" },
+      "options": [
+        { "value": "skin_quality", "label": "Skin quality" },
+        { "value": "hair", "label": "Hair" },
+        { "value": "collagen", "label": "Collagen and firmness" },
+        { "value": "aging", "label": "Visible aging" }
+      ],
+      "required": true,
+      "locked": false
+    },
+    "beauty_tried": {
+      "key": "beauty_tried",
+      "trait": "custom.beauty_tried",
+      "type": "multi_select",
+      "copy": { "label": "What have you tried?", "help": "Pick everything that applies." },
+      "options": [
+        { "value": "topicals", "label": "Topicals" },
+        { "value": "supplements", "label": "Supplements" },
+        { "value": "treatments", "label": "In-office treatments" },
+        { "value": "nothing_yet", "label": "Nothing yet" }
+      ],
+      "required": false,
+      "locked": false
+    },
+    "energy_pattern": {
+      "key": "energy_pattern",
+      "trait": "custom.energy_pattern",
+      "type": "single_select",
+      "copy": { "label": "When does your energy let you down?" },
+      "options": [
+        { "value": "all_day_low", "label": "It is low all day" },
+        { "value": "afternoon_crash", "label": "The afternoon crash" },
+        { "value": "slow_mornings", "label": "Slow mornings" },
+        { "value": "training_recovery", "label": "Recovering after training" }
+      ],
+      "required": true,
+      "locked": false
+    },
+    "energy_tried": {
+      "key": "energy_tried",
+      "trait": "custom.energy_tried",
+      "type": "multi_select",
+      "copy": { "label": "What have you tried?", "help": "Pick everything that applies." },
+      "options": [
+        { "value": "caffeine", "label": "More caffeine" },
+        { "value": "supplements", "label": "Supplements" },
+        { "value": "sleep_changes", "label": "Fixing sleep" },
+        { "value": "nothing_yet", "label": "Nothing yet" }
+      ],
+      "required": false,
+      "locked": false
+    },
+    "sleep_challenge": {
+      "key": "sleep_challenge",
+      "trait": "custom.sleep_challenge",
+      "type": "single_select",
+      "copy": { "label": "What does a bad night look like?" },
+      "options": [
+        { "value": "falling_asleep", "label": "Falling asleep takes hours" },
+        { "value": "staying_asleep", "label": "Waking in the night" },
+        { "value": "waking_tired", "label": "Waking tired anyway" },
+        { "value": "stress_load", "label": "Stress is running the show" }
+      ],
+      "required": true,
+      "locked": false
+    },
+    "sleep_tried": {
+      "key": "sleep_tried",
+      "trait": "custom.sleep_tried",
+      "type": "multi_select",
+      "copy": { "label": "What have you tried?", "help": "Pick everything that applies." },
+      "options": [
+        { "value": "sleep_hygiene", "label": "Sleep routines" },
+        { "value": "supplements", "label": "Supplements" },
+        { "value": "meditation", "label": "Meditation or breathwork" },
+        { "value": "nothing_yet", "label": "Nothing yet" }
+      ],
+      "required": false,
+      "locked": false
+    },
+    "explore_interest": {
+      "key": "explore_interest",
+      "trait": "custom.explore_interest",
+      "type": "multi_select",
+      "copy": {
+        "label": "Which of these sound like you?",
+        "help": "Pick as many as apply; we will help you narrow it down."
+      },
+      "options": [
+        { "value": "weight", "label": "Managing weight feels harder than it should" },
+        { "value": "recovery", "label": "My body recovers slowly" },
+        { "value": "skin", "label": "My skin and hair have changed" },
+        { "value": "energy", "label": "I am tired more than I want to be" },
+        { "value": "sleep", "label": "Sleep or stress runs my day" }
+      ],
+      "required": false,
+      "locked": false
+    }
+  },
+  "copy": {}
+}
