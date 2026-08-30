@@ -9,6 +9,7 @@ import {
   createKlaviyoMarketingAdapter,
   createLeadsService,
   createOnboardingConfigService,
+  createLabUploadsService,
   createOnboardingEventsService,
   createOnboardingKlaviyoAdapter,
   createOnboardingService,
@@ -23,6 +24,7 @@ import {
 import { createKlaviyoClient } from '@joice/marketing';
 import { createBrainConfigService } from '@joice/brain';
 import { env } from './env';
+import { createS3LabPresign } from './member/labs-presign';
 
 /** Single service graph over the shared DB client, reused across routes. */
 const db = getDatabase();
@@ -90,6 +92,15 @@ export const phiStatus = async (): Promise<PhiStatus> => {
 const phiEnabled = async () => (await phiStatus()).unlocked;
 
 export const flows = createFlowService(db, audit, { phiEnabled });
+
+/**
+ * The labs scaffold: rows in core, presigning here (the AWS SDK stays out of
+ * core). Null while no bucket is configured; the routes answer 404 then,
+ * exactly as they do while the PHI keys are off.
+ */
+export const labUploads = env.LABS_BUCKET
+  ? createLabUploadsService(db, { presign: createS3LabPresign(env.LABS_BUCKET) })
+  : null;
 
 export const onboarding = createOnboardingService({
   sessions: createDbSessionStore(db),

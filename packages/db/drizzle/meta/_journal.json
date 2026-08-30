@@ -134,6 +134,13 @@
       "when": 1787941800168,
       "tag": "0018_seed_shop_flag",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1788126439383,
+      "tag": "0019_thick_naoko",
+      "breakpoints": true
     }
   ]
 }

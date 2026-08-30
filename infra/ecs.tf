@@ -168,6 +168,7 @@ resource "aws_ecs_task_definition" "api" {
         # only, never an admin toggle. Stays false until the Before-PHI
         # checklist above it in the README is complete.
         { name = "PHI_READY", value = tostring(var.phi_ready) },
+        { name = "LABS_BUCKET", value = aws_s3_bucket.labs.bucket },
         # Same knobs the nightly sweep uses (onboarding-retention.tf); the api
         # reads them too, so the two must never drift apart.
         { name = "ONBOARDING_SESSION_IDLE_DAYS", value = tostring(var.onboarding_session_idle_days) },

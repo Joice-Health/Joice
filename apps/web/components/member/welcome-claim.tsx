@@ -12,6 +12,7 @@ import {
 import { Button } from '@joice/ui';
 import { CtaLink } from '@/components/ui/cta-link';
 import { Eyebrow } from '@/components/ui/eyebrow';
+import { LabsUpload } from '@/components/member/labs-upload';
 import { track } from '@/lib/analytics';
 
 /**
@@ -135,6 +136,8 @@ export function WelcomeClaim() {
               ))}
             </ol>
           </section>
+
+          <LabsUpload />
 
           <div className="mt-10 rounded-2xl bg-surface px-5 py-4">
             <p className="mono-label text-muted">Your protocol</p>

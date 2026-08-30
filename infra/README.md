@@ -230,3 +230,11 @@ terraform destroy
 
 `deletion_protection` on RDS blocks destroy — set it false and apply first if you
 really mean it. ECR repos force-delete (images included).
+
+## Labs uploads (story 5.3)
+
+`labs.tf` holds the PHI labs bucket (own KMS key, versioning, TLS-only) and,
+since the consuming route landed, the api task-role grant (`s3:PutObject` on
+`labs/*` plus the KMS encrypt grant) and the `LABS_BUCKET` env on the api task
+(`ecs.tf`). One `terraform apply` turns it on; with the env empty or the PHI
+keys off, `/api/me/labs` answers 404 and nothing is reachable.

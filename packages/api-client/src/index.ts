@@ -32,6 +32,9 @@ export {
 } from './companion';
 export {
   onboardingKeys,
+  useMyLabUploads,
+  useCreateLabUpload,
+  useRemoveLabUpload,
   OnboardingActionError,
   OnboardingClosedError,
   useOnboardingSession,

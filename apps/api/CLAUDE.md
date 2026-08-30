@@ -35,6 +35,7 @@ schemas from `@joice/core`, call the service, return JSON.
 | `/api/onboarding/*` | `src/onboarding/routes.ts` | anonymous cookie session, behind the `onboarding` flag, rate-limited per route | yes (`.route('/api/onboarding', ...)`) |
 | `/api/admin/*` | `src/admin/routes.ts` (+ `src/admin/onboarding-routes.ts` at `/api/admin/onboarding`) | Clerk + `requireAdmin` | yes (`.route('/api/admin', ...)`) |
 | `/api/me/*`, `/api/onboarding/session/claim` | (Phase 2) | Clerk + `requireMember`, which also creates the member's `users` row on its first call after sign-up (no webhook) | yes |
+| `/api/me/labs*` | `src/member/routes.ts` | Clerk + `requireMember`; 404 unless both PHI keys are on and `LABS_BUCKET` is set; presigned browser-to-S3 PUTs, bytes never transit the api | yes |
 | `/api/internal/*` | (Phase 4) | internal bearer token | **no**: registered on the app outside the chain, not a browser API |
 
 The intake routes (`src/onboarding/routes.ts`): `GET`/`POST /session`,
