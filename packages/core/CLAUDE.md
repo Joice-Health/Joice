@@ -15,6 +15,8 @@ src/admin/            audit, feature flags, settings, users, leads, admin waitli
 src/marketing/        the Klaviyo ports/adapters for each domain (waitlist, onboarding)
 src/profile/          traits.ts (the registry + tiers), derive.ts, projector.ts, profile-service.ts
 src/rules/            the condition language: conditions.ts, evaluate.ts, validate.ts
+src/protocols/        the protocol_rules sketch: rule schema, ranked evaluator, defaults (browser-safe)
+                      + protocol-rules-service (the app_settings row, server barrel only)
 src/onboarding/       schemas.ts, default-flow.ts, validate-flow.ts, engine.ts, simulate.ts (browser-safe)
                       + the services: flow, onboarding (sessions), session-store, service-area,
                         service-area-request, onboarding-config, events, marketing-port, admin-schemas

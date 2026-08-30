@@ -1,5 +1,5 @@
 import { and, brainProfiles, desc, eq, inArray, isNull, or, type Database } from '@joice/db';
-import type { LeadSyncPort, Requester } from '../ports';
+import type { LeadSyncPort, ObservationSinkPort, Requester } from '../ports';
 import {
   CAPTURE_FIELDS,
   CARE_AREAS,
@@ -74,7 +74,7 @@ function isSettled(row: typeof brainProfiles.$inferSelect, field: CaptureField):
   return Boolean(row.goal); // goal
 }
 
-export function createProfileService(db: Database, deps: { leadSync?: LeadSyncPort } = {}) {
+export function createProfileService(db: Database, deps: { leadSync?: LeadSyncPort; observations?: ObservationSinkPort } = {}) {
   /**
    * The next unanswered, un-skipped field in order — or null when capture is
    * done. Pure over the row, which is why the UI can drive the whole flow from
@@ -193,6 +193,21 @@ export function createProfileService(db: Database, deps: { leadSync?: LeadSyncPo
           throw new ProfileValidationError('goal', 'Pick one of the options.');
         }
         patch = { goal: trimmed, goalNote: note?.trim() || null };
+        // A member's goal, set in chat, becomes a profile observation (source
+        // companion; onboarding outranks it in the fold). Members only: an
+        // anonymous lead has no profile to write to. Vocabulary token only,
+        // never the free-text note, per the port contract. Fire-and-forget on
+        // purpose: a dead api must not break the capture turn.
+        if (requester.memberId && deps.observations) {
+          void deps.observations
+            .record({
+              memberId: requester.memberId,
+              observations: [{ trait: 'goal', value: trimmed, confidence: 0.6 }],
+            })
+            .catch((err: unknown) => {
+              console.error(`[companion] goal observation failed: ${(err as Error)?.name ?? 'Error'}`);
+            });
+        }
       }
       return persist(row.id, { ...patch, status: statusAfter(row, patch) });
     },

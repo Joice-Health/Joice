@@ -10,6 +10,7 @@ import {
   createLeadsService,
   createOnboardingConfigService,
   createLabUploadsService,
+  createProtocolRulesService,
   createOnboardingEventsService,
   createOnboardingKlaviyoAdapter,
   createOnboardingService,
@@ -73,6 +74,7 @@ const onboardingMarketing = klaviyo
   : undefined;
 
 export const onboardingConfig = createOnboardingConfigService(db, audit);
+export const protocolRules = createProtocolRulesService(db, audit);
 export const serviceAreas = createServiceAreaService(db, audit);
 export const serviceAreaRequests = createServiceAreaRequestService(db, { marketing: onboardingMarketing });
 export const onboardingEvents = createOnboardingEventsService(db);

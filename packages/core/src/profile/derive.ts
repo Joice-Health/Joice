@@ -65,7 +65,7 @@ export interface Derived {
 export function deriveTraits(base: TraitMap, ctx: DeriveContext): Derived {
   const traits: Record<string, unknown> = { ...base };
   const trace: DerivationTrace[] = [];
-  for (const key of ['age', 'age_band', 'age_eligible', 'state_status', 'segment']) delete traits[key];
+  for (const key of ['age', 'age_band', 'age_eligible', 'state_status', 'bmi', 'segment']) delete traits[key];
 
   const dob = traits.date_of_birth;
   if (typeof dob === 'string') {
@@ -77,6 +77,23 @@ export function deriveTraits(base: TraitMap, ctx: DeriveContext): Derived {
       trace.push({ trait: 'age', from: ['date_of_birth'], value: age });
       trace.push({ trait: 'age_band', from: ['age'], value: traits.age_band });
       trace.push({ trait: 'age_eligible', from: ['age', 'setting onboarding.minimumAge'], value: traits.age_eligible });
+    }
+  }
+
+  // BMI from the metric height_weight value, one decimal. Health tier like its
+  // source: it exists only when a health question was publishable and answered.
+  const hw = traits.height_weight;
+  if (
+    typeof hw === 'object' &&
+    hw !== null &&
+    typeof (hw as { heightCm?: unknown }).heightCm === 'number' &&
+    typeof (hw as { weightKg?: unknown }).weightKg === 'number'
+  ) {
+    const { heightCm, weightKg } = hw as { heightCm: number; weightKg: number };
+    if (heightCm > 0) {
+      const bmi = Math.round((weightKg / (heightCm / 100) ** 2) * 10) / 10;
+      traits.bmi = bmi;
+      trace.push({ trait: 'bmi', from: ['height_weight'], value: bmi });
     }
   }
 

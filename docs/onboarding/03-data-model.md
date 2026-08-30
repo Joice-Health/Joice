@@ -51,15 +51,17 @@ a question id.
 |---|---|---|
 | `marketing` | the class the waitlist already holds | `us_state`, `goal`, `goal_note`, `goal_timeline`, `peptide_experience`, derived `state_status`, `age_band`, `age_eligible`, `segment` |
 | `personal` | identity data that is not health information on its own | `first_name`, `email`, `date_of_birth`, derived `age`, `weight_approaches_tried` (pending counsel), `consent_terms`, `consent_marketing` |
-| `health` | PHI the moment it is tied to a person | none in v1 (registered in Phase 5, behind the PHI keys) |
+| `health` | PHI the moment it is tied to a person | `height_weight`, derived `bmi`, `medications`, `conditions`, `glp1_history`, `pregnancy` (registered in story 5.2; the publish validator still refuses them until both PHI keys are on) |
 
 Rules: tiers are decided in code, by engineers, never in admin; a question
 inherits its trait's tier; the publish validator refuses a `health` trait unless
 both PHI keys are on (`PHI_READY` env set by Terraform, plus the
 `onboarding_health` flag). Admins can bind a question to a `custom.<slug>` trait
 without a deploy; those are always marketing tier and typed by their question.
-Derived traits (`age`, `age_band`, `age_eligible`, `state_status`, `segment`)
-are computed by `profile/derive.ts` and can never be asked.
+Derived traits (`age`, `age_band`, `age_eligible`, `state_status`, `bmi`,
+`segment`) are computed by `profile/derive.ts` and can never be asked. `bmi`
+comes from `height_weight` (703-free metric form, one decimal) and carries the
+health tier like its source.
 
 Types: `string`, `number`, `boolean`, `date` (ISO `YYYY-MM-DD`, a real day),
 `enum`, `enum_list`, `us_state` (the list in `@joice/utils`), `height_weight`

@@ -40,8 +40,10 @@ client, and an upgrade handler has no place in `BrainAppType`.
   `GET /api/internal/profile/:memberId` on the api (bearer `INTERNAL_API_TOKEN`) and renders
   `buildMemberSuffix` AFTER the prompt-cache point, server-side only; failures degrade to an
   anonymous turn with one warning, never a failed answer. Identity fields, derived internals
-  and the raw date of birth are filtered before the prompt. Contract:
-  `docs/onboarding/06-brain-integration.md`.
+  and the raw date of birth are filtered before the prompt. The write path is the mirror: a
+  member's goal set in chat records one observation through `ObservationSinkPort`
+  (vocabulary token only, never free text; anonymous visitors record nothing; failures never
+  break the turn). Contract: `docs/onboarding/06-brain-integration.md`.
 
 ## Cost is the operating constraint
 
