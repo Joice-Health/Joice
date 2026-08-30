@@ -17,8 +17,12 @@ wording marked "counsel" are the ones Shaun still owes.
 | `health` | PHI the moment it is tied to a person | height/weight, medications, conditions, GLP-1 history | nowhere until both PHI keys are on |
 
 The tier lives on the trait in `packages/core/src/profile/traits.ts`, decided
-by engineers at deploy time. A question inherits it. The v1 registry holds no
-health-tier trait at all, so the seeded flow cannot ask one by construction.
+by engineers at deploy time. A question inherits it. Since story 5.2 the
+registry holds exactly six health-tier traits (height_weight, derived bmi,
+medications, conditions, glp1_history, pregnancy); registering them changes
+what the intake CAN ask, not what it does: the publish validator still refuses
+a flow that binds any of them until both PHI keys are on, and the traits test
+pins the list so growing it is a reviewed, deliberate act.
 "Anonymous" is not a shield: state consumer-health laws cover weight and
 medication history regardless of registration, which is why the v1 content is
 marketing and personal only and why lifestyle questions wait for counsel's

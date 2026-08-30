@@ -251,6 +251,9 @@ HTTPS on the CloudFront-to-ALB hop, CloudTrail + flow/access logs, RDS Multi-AZ,
 forced DB TLS, salted IP hashes (never store raw IPs). One checklist box in `infra/README.md`
 stays open: app-level audit logging and member auth for the chat (the chat-before-members
 workstream in `docs/rag/07-compliance.md`). Health data itself stays locked behind the two PHI
-keys — the `phi_ready` Terraform variable and the `onboarding_health` flag, both off — and
-turning them is a deliberate act, never a side effect. Referral reward copy ("a month free")
+keys (the `phi_ready` Terraform variable and the `onboarding_health` flag), and turning them
+is a deliberate act, never a side effect. The health machinery is built and dark: six
+health-tier traits in the registry, the labs upload path (`/api/me/labs`, presigned
+browser-to-S3, `infra/labs.tf`), and protocol rules in the simulator; all of it answers 404
+or refuses to publish until both keys are on. Referral reward copy ("a month free")
 is gated on counsel review.
