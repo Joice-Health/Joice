@@ -5,3 +5,4 @@
  */
 export * from './us-states';
 export * from './care-areas';
+export * from './audience';
