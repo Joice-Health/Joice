@@ -1,7 +1,6 @@
 'use client';
 
 import { use, useState } from 'react';
-import Link from 'next/link';
 import { Button } from '@joice/ui';
 import {
   useBrainSettings,
@@ -9,9 +8,18 @@ import {
   useUpdateBrainSettings,
   type BrainSettingsPatchInput,
 } from '@joice/api-client';
-import { Badge, Card, ErrorState, PageHeader } from '@/components/admin/ui';
+import {
+  Badge,
+  ErrorState,
+  PageHeader,
+  Panel,
+  PanelHeader,
+  PanelSkeleton,
+} from '@/components/admin/ui';
 import { RunResults } from '@/components/admin/eval/run-results';
 import { relativeTime } from '@/components/admin/eval/form';
+
+const CRUMBS = [{ href: '/admin/eval', label: 'Eval console' }];
 
 /**
  * One run: the header numbers, what was overridden, per-question outcomes
@@ -29,7 +37,14 @@ export default function AdminEvalRunPage({ params }: { params: Promise<{ id: str
   const [confirming, setConfirming] = useState(false);
   const [promoted, setPromoted] = useState(false);
 
-  if (detail.isPending) return <p className="mono-label text-muted">Loading…</p>;
+  if (detail.isPending) {
+    return (
+      <>
+        <PageHeader breadcrumbs={CRUMBS} title="Eval run" />
+        <PanelSkeleton />
+      </>
+    );
+  }
   if (detail.isError) return <ErrorState error={detail.error} />;
   const { run, results } = detail.data!;
 
@@ -54,21 +69,17 @@ export default function AdminEvalRunPage({ params }: { params: Promise<{ id: str
 
   return (
     <>
-      <PageHeader title="Eval run">
-        <Link href="/admin/eval" className="mono-label text-muted hover:text-ink">
-          All runs
-        </Link>
-      </PageHeader>
+      <PageHeader breadcrumbs={CRUMBS} title="Eval run" />
 
-      <Card className="mb-6">
+      <Panel className="mb-6">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
           <Badge tone={run.status}>{run.status}</Badge>
-          <span className="text-lg font-semibold text-ink">
+          <span className="display text-xl text-ink tabular-nums">
             {run.passedCases !== null ? `${run.passedCases}/${run.totalCases}` : progress}
           </span>
           <span className="text-muted">{modeLabel}</span>
           <span className="text-muted">as {run.audience}</span>
-          <span className="font-mono text-xs text-muted">{run.model}</span>
+          <span className="text-xs text-muted">{run.model}</span>
           {run.totalP50Ms !== null ? (
             <span className="text-muted">
               total p50 {run.totalP50Ms}ms / p95 {run.totalP95Ms}ms
@@ -87,19 +98,19 @@ export default function AdminEvalRunPage({ params }: { params: Promise<{ id: str
           </span>
         </div>
         {run.error ? (
-          <p className="mt-3 text-sm text-red-600" role="alert">
+          <p className="mt-3 text-sm text-danger" role="alert">
             {run.error}
           </p>
         ) : null}
 
         {overrideKeys.length > 0 ? (
-          <div className="mt-4 border-t border-ink/10 pt-4">
+          <div className="mt-4 border-t border-line/60 pt-4">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-medium text-ink">Overrides tried:</span>
+              <span className="mono-label text-ink">Overrides tried:</span>
               {overrideKeys.map((key) => (
                 <span
                   key={key}
-                  className="rounded-full bg-brand-400/12 px-2.5 py-0.5 font-mono text-[11px] text-brand-800"
+                  className="rounded-full bg-brand-100 px-2.5 py-0.5 font-code text-[11px] text-brand-800"
                 >
                   {key} = {JSON.stringify(overrides[key])}
                 </span>
@@ -115,18 +126,18 @@ export default function AdminEvalRunPage({ params }: { params: Promise<{ id: str
                 </Button>
               ) : null}
               {promoted ? (
-                <span className="ml-auto text-sm text-emerald-700">
+                <span className="ml-auto text-sm text-brand-700">
                   Applied. Live within ~30s; audit-logged.
                 </span>
               ) : null}
             </div>
             {confirming ? (
-              <div className="mt-3 rounded-card bg-canvas/70 p-4 text-sm">
+              <div className="mt-3 rounded-xl bg-canvas/70 p-4 text-sm">
                 <p className="mb-2 text-ink">
                   This saves the overrides to the LIVE settings (audit-logged as a normal
                   settings change):
                 </p>
-                <ul className="mb-3 space-y-1 font-mono text-xs text-muted">
+                <ul className="mb-3 space-y-1 font-code text-xs text-muted">
                   {overrideKeys.map((key) => (
                     <li key={key}>
                       {key}: {resolved ? JSON.stringify(resolved[key]) : '?'} {'->'}{' '}
@@ -135,8 +146,12 @@ export default function AdminEvalRunPage({ params }: { params: Promise<{ id: str
                   ))}
                 </ul>
                 <div className="flex gap-2">
-                  <Button onClick={() => void applyOverrides()} disabled={promote.isPending}>
-                    {promote.isPending ? 'Applying…' : 'Confirm'}
+                  <Button
+                    variant="solid"
+                    onClick={() => void applyOverrides()}
+                    disabled={promote.isPending}
+                  >
+                    {promote.isPending ? 'Applying…' : 'Confirm +'}
                   </Button>
                   <Button variant="ghost" onClick={() => setConfirming(false)}>
                     Cancel
@@ -152,16 +167,16 @@ export default function AdminEvalRunPage({ params }: { params: Promise<{ id: str
           <summary className="cursor-pointer text-xs text-muted">
             Full configuration this run executed with
           </summary>
-          <pre className="mt-2 max-h-80 overflow-auto rounded-card bg-canvas p-3 font-mono text-xs text-ink">
+          <pre className="mt-2 max-h-80 overflow-auto rounded-xl bg-canvas p-3 font-code text-xs text-ink">
             {JSON.stringify(run.configSnapshot, null, 2)}
           </pre>
         </details>
-      </Card>
+      </Panel>
 
-      <Card>
-        <h2 className="mb-4 text-lg font-semibold text-ink">Questions</h2>
+      <Panel>
+        <PanelHeader>Questions</PanelHeader>
         <RunResults results={results} previous={previous.data ?? null} current={run} />
-      </Card>
+      </Panel>
     </>
   );
 }

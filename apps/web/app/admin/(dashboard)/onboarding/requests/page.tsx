@@ -3,7 +3,20 @@
 import { useState } from 'react';
 import { useServiceAreaRequests } from '@joice/api-client';
 import { US_STATES, usStateName } from '@joice/utils';
-import { Card, EmptyState, ErrorState, PageHeader, Pagination, Table, Td, Th } from '@/components/admin/ui';
+import {
+  EmptyState,
+  ErrorState,
+  PageHeader,
+  Pagination,
+  Panel,
+  Table,
+  TableSkeleton,
+  Td,
+  Th,
+} from '@/components/admin/ui';
+import { AdminSelect } from '@/components/admin/fields';
+
+const CRUMBS = [{ href: '/admin/onboarding', label: 'Onboarding' }];
 
 /**
  * "Tell me when my state opens." Its own list, deliberately not the waitlist:
@@ -24,15 +37,15 @@ export default function AdminOnboardingRequestsPage() {
 
   return (
     <div>
-      <PageHeader title="Notify-me requests">
-        <select
+      <PageHeader breadcrumbs={CRUMBS} title="Notify-me requests">
+        <AdminSelect
+          size="sm"
           aria-label="Filter by state"
           value={stateCode}
           onChange={(e) => {
             setStateCode(e.target.value);
             setPage(1);
           }}
-          className="h-9 rounded-full bg-canvas px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-brand-600/50"
         >
           <option value="">All states</option>
           {US_STATES.map((s) => (
@@ -40,13 +53,13 @@ export default function AdminOnboardingRequestsPage() {
               {s.name}
             </option>
           ))}
-        </select>
+        </AdminSelect>
       </PageHeader>
 
-      <Card>
-        {query.isPending ? <p className="mono-label text-muted">Loading…</p> : null}
-        {data && data.items.length === 0 ? <EmptyState>No requests yet.</EmptyState> : null}
-        {data && data.items.length > 0 ? (
+      <Panel>
+        {data && data.items.length === 0 ? (
+          <EmptyState>No requests yet.</EmptyState>
+        ) : (
           <>
             <Table>
               <thead>
@@ -59,21 +72,27 @@ export default function AdminOnboardingRequestsPage() {
                 </tr>
               </thead>
               <tbody>
-                {data.items.map((row) => (
-                  <tr key={row.id}>
-                    <Td>{row.email}</Td>
-                    <Td>{row.firstName ?? ''}</Td>
-                    <Td>{usStateName(row.stateCode)}</Td>
-                    <Td>{new Date(row.createdAt).toLocaleDateString()}</Td>
-                    <Td>{row.marketingSyncedAt ? 'yes' : 'no'}</Td>
-                  </tr>
-                ))}
+                {query.isPending ? (
+                  <TableSkeleton cols={5} />
+                ) : (
+                  data?.items.map((row) => (
+                    <tr key={row.id}>
+                      <Td>{row.email}</Td>
+                      <Td>{row.firstName ?? '·'}</Td>
+                      <Td>{usStateName(row.stateCode)}</Td>
+                      <Td>{new Date(row.createdAt).toLocaleDateString()}</Td>
+                      <Td>{row.marketingSyncedAt ? 'yes' : 'no'}</Td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </Table>
-            <Pagination page={data.page} total={data.total} limit={data.limit} onPageChange={setPage} />
+            {data ? (
+              <Pagination page={data.page} total={data.total} limit={data.limit} onPageChange={setPage} />
+            ) : null}
           </>
-        ) : null}
-      </Card>
+        )}
+      </Panel>
     </div>
   );
 }

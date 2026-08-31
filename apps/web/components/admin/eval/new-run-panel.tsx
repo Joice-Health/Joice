@@ -11,9 +11,9 @@ import {
   type StartEvalRunBody,
 } from '@joice/api-client';
 import { AUDIENCE_TIERS, AUDIENCE_TIER_LABELS, type AudienceTier } from '@joice/brain/schemas';
-import { Card, ErrorState, Toggle } from '@/components/admin/ui';
+import { ErrorState, Panel, PanelHeader, Skeleton, Toggle } from '@/components/admin/ui';
+import { AdminSelect, Field } from '@/components/admin/fields';
 import { MODEL_PRESETS } from '@/components/admin/model-presets';
-import { Field, selectClass } from './form';
 
 type Mode = 'retrieval' | 'full';
 
@@ -66,8 +66,8 @@ export function NewRunPanel({ hasActiveRun }: { hasActiveRun: boolean }) {
   // the card, and a failed settings fetch is visible and retryable.
   if (settings.isError) {
     return (
-      <Card className="mb-6">
-        <h2 className="mb-2 text-lg font-semibold text-ink">New run</h2>
+      <Panel className="mb-6">
+        <PanelHeader>New run</PanelHeader>
         <p className="mb-2 text-sm text-muted">
           The brain settings could not be loaded, and a run needs them as its baseline.
         </p>
@@ -75,15 +75,16 @@ export function NewRunPanel({ hasActiveRun }: { hasActiveRun: boolean }) {
         <Button variant="outline" onClick={() => void settings.refetch()}>
           Try again
         </Button>
-      </Card>
+      </Panel>
     );
   }
   if (!resolved || !knobs) {
     return (
-      <Card className="mb-6">
-        <h2 className="mb-2 text-lg font-semibold text-ink">New run</h2>
-        <p className="text-sm text-muted">Loading the current settings…</p>
-      </Card>
+      <Panel className="mb-6">
+        <PanelHeader>New run</PanelHeader>
+        <Skeleton className="h-3 w-56" />
+        <Skeleton className="mt-3 h-3 w-40" />
+      </Panel>
     );
   }
 
@@ -125,48 +126,42 @@ export function NewRunPanel({ hasActiveRun }: { hasActiveRun: boolean }) {
   };
 
   return (
-    <Card className="mb-6">
-      <h2 className="mb-4 text-lg font-semibold text-ink">New run</h2>
+    <Panel className="mb-6">
+      <PanelHeader>New run</PanelHeader>
 
       <div className="flex flex-wrap items-end gap-6">
         <Field label="What to test" hint="Retrieval checks search only; full grades real answers.">
-          <select
-            value={mode}
-            onChange={(e) => setMode(e.target.value as Mode)}
-            className={selectClass}
-          >
+          <AdminSelect value={mode} onChange={(e) => setMode(e.target.value as Mode)}>
             <option value="retrieval">Retrieval only (cheap)</option>
             <option value="full">Full answers</option>
-          </select>
+          </AdminSelect>
         </Field>
 
         {mode === 'full' ? (
-        <Field
-          label="Run as"
-          hint="Which lifecycle stage the benchmark simulates; subscriber sees every tool."
-        >
-          <select
-            value={audience}
-            onChange={(e) => setAudience(e.target.value as AudienceTier)}
-            className={selectClass}
+          <Field
+            label="Run as"
+            hint="Which lifecycle stage the benchmark simulates; subscriber sees every tool."
           >
-            {AUDIENCE_TIERS.map((tier) => (
-              <option key={tier} value={tier}>
-                {AUDIENCE_TIER_LABELS[tier]}
-              </option>
-            ))}
-          </select>
-        </Field>
+            <AdminSelect
+              value={audience}
+              onChange={(e) => setAudience(e.target.value as AudienceTier)}
+            >
+              {AUDIENCE_TIERS.map((tier) => (
+                <option key={tier} value={tier}>
+                  {AUDIENCE_TIER_LABELS[tier]}
+                </option>
+              ))}
+            </AdminSelect>
+          </Field>
         ) : null}
 
         <Field label="Model" hint="For this run only; live settings stay untouched.">
           <div className="flex gap-2">
-            <select
+            <AdminSelect
               value={modelIsPreset ? knobs.model : 'custom'}
               // 'custom' empties the model so the free-text input appears;
               // the Run button stays disabled until an id is typed.
               onChange={(e) => set('model', e.target.value === 'custom' ? '' : e.target.value)}
-              className={selectClass}
             >
               {MODEL_PRESETS.map((m) => (
                 <option key={m.value} value={m.value}>
@@ -174,13 +169,13 @@ export function NewRunPanel({ hasActiveRun }: { hasActiveRun: boolean }) {
                 </option>
               ))}
               <option value="custom">Custom…</option>
-            </select>
+            </AdminSelect>
             {!modelIsPreset ? (
               <Input
                 value={knobs.model}
                 onChange={(e) => set('model', e.target.value)}
                 placeholder="Bedrock model id"
-                className="h-11 w-72 max-w-full font-mono text-xs"
+                className="h-10 w-72 max-w-full bg-canvas font-code text-xs"
               />
             ) : null}
           </div>
@@ -189,7 +184,7 @@ export function NewRunPanel({ hasActiveRun }: { hasActiveRun: boolean }) {
 
       {mode === 'full' ? (
         <details className="mt-4">
-          <summary className="cursor-pointer text-sm font-medium text-ink">
+          <summary className="mono-label cursor-pointer text-ink">
             Experiment with settings{overrideCount > 0 ? ` (${overrideCount} changed)` : ''}
           </summary>
           <div className="mt-4 flex flex-wrap items-end gap-6">
@@ -208,7 +203,7 @@ export function NewRunPanel({ hasActiveRun }: { hasActiveRun: boolean }) {
                 max={20}
                 value={knobs.topK}
                 onChange={(e) => set('topK', Math.min(20, Math.max(1, Math.round(Number(e.target.value)) || 1)))}
-                className="h-11 max-w-28"
+                className="h-10 max-w-28 bg-canvas text-sm"
               />
             </Field>
             <Field label="Match threshold">
@@ -221,7 +216,7 @@ export function NewRunPanel({ hasActiveRun }: { hasActiveRun: boolean }) {
                 onChange={(e) =>
                   set('similarityFloor', Math.min(1, Math.max(0, Number(e.target.value) || 0)))
                 }
-                className="h-11 max-w-28"
+                className="h-10 max-w-28 bg-canvas text-sm"
               />
             </Field>
             {knobs.toolsEnabled ? (
@@ -234,7 +229,7 @@ export function NewRunPanel({ hasActiveRun }: { hasActiveRun: boolean }) {
                   onChange={(e) =>
                     set('maxToolRounds', Math.min(5, Math.max(1, Math.round(Number(e.target.value)) || 1)))
                   }
-                  className="h-11 max-w-28"
+                  className="h-10 max-w-28 bg-canvas text-sm"
                 />
               </Field>
             ) : null}
@@ -245,7 +240,7 @@ export function NewRunPanel({ hasActiveRun }: { hasActiveRun: boolean }) {
                 max={4096}
                 value={knobs.maxAnswerTokens}
                 onChange={(e) => set('maxAnswerTokens', Math.min(4096, Math.max(128, Math.round(Number(e.target.value)) || 128)))}
-                className="h-11 max-w-32"
+                className="h-10 max-w-32 bg-canvas text-sm"
               />
             </Field>
             <div className="flex items-center gap-2">
@@ -261,16 +256,20 @@ export function NewRunPanel({ hasActiveRun }: { hasActiveRun: boolean }) {
       ) : null}
 
       <div className="mt-5 flex flex-wrap items-center gap-4">
-        <Button onClick={() => void run()} disabled={hasActiveRun || start.isPending || enabledCases === 0 || knobs.model.trim().length === 0}>
-          {start.isPending ? 'Starting…' : hasActiveRun ? 'A run is in progress' : 'Run the eval'}
+        <Button
+          variant="solid"
+          onClick={() => void run()}
+          disabled={hasActiveRun || start.isPending || enabledCases === 0 || knobs.model.trim().length === 0}
+        >
+          {start.isPending ? 'Starting…' : hasActiveRun ? 'A run is in progress' : 'Run the eval +'}
         </Button>
         <span className="text-sm text-muted">{costHint}</span>
       </div>
       {error ? (
-        <p className="mt-3 text-sm text-red-600" role="alert">
+        <p className="mt-3 text-sm text-danger" role="alert">
           {error}
         </p>
       ) : null}
-    </Card>
+    </Panel>
   );
 }

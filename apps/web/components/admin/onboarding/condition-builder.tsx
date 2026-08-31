@@ -11,6 +11,7 @@ import {
   type FlowDefinition,
 } from '@joice/core/schemas';
 import { Button, Input, cn } from '@joice/ui';
+import { AdminSelect } from '@/components/admin/fields';
 
 /**
  * "Show this when": rows of trait / operator / value joined by ALL or ANY.
@@ -73,7 +74,7 @@ export function ConditionBuilder({
         <p className="mt-1 text-xs text-muted">
           This rule is nested beyond what the builder edits; it is kept as written.
         </p>
-        <pre className="mt-2 overflow-x-auto rounded-xl bg-canvas p-3 text-xs">{JSON.stringify(value, null, 2)}</pre>
+        <pre className="mt-2 overflow-x-auto rounded-xl bg-canvas p-3 font-code text-xs">{JSON.stringify(value, null, 2)}</pre>
       </div>
     );
   }
@@ -112,7 +113,8 @@ export function ConditionBuilder({
           const needsValue = leaf.op !== 'exists';
           return (
             <div key={i} className="flex flex-wrap items-center gap-2">
-              <select
+              <AdminSelect
+                size="sm"
                 aria-label="Trait"
                 value={leaf.trait}
                 onChange={(e) => {
@@ -120,33 +122,32 @@ export function ConditionBuilder({
                   const nextOps = opsFor(definition, trait);
                   set(leaves.map((l, j) => (j === i ? { trait, op: nextOps.includes(l.op) ? l.op : nextOps[0]!, value: undefined } : l)));
                 }}
-                className="h-9 rounded-full bg-canvas px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-brand-600/50"
               >
                 {options.map((o) => (
                   <option key={o.key} value={o.key}>
                     {o.label}
                   </option>
                 ))}
-              </select>
-              <select
+              </AdminSelect>
+              <AdminSelect
+                size="sm"
                 aria-label="Operator"
                 value={leaf.op}
                 onChange={(e) => set(leaves.map((l, j) => (j === i ? { ...l, op: e.target.value as ConditionOp } : l)))}
-                className="h-9 rounded-full bg-canvas px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-brand-600/50"
               >
                 {ops.map((op) => (
                   <option key={op} value={op}>
                     {op}
                   </option>
                 ))}
-              </select>
+              </AdminSelect>
               {needsValue ? (
                 <Input
                   aria-label="Value"
                   value={valueToText(leaf.value)}
                   placeholder={['in', 'nin', 'between'].includes(leaf.op) ? 'a, b' : 'value'}
                   onChange={(e) => set(leaves.map((l, j) => (j === i ? { ...l, value: textToValue(e.target.value, leaf.op) } : l)))}
-                  className="h-9 max-w-56 px-3 text-sm"
+                  className="h-9 max-w-56 bg-canvas px-3 text-sm"
                 />
               ) : null}
               <Button type="button" variant="ghost" size="sm" onClick={() => set(leaves.filter((_, j) => j !== i))}>

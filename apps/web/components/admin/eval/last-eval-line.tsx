@@ -17,7 +17,7 @@ export function LastEvalLine() {
   return (
     <p className="text-xs text-muted">
       Last eval{' '}
-      <Link href={`/admin/eval/${last.id}`} className="font-medium text-ink hover:underline">
+      <Link href={`/admin/eval/${last.id}`} className="text-ink hover:underline">
         {last.passedCases}/{last.totalCases}
       </Link>{' '}
       ({last.mode === 'full' ? (last.toolsEnabled ? 'full + tools' : 'full') : 'retrieval'},{' '}

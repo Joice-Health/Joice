@@ -2,18 +2,20 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { Input } from '@joice/ui';
 import { useAdminUsers, useUpdateUserStatus } from '@joice/api-client';
 import {
-  Card,
   EmptyState,
   ErrorState,
   PageHeader,
   Pagination,
+  Panel,
   Table,
+  TableSkeleton,
   Td,
   Th,
 } from '@/components/admin/ui';
+import { AdminSelect, SearchInput } from '@/components/admin/fields';
+import { useToast } from '@/components/admin/toast';
 
 const STATUSES = ['active', 'suspended', 'deleted'] as const;
 type Status = (typeof STATUSES)[number];
@@ -22,6 +24,7 @@ export default function AdminUsersPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const toast = useToast();
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -38,27 +41,38 @@ export default function AdminUsersPage() {
   });
   const updateStatus = useUpdateUserStatus();
 
+  function setUserStatus(id: string, email: string, next: Status) {
+    updateStatus.mutate(
+      { id, status: next },
+      {
+        onSuccess: () => toast(`${email} is now ${next}.`),
+        onError: (error) =>
+          toast(error instanceof Error ? error.message : 'Status change failed.', {
+            tone: 'danger',
+          }),
+      },
+    );
+  }
+
   return (
     <>
-      <PageHeader title="Users" />
+      <PageHeader eyebrow="People" title="Users" />
 
-      <Card>
+      <Panel>
         <div className="mb-4">
-          <Input
+          <SearchInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search email or name…"
             aria-label="Search users"
-            className="h-11 max-w-xs text-sm"
+            className="max-w-xs"
           />
         </div>
 
         {query.isError ? (
           <ErrorState error={query.error} />
         ) : query.data && query.data.items.length === 0 ? (
-          <EmptyState>
-            No members yet — users appear here when member sign-ups launch.
-          </EmptyState>
+          <EmptyState>No members yet. Users appear here when member sign-ups launch.</EmptyState>
         ) : (
           <>
             <Table>
@@ -72,35 +86,42 @@ export default function AdminUsersPage() {
                 </tr>
               </thead>
               <tbody>
-                {query.data?.items.map((user) => (
-                  <tr key={user.id}>
-                    <Td>
-                      <Link href={`/admin/users/${user.id}`} className="text-ink underline-offset-2 hover:underline">
-                        {user.email}
-                      </Link>
-                    </Td>
-                    <Td>{[user.firstName, user.lastName].filter(Boolean).join(' ') || '—'}</Td>
-                    <Td>
-                      <select
-                        value={user.status}
-                        disabled={updateStatus.isPending}
-                        onChange={(e) =>
-                          updateStatus.mutate({ id: user.id, status: e.target.value as Status })
-                        }
-                        aria-label={`Status for ${user.email}`}
-                        className="glass rounded-full px-2 py-1 text-xs text-ink outline-none"
-                      >
-                        {STATUSES.map((s) => (
-                          <option key={s} value={s}>
-                            {s}
-                          </option>
-                        ))}
-                      </select>
-                    </Td>
-                    <Td className="font-mono text-xs">{user.clerkUserId}</Td>
-                    <Td>{new Date(user.createdAt).toLocaleDateString()}</Td>
-                  </tr>
-                ))}
+                {query.isPending ? (
+                  <TableSkeleton cols={5} />
+                ) : (
+                  query.data?.items.map((user) => (
+                    <tr key={user.id}>
+                      <Td>
+                        <Link
+                          href={`/admin/users/${user.id}`}
+                          className="text-ink underline-offset-2 hover:underline"
+                        >
+                          {user.email}
+                        </Link>
+                      </Td>
+                      <Td>{[user.firstName, user.lastName].filter(Boolean).join(' ') || '·'}</Td>
+                      <Td>
+                        <AdminSelect
+                          size="sm"
+                          value={user.status}
+                          disabled={updateStatus.isPending}
+                          onChange={(e) =>
+                            setUserStatus(user.id, user.email, e.target.value as Status)
+                          }
+                          aria-label={`Status for ${user.email}`}
+                        >
+                          {STATUSES.map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ))}
+                        </AdminSelect>
+                      </Td>
+                      <Td className="text-xs">{user.clerkUserId}</Td>
+                      <Td>{new Date(user.createdAt).toLocaleDateString()}</Td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </Table>
             {query.data ? (
@@ -113,8 +134,7 @@ export default function AdminUsersPage() {
             ) : null}
           </>
         )}
-        {updateStatus.isError ? <ErrorState error={updateStatus.error} /> : null}
-      </Card>
+      </Panel>
     </>
   );
 }

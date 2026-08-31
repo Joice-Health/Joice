@@ -9,21 +9,26 @@ import {
   useUpdateFlag,
 } from '@joice/api-client';
 import {
-  Card,
   EmptyState,
   ErrorState,
   PageHeader,
+  Panel,
   Table,
+  TableSkeleton,
   Td,
   Th,
   Toggle,
 } from '@/components/admin/ui';
+import { useConfirm } from '@/components/admin/confirm';
+import { useToast } from '@/components/admin/toast';
 
 export default function AdminFlagsPage() {
   const query = useFeatureFlags();
   const createFlag = useCreateFlag();
   const updateFlag = useUpdateFlag();
   const deleteFlag = useDeleteFlag();
+  const toast = useToast();
+  const confirm = useConfirm();
 
   const [showForm, setShowForm] = useState(false);
   const [key, setKey] = useState('');
@@ -35,24 +40,53 @@ export default function AdminFlagsPage() {
       { key: key.trim(), description: description.trim() || undefined, enabled: false },
       {
         onSuccess: () => {
+          toast(`Flag ${key.trim()} created, off.`);
           setKey('');
           setDescription('');
           setShowForm(false);
         },
+        onError: (error) =>
+          toast(error instanceof Error ? error.message : 'Create failed.', { tone: 'danger' }),
       },
     );
   }
 
+  function setFlag(id: string, flagKey: string, enabled: boolean) {
+    updateFlag.mutate(
+      { id, enabled },
+      {
+        onSuccess: () => toast(`${flagKey} is now ${enabled ? 'on' : 'off'}.`),
+        onError: (error) =>
+          toast(error instanceof Error ? error.message : 'Toggle failed.', { tone: 'danger' }),
+      },
+    );
+  }
+
+  async function onDelete(id: string, flagKey: string) {
+    const ok = await confirm({
+      title: `Delete flag ${flagKey}?`,
+      body: 'Code reading it will see it as off.',
+      confirmLabel: 'Delete +',
+      danger: true,
+    });
+    if (!ok) return;
+    deleteFlag.mutate(id, {
+      onSuccess: () => toast(`Flag ${flagKey} deleted.`),
+      onError: (error) =>
+        toast(error instanceof Error ? error.message : 'Delete failed.', { tone: 'danger' }),
+    });
+  }
+
   return (
     <>
-      <PageHeader title="Feature flags">
-        <Button variant="solid" onClick={() => setShowForm((v) => !v)}>
-          {showForm ? 'Cancel' : 'New flag'}
+      <PageHeader eyebrow="Platform" title="Feature flags">
+        <Button variant="outline" onClick={() => setShowForm((v) => !v)}>
+          {showForm ? 'Cancel' : 'New flag +'}
         </Button>
       </PageHeader>
 
       {showForm ? (
-        <Card className="mb-6">
+        <Panel className="mb-6">
           <form onSubmit={onCreate} className="flex flex-wrap items-center gap-3">
             <Input
               value={key}
@@ -62,24 +96,23 @@ export default function AdminFlagsPage() {
               pattern="[a-z0-9_.\-]+"
               title="Lowercase letters, digits, _ . - only"
               required
-              className="h-11 max-w-xs font-mono text-sm"
+              className="h-10 max-w-xs bg-canvas font-code text-sm"
             />
             <Input
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Description (optional)"
               aria-label="Flag description"
-              className="h-11 max-w-sm text-sm"
+              className="h-10 max-w-sm bg-canvas text-sm"
             />
             <Button type="submit" variant="solid" disabled={createFlag.isPending}>
-              {createFlag.isPending ? 'Creating…' : 'Create flag'}
+              {createFlag.isPending ? 'Creating…' : 'Create flag +'}
             </Button>
           </form>
-          {createFlag.isError ? <ErrorState error={createFlag.error} /> : null}
-        </Card>
+        </Panel>
       ) : null}
 
-      <Card>
+      <Panel>
         <p className="mb-4 text-sm text-muted">
           Changes go live within about a minute: the API caches flag reads for ~30s and
           server-rendered pages re-read them on the same cadence.
@@ -88,7 +121,15 @@ export default function AdminFlagsPage() {
         {query.isError ? (
           <ErrorState error={query.error} />
         ) : query.data && query.data.items.length === 0 ? (
-          <EmptyState>No flags yet. Create one to start gating features.</EmptyState>
+          <EmptyState
+            action={
+              <Button variant="outline" onClick={() => setShowForm(true)}>
+                New flag +
+              </Button>
+            }
+          >
+            No flags yet. Create one to start gating features.
+          </EmptyState>
         ) : (
           <Table>
             <thead>
@@ -101,40 +142,38 @@ export default function AdminFlagsPage() {
               </tr>
             </thead>
             <tbody>
-              {query.data?.items.map((flag) => (
-                <tr key={flag.id}>
-                  <Td>
-                    <Toggle
-                      checked={flag.enabled}
-                      disabled={updateFlag.isPending}
-                      label={`Toggle ${flag.key}`}
-                      onChange={(enabled) => updateFlag.mutate({ id: flag.id, enabled })}
-                    />
-                  </Td>
-                  <Td className="font-mono text-xs">{flag.key}</Td>
-                  <Td className="text-muted">{flag.description || '—'}</Td>
-                  <Td>{new Date(flag.updatedAt).toLocaleString()}</Td>
-                  <Td className="text-right">
-                    <Button
-                      variant="ghost"
-                      disabled={deleteFlag.isPending}
-                      onClick={() => {
-                        if (confirm(`Delete flag "${flag.key}"? Code reading it will see it as off.`)) {
-                          deleteFlag.mutate(flag.id);
-                        }
-                      }}
-                    >
-                      Delete
-                    </Button>
-                  </Td>
-                </tr>
-              ))}
+              {query.isPending ? (
+                <TableSkeleton cols={5} />
+              ) : (
+                query.data?.items.map((flag) => (
+                  <tr key={flag.id}>
+                    <Td>
+                      <Toggle
+                        checked={flag.enabled}
+                        disabled={updateFlag.isPending}
+                        label={`Toggle ${flag.key}`}
+                        onChange={(enabled) => setFlag(flag.id, flag.key, enabled)}
+                      />
+                    </Td>
+                    <Td className="text-xs">{flag.key}</Td>
+                    <Td className="text-muted">{flag.description || '·'}</Td>
+                    <Td>{new Date(flag.updatedAt).toLocaleString()}</Td>
+                    <Td className="text-right">
+                      <Button
+                        variant="ghost"
+                        disabled={deleteFlag.isPending}
+                        onClick={() => onDelete(flag.id, flag.key)}
+                      >
+                        Delete
+                      </Button>
+                    </Td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </Table>
         )}
-        {updateFlag.isError ? <ErrorState error={updateFlag.error} /> : null}
-        {deleteFlag.isError ? <ErrorState error={deleteFlag.error} /> : null}
-      </Card>
+      </Panel>
     </>
   );
 }

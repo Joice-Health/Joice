@@ -1,10 +1,8 @@
 import type { ReactNode } from 'react';
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { auth } from '@clerk/nextjs/server';
 import { UserButton } from '@clerk/nextjs';
-import { BrandMark } from '@/components/ui/brand-mark';
-import { AdminNav } from '@/components/admin/nav';
+import { AdminShell } from '@/components/admin/shell';
 import { AdminProviders } from '../providers';
 
 /**
@@ -19,18 +17,10 @@ export default async function AdminDashboardLayout({ children }: { children: Rea
 
   return (
     <AdminProviders>
-      <div className="mx-auto flex min-h-dvh w-full max-w-7xl gap-8 px-6 py-8">
-        <aside className="flex w-52 shrink-0 flex-col gap-8">
-          <Link href="/admin" aria-label="Admin home">
-            <BrandMark />
-          </Link>
-          <AdminNav />
-          <div className="mt-auto flex items-center gap-3 pb-2">
-            <UserButton />
-            <span className="text-xs text-muted">Signed in</span>
-          </div>
-        </aside>
-        <main className="min-w-0 flex-1 pb-16">{children}</main>
+      <div className="flex min-h-dvh">
+        <AdminShell user={<UserButton />}>
+          <main className="min-w-0 flex-1 px-6 py-8 lg:px-10">{children}</main>
+        </AdminShell>
       </div>
     </AdminProviders>
   );

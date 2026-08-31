@@ -243,7 +243,10 @@ with the reasoning is `docs/design/01-design-system.md`. Tokens live in
   image panels take `rounded-card`; everything small is a pill. `ImageSlot` renders the
   organic green field until a photo lands under `public/`.
 - Frost is for things that float over content: the full-width sticky nav (frosted cream, no
-  rule beneath it) and the `glass` panels in admin. White surfaces (`panel`, `Input`, `glass`)
+  rule beneath it) and, in admin, only the mobile top bar, toasts and the brain page's sticky
+  save bar. Admin data surfaces are solid `panel` white at `rounded-2xl`, built from the kit
+  in `apps/web/components/admin/` (brief: `docs/admin/00-plan.md`); `--color-danger` is the
+  one red for errors and destructive actions. White surfaces (`panel`, `Input`, `glass`)
   carry no frame; the white on the cream is the edge. The animated water/video background
   (`water-background.tsx`) belongs to the public pre-launch pages only: `/waitlist` and
   `/coming-soon`.

@@ -22,7 +22,7 @@ export default function AdminEvalPage() {
 
   return (
     <>
-      <PageHeader title="Eval" />
+      <PageHeader eyebrow="Brain" title="Eval console" />
       {runs.isError ? <ErrorState error={runs.error} /> : null}
       <NewRunPanel hasActiveRun={hasActiveRun} />
       <RunsTable data={runs.data} page={page} limit={PAGE_SIZE} onPageChange={setPage} />

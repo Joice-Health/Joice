@@ -4,14 +4,19 @@ import { useState, type FormEvent } from 'react';
 import { Button, Input } from '@joice/ui';
 import { useDeleteSetting, useSettings, useUpsertSetting } from '@joice/api-client';
 import {
-  Card,
   EmptyState,
   ErrorState,
   PageHeader,
+  Panel,
+  PanelHeader,
   Table,
+  TableSkeleton,
   Td,
   Th,
 } from '@/components/admin/ui';
+import { AdminTextarea } from '@/components/admin/fields';
+import { useConfirm } from '@/components/admin/confirm';
+import { useToast } from '@/components/admin/toast';
 
 /** Values are arbitrary JSON: `true`, `42`, `"copy text"`, `{"a":1}`, … */
 function parseJsonValue(raw: string): { ok: true; value: unknown } | { ok: false } {
@@ -26,6 +31,8 @@ export default function AdminSettingsPage() {
   const query = useSettings();
   const upsert = useUpsertSetting();
   const remove = useDeleteSetting();
+  const toast = useToast();
+  const confirm = useConfirm();
 
   const [key, setKey] = useState('');
   const [rawValue, setRawValue] = useState('');
@@ -44,21 +51,38 @@ export default function AdminSettingsPage() {
       { key: key.trim(), value: parsed.value, description: description.trim() || undefined },
       {
         onSuccess: () => {
+          toast(`Setting ${key.trim()} saved.`);
           setKey('');
           setRawValue('');
           setDescription('');
         },
+        onError: (error) =>
+          toast(error instanceof Error ? error.message : 'Save failed.', { tone: 'danger' }),
       },
     );
   }
 
+  async function onDelete(settingKey: string) {
+    const ok = await confirm({
+      title: `Delete setting ${settingKey}?`,
+      confirmLabel: 'Delete +',
+      danger: true,
+    });
+    if (!ok) return;
+    remove.mutate(settingKey, {
+      onSuccess: () => toast(`Setting ${settingKey} deleted.`),
+      onError: (error) =>
+        toast(error instanceof Error ? error.message : 'Delete failed.', { tone: 'danger' }),
+    });
+  }
+
   return (
     <>
-      <PageHeader title="Settings" />
+      <PageHeader eyebrow="Platform" title="Settings" />
 
-      <Card className="mb-6">
-        <h2 className="mb-3 text-lg font-semibold text-ink">Add or update a setting</h2>
-        <form onSubmit={onSubmit} className="flex flex-col gap-3">
+      <Panel className="mb-6">
+        <PanelHeader>Add or update a setting</PanelHeader>
+        <form onSubmit={onSubmit} className="flex max-w-3xl flex-col gap-3">
           <div className="flex flex-wrap gap-3">
             <Input
               value={key}
@@ -68,40 +92,39 @@ export default function AdminSettingsPage() {
               pattern="[a-z0-9_.\-]+"
               title="Lowercase letters, digits, _ . - only"
               required
-              className="h-11 max-w-xs font-mono text-sm"
+              className="h-10 max-w-xs bg-canvas font-code text-sm"
             />
             <Input
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Description (optional)"
               aria-label="Setting description"
-              className="h-11 max-w-sm text-sm"
+              className="h-10 max-w-sm bg-canvas text-sm"
             />
           </div>
-          <textarea
+          <AdminTextarea
             value={rawValue}
             onChange={(e) => setRawValue(e.target.value)}
             placeholder='Value as JSON, e.g. true, 42, "text", {"a": 1}'
             aria-label="Setting value (JSON)"
             required
             rows={3}
-            className="glass w-full max-w-2xl rounded-card px-4 py-3 font-mono text-sm text-ink outline-none placeholder:text-muted/60 focus-visible:ring-2 focus-visible:ring-brand-300/50"
+            className="max-w-2xl font-code"
           />
           {parseError ? (
-            <p className="text-sm text-red-600" role="alert">
+            <p className="text-sm text-danger" role="alert">
               Value must be valid JSON (wrap plain text in quotes).
             </p>
           ) : null}
           <div>
             <Button type="submit" variant="solid" disabled={upsert.isPending}>
-              {upsert.isPending ? 'Saving…' : 'Save setting'}
+              {upsert.isPending ? 'Saving…' : 'Save setting +'}
             </Button>
           </div>
         </form>
-        {upsert.isError ? <ErrorState error={upsert.error} /> : null}
-      </Card>
+      </Panel>
 
-      <Card>
+      <Panel>
         {query.isError ? (
           <ErrorState error={query.error} />
         ) : query.data && query.data.items.length === 0 ? (
@@ -118,49 +141,48 @@ export default function AdminSettingsPage() {
               </tr>
             </thead>
             <tbody>
-              {query.data?.items.map((setting) => (
-                <tr key={setting.id}>
-                  <Td className="font-mono text-xs">{setting.key}</Td>
-                  <Td>
-                    <code className="block max-w-md truncate font-mono text-xs">
-                      {JSON.stringify(setting.value)}
-                    </code>
-                  </Td>
-                  <Td className="text-muted">{setting.description || '—'}</Td>
-                  <Td>{new Date(setting.updatedAt).toLocaleString()}</Td>
-                  <Td className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        onClick={() => {
-                          setKey(setting.key);
-                          setRawValue(JSON.stringify(setting.value, null, 2));
-                          setDescription(setting.description ?? '');
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        disabled={remove.isPending}
-                        onClick={() => {
-                          if (confirm(`Delete setting "${setting.key}"?`)) {
-                            remove.mutate(setting.key);
-                          }
-                        }}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  </Td>
-                </tr>
-              ))}
+              {query.isPending ? (
+                <TableSkeleton cols={5} />
+              ) : (
+                query.data?.items.map((setting) => (
+                  <tr key={setting.id}>
+                    <Td className="text-xs">{setting.key}</Td>
+                    <Td>
+                      <code className="block max-w-md truncate font-code text-xs">
+                        {JSON.stringify(setting.value)}
+                      </code>
+                    </Td>
+                    <Td className="text-muted">{setting.description || '·'}</Td>
+                    <Td>{new Date(setting.updatedAt).toLocaleString()}</Td>
+                    <Td className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          onClick={() => {
+                            setKey(setting.key);
+                            setRawValue(JSON.stringify(setting.value, null, 2));
+                            setDescription(setting.description ?? '');
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          disabled={remove.isPending}
+                          onClick={() => onDelete(setting.key)}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </Td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </Table>
         )}
-        {remove.isError ? <ErrorState error={remove.error} /> : null}
-      </Card>
+      </Panel>
     </>
   );
 }

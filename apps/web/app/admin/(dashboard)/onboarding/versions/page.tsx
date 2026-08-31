@@ -8,7 +8,24 @@ import {
   useRollbackFlow,
 } from '@joice/api-client';
 import { Button } from '@joice/ui';
-import { Badge, Card, EmptyState, ErrorState, PageHeader, Table, Td, Th } from '@/components/admin/ui';
+import {
+  Badge,
+  EmptyState,
+  ErrorState,
+  PageHeader,
+  Panel,
+  PanelHeader,
+  PanelSkeleton,
+  Skeleton,
+  Table,
+  Td,
+  Th,
+} from '@/components/admin/ui';
+import { AdminSelect } from '@/components/admin/fields';
+import { useConfirm } from '@/components/admin/confirm';
+import { useToast } from '@/components/admin/toast';
+
+const CRUMBS = [{ href: '/admin/onboarding', label: 'Onboarding' }];
 
 /**
  * Every version of the intake flow. Publishing lives in the editor (it wants
@@ -22,26 +39,62 @@ export default function AdminOnboardingVersionsPage() {
   const rollback = useRollbackFlow();
   const [diffA, setDiffA] = useState<string>('');
   const [diffB, setDiffB] = useState<string>('');
-  const [message, setMessage] = useState<string | null>(null);
+  const toast = useToast();
+  const confirm = useConfirm();
 
-  if (versions.isPending) return <p className="mono-label text-muted">Loading…</p>;
+  if (versions.isPending) {
+    return (
+      <div>
+        <PageHeader breadcrumbs={CRUMBS} title="Flow versions" />
+        <PanelSkeleton />
+      </div>
+    );
+  }
   if (versions.error) return <ErrorState error={versions.error} />;
   const items = versions.data?.items ?? [];
 
+  const onRollback = async (versionId: string, version: number) => {
+    const ok = await confirm({
+      title: `Roll back to v${version}?`,
+      body: 'The live pointer moves; new sessions use it immediately.',
+      confirmLabel: 'Roll back +',
+      danger: true,
+    });
+    if (!ok) return;
+    rollback.mutate(
+      { versionId },
+      {
+        onSuccess: () => toast(`Rolled back to v${version}.`),
+        onError: (error) =>
+          toast(error instanceof Error ? error.message : 'Rollback failed.', { tone: 'danger' }),
+      },
+    );
+  };
+
   return (
     <div>
-      <PageHeader title="Flow versions">
+      <PageHeader breadcrumbs={CRUMBS} title="Flow versions">
         <Button
           size="sm"
           disabled={createDraft.isPending || items.some((v) => v.status === 'draft')}
-          onClick={() => createDraft.mutate({}, { onSuccess: () => setMessage('Draft created; edit it on the Flow page.') })}
+          onClick={() =>
+            createDraft.mutate(
+              {},
+              {
+                onSuccess: () => toast('Draft created; edit it on the Flow page.'),
+                onError: (error) =>
+                  toast(error instanceof Error ? error.message : 'Could not create the draft.', {
+                    tone: 'danger',
+                  }),
+              },
+            )
+          }
         >
           Make a draft +
         </Button>
       </PageHeader>
-      {message ? <p className="mono-label mb-4 text-muted">{message}</p> : null}
 
-      <Card>
+      <Panel>
         {items.length === 0 ? (
           <EmptyState>No versions yet.</EmptyState>
         ) : (
@@ -68,7 +121,7 @@ export default function AdminOnboardingVersionsPage() {
                   </Td>
                   <Td className="max-w-56 truncate">{v.notes ?? ''}</Td>
                   <Td>
-                    <span className="font-mono text-xs text-muted">{v.logicHash?.slice(0, 8) ?? ''}</span>
+                    <span className="text-xs text-muted">{v.logicHash?.slice(0, 8) ?? ''}</span>
                   </Td>
                   <Td>{v.publishedBy ?? v.createdBy}</Td>
                   <Td>{v.publishedAt ? new Date(v.publishedAt).toLocaleString() : ''}</Td>
@@ -78,10 +131,7 @@ export default function AdminOnboardingVersionsPage() {
                         size="sm"
                         variant="ghost"
                         disabled={rollback.isPending}
-                        onClick={() => {
-                          if (!window.confirm(`Point the live flow back at v${v.version}? New sessions use it immediately.`)) return;
-                          rollback.mutate({ versionId: v.id }, { onSuccess: () => setMessage(`Rolled back to v${v.version}.`) });
-                        }}
+                        onClick={() => void onRollback(v.id, v.version)}
                       >
                         Roll back
                       </Button>
@@ -92,21 +142,21 @@ export default function AdminOnboardingVersionsPage() {
             </tbody>
           </Table>
         )}
-      </Card>
+      </Panel>
 
-      <Card className="mt-6">
-        <p className="mono-label text-muted">Compare two versions</p>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
+      <Panel className="mt-6">
+        <PanelHeader>Compare two versions</PanelHeader>
+        <div className="flex flex-wrap items-center gap-2">
           {[
             [diffA, setDiffA],
             [diffB, setDiffB],
           ].map(([value, set], i) => (
-            <select
+            <AdminSelect
               key={i}
+              size="sm"
               aria-label={i === 0 ? 'From version' : 'To version'}
               value={value as string}
               onChange={(e) => (set as (v: string) => void)(e.target.value)}
-              className="h-9 rounded-full bg-canvas px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-brand-600/50"
             >
               <option value="">choose…</option>
               {items.map((v) => (
@@ -114,11 +164,11 @@ export default function AdminOnboardingVersionsPage() {
                   v{v.version} ({v.status})
                 </option>
               ))}
-            </select>
+            </AdminSelect>
           ))}
         </div>
         {diffA && diffB ? <VersionDiff idA={diffA} idB={diffB} /> : null}
-      </Card>
+      </Panel>
     </div>
   );
 }
@@ -126,7 +176,14 @@ export default function AdminOnboardingVersionsPage() {
 function VersionDiff({ idA, idB }: { idA: string; idB: string }) {
   const a = useAdminFlowVersion(idA);
   const b = useAdminFlowVersion(idB);
-  if (a.isPending || b.isPending) return <p className="mono-label mt-3 text-muted">Loading…</p>;
+  if (a.isPending || b.isPending) {
+    return (
+      <div className="mt-4">
+        <Skeleton className="h-3 w-40" />
+        <Skeleton className="mt-2 h-3 w-64" />
+      </div>
+    );
+  }
   if (a.error || b.error || !a.data || !b.data) return <ErrorState error={a.error ?? b.error} />;
   const changed = diffPaths(a.data.definition, b.data.definition);
   return (
@@ -136,9 +193,9 @@ function VersionDiff({ idA, idB }: { idA: string; idB: string }) {
       ) : (
         <>
           <p className="mono-label text-muted">{changed.length} changed path(s)</p>
-          <ul className="mt-2 max-h-64 overflow-y-auto font-mono text-xs text-ink">
+          <ul className="mt-2 max-h-64 overflow-y-auto text-xs text-ink">
             {changed.map((path) => (
-              <li key={path} className="border-b border-line py-1">
+              <li key={path} className="border-b border-line/60 py-1">
                 {path}
               </li>
             ))}

@@ -4,7 +4,21 @@ import { useState } from 'react';
 import { useServiceAreas, useUpdateOnboardingSettings, useUpdateServiceArea } from '@joice/api-client';
 import { usStateName } from '@joice/utils';
 import { Button, Input } from '@joice/ui';
-import { Badge, Card, ErrorState, PageHeader, Table, Td, Th } from '@/components/admin/ui';
+import {
+  Badge,
+  ErrorState,
+  PageHeader,
+  Panel,
+  PanelSkeleton,
+  Table,
+  Td,
+  Th,
+} from '@/components/admin/ui';
+import { AdminSelect } from '@/components/admin/fields';
+import { useConfirm } from '@/components/admin/confirm';
+import { useToast } from '@/components/admin/toast';
+
+const CRUMBS = [{ href: '/admin/onboarding', label: 'Onboarding' }];
 
 const STATUS_TONE = { open: 'active', notify: 'pending', closed: 'suspended' } as const;
 
@@ -19,23 +33,72 @@ export default function AdminServiceAreasPage() {
   const update = useUpdateServiceArea();
   const updateSettings = useUpdateOnboardingSettings();
   const [age, setAge] = useState('');
-  const [message, setMessage] = useState<string | null>(null);
+  const toast = useToast();
+  const confirm = useConfirm();
 
-  if (query.isPending) return <p className="mono-label text-muted">Loading…</p>;
+  if (query.isPending) {
+    return (
+      <div>
+        <PageHeader breadcrumbs={CRUMBS} title="Service areas" />
+        <PanelSkeleton />
+      </div>
+    );
+  }
   if (query.error) return <ErrorState error={query.error} />;
   const { items, settings } = query.data!;
   const open = items.filter((a) => a.status === 'open').length;
 
+  const onUpdateAge = async () => {
+    const value = Number(age);
+    if (!Number.isInteger(value) || value < 13 || value > 21) {
+      toast('The minimum age must be a whole number between 13 and 21.', { tone: 'danger' });
+      return;
+    }
+    const ok = await confirm({
+      title: `Set the age gate to ${value}?`,
+      body: 'It applies to the next answer given.',
+      confirmLabel: 'Set age +',
+    });
+    if (!ok) return;
+    updateSettings.mutate(
+      { minimumAge: value },
+      {
+        onSuccess: () => {
+          toast(`Minimum age is now ${value}.`);
+          setAge('');
+        },
+        onError: (error) =>
+          toast(error instanceof Error ? error.message : 'Update failed.', { tone: 'danger' }),
+      },
+    );
+  };
+
+  const onSetStatus = async (stateCode: string, status: 'open' | 'notify' | 'closed') => {
+    const ok = await confirm({
+      title: `Set ${usStateName(stateCode)} to "${status}"?`,
+      body: 'Visitors see it within about a minute; the change is audited.',
+      confirmLabel: 'Change +',
+    });
+    if (!ok) return;
+    update.mutate(
+      { code: stateCode, status },
+      {
+        onSuccess: () => toast(`${usStateName(stateCode)} is now ${status}.`),
+        onError: (error) =>
+          toast(error instanceof Error ? error.message : 'Change failed.', { tone: 'danger' }),
+      },
+    );
+  };
+
   return (
     <div>
-      <PageHeader title="Service areas" />
-      <p className="mb-6 max-w-3xl text-sm text-muted">
-        {open} state{open === 1 ? '' : 's'} open. A change reaches visitors within about a minute and is
-        audited on its own trail. Self-reported state is a courtesy filter; enforcement happens again at
-        prescribing and shipping.
-      </p>
+      <PageHeader
+        breadcrumbs={CRUMBS}
+        title="Service areas"
+        description={`${open} state${open === 1 ? '' : 's'} open. A change reaches visitors within about a minute and is audited on its own trail. Self-reported state is a courtesy filter; enforcement happens again at prescribing and shipping.`}
+      />
 
-      <Card className="mb-6">
+      <Panel className="mb-6">
         <div className="flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1">
             <span className="mono-label text-muted">Minimum age (today: {settings.minimumAge})</span>
@@ -44,32 +107,16 @@ export default function AdminServiceAreasPage() {
               placeholder={String(settings.minimumAge)}
               inputMode="numeric"
               onChange={(e) => setAge(e.target.value)}
-              className="h-10 max-w-28 px-3 text-sm"
+              className="h-10 max-w-28 bg-canvas px-3 text-sm"
             />
           </label>
-          <Button
-            size="sm"
-            disabled={updateSettings.isPending || !age}
-            onClick={() => {
-              const value = Number(age);
-              if (!Number.isInteger(value) || value < 13 || value > 21) {
-                setMessage('The minimum age must be a whole number between 13 and 21.');
-                return;
-              }
-              if (!window.confirm(`Set the age gate to ${value}? It applies to the next answer given.`)) return;
-              updateSettings.mutate(
-                { minimumAge: value },
-                { onSuccess: () => { setMessage(`Minimum age is now ${value}.`); setAge(''); } },
-              );
-            }}
-          >
+          <Button size="sm" disabled={updateSettings.isPending || !age} onClick={() => void onUpdateAge()}>
             Update
           </Button>
-          {message ? <p className="mono-label text-muted">{message}</p> : null}
         </div>
-      </Card>
+      </Panel>
 
-      <Card>
+      <Panel>
         <Table>
           <thead>
             <tr>
@@ -84,7 +131,7 @@ export default function AdminServiceAreasPage() {
             {items.map((area) => (
               <tr key={area.stateCode}>
                 <Td>
-                  {usStateName(area.stateCode)} <span className="mono-label text-muted">{area.stateCode}</span>
+                  {usStateName(area.stateCode)} <span className="text-xs text-muted">{area.stateCode}</span>
                 </Td>
                 <Td>
                   <Badge tone={STATUS_TONE[area.status as keyof typeof STATUS_TONE] ?? 'pending'}>{area.status}</Badge>
@@ -92,30 +139,25 @@ export default function AdminServiceAreasPage() {
                 <Td className="max-w-56 truncate">{area.note ?? ''}</Td>
                 <Td className="max-w-40 truncate">{area.updatedBy ?? ''}</Td>
                 <Td>
-                  <select
+                  <AdminSelect
+                    size="sm"
                     aria-label={`Status for ${usStateName(area.stateCode)}`}
                     value={area.status}
                     disabled={update.isPending}
-                    onChange={(e) => {
-                      const status = e.target.value as 'open' | 'notify' | 'closed';
-                      if (!window.confirm(`Set ${usStateName(area.stateCode)} to "${status}"? Visitors see it within about a minute.`)) {
-                        e.target.value = area.status;
-                        return;
-                      }
-                      update.mutate({ code: area.stateCode, status });
-                    }}
-                    className="h-9 rounded-full bg-canvas px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-brand-600/50"
+                    onChange={(e) =>
+                      void onSetStatus(area.stateCode, e.target.value as 'open' | 'notify' | 'closed')
+                    }
                   >
                     <option value="open">open</option>
                     <option value="notify">notify</option>
                     <option value="closed">closed</option>
-                  </select>
+                  </AdminSelect>
                 </Td>
               </tr>
             ))}
           </tbody>
         </Table>
-      </Card>
+      </Panel>
     </div>
   );
 }

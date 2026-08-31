@@ -12,6 +12,7 @@ import {
 } from '@joice/core/schemas';
 import { Button, Input, cn } from '@joice/ui';
 import { Badge } from '@/components/admin/ui';
+import { AdminSelect } from '@/components/admin/fields';
 import { ConditionBuilder } from './condition-builder';
 
 /**
@@ -64,7 +65,11 @@ export function QuestionEditor({
 
       <label className="flex flex-col gap-1">
         <span className="mono-label text-muted">Question</span>
-        <Input value={question.copy.label} onChange={(e) => set({ copy: { ...question.copy, label: e.target.value } })} />
+        <Input
+          value={question.copy.label}
+          onChange={(e) => set({ copy: { ...question.copy, label: e.target.value } })}
+          className="bg-canvas"
+        />
       </label>
       <label className="flex flex-col gap-1">
         <span className="mono-label text-muted">Help text</span>
@@ -72,6 +77,7 @@ export function QuestionEditor({
           value={question.copy.help ?? ''}
           placeholder="Why we ask, in one line"
           onChange={(e) => set({ copy: { ...question.copy, help: e.target.value || undefined } })}
+          className="bg-canvas"
         />
       </label>
       {question.type === 'text' ? (
@@ -80,6 +86,7 @@ export function QuestionEditor({
           <Input
             value={question.copy.placeholder ?? ''}
             onChange={(e) => set({ copy: { ...question.copy, placeholder: e.target.value || undefined } })}
+            className="bg-canvas"
           />
         </label>
       ) : null}
@@ -87,7 +94,7 @@ export function QuestionEditor({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1">
           <span className="mono-label text-muted">Type</span>
-          <select
+          <AdminSelect
             value={question.type}
             disabled={locked}
             onChange={(e) => {
@@ -95,22 +102,20 @@ export function QuestionEditor({
               const select = type === 'single_select' || type === 'multi_select';
               set({ type, options: select ? (question.options ?? []) : undefined });
             }}
-            className="h-10 rounded-full bg-canvas px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-brand-600/50 disabled:text-muted"
           >
             {QUESTION_TYPES.map((t) => (
               <option key={t} value={t}>
                 {t}
               </option>
             ))}
-          </select>
+          </AdminSelect>
         </label>
         <label className="flex flex-col gap-1">
           <span className="mono-label text-muted">Writes the trait</span>
-          <select
+          <AdminSelect
             value={isCustomTrait(question.trait) ? '__custom__' : question.trait}
             disabled={locked}
             onChange={(e) => set({ trait: e.target.value === '__custom__' ? 'custom.new_trait' : e.target.value })}
-            className="h-10 rounded-full bg-canvas px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-brand-600/50 disabled:text-muted"
           >
             {Object.values(TRAITS)
               .filter((t) => !t.derived && (t.type === TRAIT_TYPE_FOR_QUESTION[question.type] || t.key === question.trait))
@@ -120,13 +125,13 @@ export function QuestionEditor({
                 </option>
               ))}
             <option value="__custom__">custom trait…</option>
-          </select>
+          </AdminSelect>
         </label>
       </div>
       {isCustomTrait(question.trait) ? (
         <label className="flex flex-col gap-1">
           <span className="mono-label text-muted">Custom trait key (custom.snake_case; always marketing tier)</span>
-          <Input value={question.trait} onChange={(e) => set({ trait: e.target.value })} className="max-w-sm font-mono text-sm" />
+          <Input value={question.trait} onChange={(e) => set({ trait: e.target.value })} className="max-w-sm bg-canvas font-code text-sm" />
         </label>
       ) : null}
 
@@ -136,7 +141,7 @@ export function QuestionEditor({
           checked={question.required}
           disabled={locked}
           onChange={(e) => set({ required: e.target.checked })}
-          className="size-4 accent-ink"
+          className="size-4 accent-brand-600"
         />
         <span className="text-sm text-ink">An answer is required</span>
       </label>
@@ -182,14 +187,14 @@ function OptionList({
               value={option.value}
               placeholder="value"
               onChange={(e) => onChange(options.map((o, j) => (j === i ? { ...o, value: e.target.value } : o)))}
-              className="h-9 max-w-44 px-3 font-mono text-xs"
+              className="h-9 max-w-44 bg-canvas px-3 font-code text-xs"
             />
             <Input
               aria-label="Label"
               value={option.label}
               placeholder="What the visitor reads"
               onChange={(e) => onChange(options.map((o, j) => (j === i ? { ...o, label: e.target.value } : o)))}
-              className="h-9 max-w-72 px-3 text-sm"
+              className="h-9 max-w-72 bg-canvas px-3 text-sm"
             />
             <Button type="button" variant="ghost" size="sm" onClick={() => onChange(options.filter((_, j) => j !== i))}>
               Remove

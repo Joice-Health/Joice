@@ -61,6 +61,15 @@ alongside it.
 |---|---|
 | [00 Design brief (approved plan)](shop/00-plan.md) | Why a separate public route group, the flow, every CarePortals endpoint used and why there is no proxy, the two gates (allowlist + `shop` flag), slices, decisions log |
 
+## Admin
+
+The `/admin/*` back office: the shell, the design language, and the shared UI kit every
+admin page is built from.
+
+| Doc | What it covers |
+|---|---|
+| [00 Design brief (approved plan)](admin/00-plan.md) | The full-width redesign: dark rail shell, solid panels over glass, the type hierarchy without weight, the one control kit, states/toast/confirm, phases and stories, decisions log |
+
 ## CI/CD
 
 | Doc | What it covers |

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button, Input, cn } from '@joice/ui';
 import {
   useBrainSettings,
@@ -13,7 +13,10 @@ import {
   type ToolAccess,
   type ToolAccessKey,
 } from '@joice/brain/schemas';
-import { Card, ErrorState, PageHeader, Toggle } from '@/components/admin/ui';
+import { ErrorState, PageHeader, Panel, PanelSkeleton, Toggle } from '@/components/admin/ui';
+import { AdminSelect, AdminTextarea, Field } from '@/components/admin/fields';
+import { useConfirm } from '@/components/admin/confirm';
+import { useToast } from '@/components/admin/toast';
 import { MODEL_PRESETS } from '@/components/admin/model-presets';
 import { LastEvalLine } from '@/components/admin/eval/last-eval-line';
 
@@ -75,33 +78,57 @@ const REWRITE_MODEL_PRESETS = [
 
 const VOICE_PRESETS = ['Ruth', 'Danielle', 'Joanna', 'Salli', 'Tiffany', 'Matthew', 'Stephen'] as const;
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+/** One concern per tab; the form stays one object across all of them. */
+const TABS = [
+  { key: 'persona', label: 'Persona & tone' },
+  { key: 'copy', label: 'Messages & copy' },
+  { key: 'companion', label: 'Companion' },
+  { key: 'guardrails', label: 'Guardrails' },
+  { key: 'retrieval', label: 'Retrieval & model' },
+  { key: 'floor', label: 'Safety floor' },
+] as const;
+type TabKey = (typeof TABS)[number]['key'];
+
+function TabBar({ tab, onSelect }: { tab: TabKey; onSelect: (tab: TabKey) => void }) {
   return (
-    <label className="flex flex-col gap-1.5">
-      <span className="text-sm font-medium text-ink">{label}</span>
-      {children}
-      {hint ? <span className="text-xs text-muted">{hint}</span> : null}
-    </label>
+    <nav aria-label="Settings sections" className="mb-6 flex flex-wrap gap-x-6 border-b border-line">
+      {TABS.map((t) => (
+        <button
+          key={t.key}
+          type="button"
+          onClick={() => onSelect(t.key)}
+          aria-current={tab === t.key ? 'page' : undefined}
+          className={cn(
+            '-mb-px border-b-2 pb-3 text-sm transition-colors',
+            tab === t.key
+              ? 'border-brand-600 text-ink'
+              : 'border-transparent text-muted hover:text-ink',
+          )}
+        >
+          {t.label}
+        </button>
+      ))}
+    </nav>
   );
 }
 
-const textareaClass =
-  'glass w-full rounded-card px-4 py-3 text-sm text-ink outline-none placeholder:text-muted/60 focus-visible:ring-2 focus-visible:ring-brand-300/50';
-const selectClass =
-  'glass h-11 rounded-card px-4 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-brand-300/50';
-
 /**
- * Admin control panel for the chatbot brain. Edits the single admin-managed
- * config that drives persona, tone, guardrails, retrieval, model, and voice —
- * changes go live within ~30 seconds and every save is audit-logged. The
- * safety floor shown at the bottom is code-level and not editable here.
+ * Admin control panel for the chatbot brain, one concern per tab. Edits the
+ * single admin-managed config that drives persona, tone, guardrails,
+ * retrieval, model, and voice; changes go live within ~30 seconds and every
+ * save is audit-logged. Hidden tabs stay mounted so the one form object and
+ * the save bar span all of them. The safety floor tab is code-level and
+ * read-only.
  */
 export default function AdminBrainPage() {
   const query = useBrainSettings();
   const update = useUpdateBrainSettings();
   const reset = useResetBrainSettings();
+  const toast = useToast();
+  const confirm = useConfirm();
 
   const [form, setForm] = useState<BrainForm | null>(null);
+  const [tab, setTab] = useState<TabKey>('persona');
   const [topicDraft, setTopicDraft] = useState('');
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const seededAt = useRef<number>(0);
@@ -117,20 +144,18 @@ export default function AdminBrainPage() {
   if (query.isError) {
     return (
       <>
-        <PageHeader title="Brain" />
-        <Card>
+        <PageHeader eyebrow="Brain" title="Brain settings" />
+        <Panel>
           <ErrorState error={query.error} />
-        </Card>
+        </Panel>
       </>
     );
   }
   if (!form || !query.data) {
     return (
       <>
-        <PageHeader title="Brain" />
-        <Card>
-          <p className="py-10 text-center text-sm text-muted">Loading…</p>
-        </Card>
+        <PageHeader eyebrow="Brain" title="Brain settings" />
+        <PanelSkeleton />
       </>
     );
   }
@@ -145,7 +170,7 @@ export default function AdminBrainPage() {
       max={max}
       value={form[key]}
       onChange={(e) => set(key, Math.round(Number(e.target.value)) || min)}
-      className="h-11 max-w-32"
+      className="h-10 max-w-32 bg-canvas text-sm"
     />
   );
 
@@ -157,514 +182,514 @@ export default function AdminBrainPage() {
   };
 
   const modelIsPreset = MODEL_PRESETS.some((m) => m.value === form.model);
+  const dirty = JSON.stringify(form) !== JSON.stringify(query.data.resolved);
 
   const save = () =>
     update.mutate(form, {
-      onSuccess: () => setSavedAt(Date.now()),
+      onSuccess: () => {
+        setSavedAt(Date.now());
+        toast('Brain settings saved. Live within ~30s.');
+      },
+      onError: (error) =>
+        toast(error instanceof Error ? error.message : 'Save failed.', { tone: 'danger' }),
     });
+
+  const onReset = async () => {
+    const ok = await confirm({
+      title: 'Reset all brain settings?',
+      body: 'Every setting returns to the built-in defaults. This is recorded in the audit log.',
+      confirmLabel: 'Reset +',
+      danger: true,
+    });
+    if (!ok) return;
+    setForm(null); // re-seed from the refetched resolved config
+    reset.mutate(undefined, {
+      onSuccess: () => toast('Brain settings reset to defaults.'),
+      onError: (error) =>
+        toast(error instanceof Error ? error.message : 'Reset failed.', { tone: 'danger' }),
+    });
+  };
 
   return (
     <>
-      <PageHeader title="Brain">
-        <Button
-          variant="ghost"
-          disabled={reset.isPending}
-          onClick={() => {
-            if (confirm('Reset ALL brain settings to the built-in defaults?')) {
-              setForm(null); // re-seed from the refetched resolved config
-              reset.mutate();
-            }
-          }}
-        >
+      <PageHeader
+        eyebrow="Brain"
+        title="Brain settings"
+        description="Changes go live within ~30 seconds. Test on /ask after saving. Every save is recorded in the audit log."
+      >
+        <Button variant="ghost" disabled={reset.isPending} onClick={onReset}>
           Reset to defaults
-        </Button>
-        <Button variant="solid" onClick={save} disabled={update.isPending}>
-          {update.isPending ? 'Saving…' : 'Save changes'}
         </Button>
       </PageHeader>
 
-      <p className="-mt-3 mb-6 text-sm text-muted">
-        Changes go live within ~30 seconds. Test on <span className="font-mono">/ask</span> after
-        saving. Every save is recorded in the audit log.
-      </p>
+      <TabBar tab={tab} onSelect={setTab} />
 
-      <div className="flex flex-col gap-6">
-        {/* --- Persona & tone --- */}
-        <Card>
-          <h2 className="mb-4 text-lg font-semibold text-ink">Persona &amp; tone</h2>
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-wrap gap-4">
-              <Field label="Name">
-                <Input
-                  value={form.personaName}
-                  onChange={(e) => set('personaName', e.target.value)}
-                  className="h-11 max-w-xs"
-                />
-              </Field>
-              <Field
-                label="Voice (spoken answers)"
-                hint="Polly generative-engine voices only; others fail to synthesize."
-              >
-                <select
-                  value={form.pollyVoiceId}
-                  onChange={(e) => set('pollyVoiceId', e.target.value)}
-                  className={selectClass}
-                >
-                  {VOICE_PRESETS.map((v) => (
-                    <option key={v} value={v}>
-                      {v}
-                    </option>
-                  ))}
-                  {!VOICE_PRESETS.includes(form.pollyVoiceId as (typeof VOICE_PRESETS)[number]) ? (
-                    <option value={form.pollyVoiceId}>{form.pollyVoiceId}</option>
-                  ) : null}
-                </select>
-              </Field>
-            </div>
-            <Field label="Who the assistant is" hint="Completes “You are {name}, …” in the prompt.">
-              <textarea
-                value={form.personaDescription}
-                onChange={(e) => set('personaDescription', e.target.value)}
-                rows={2}
-                maxLength={1000}
-                className={textareaClass}
-              />
-            </Field>
-            <Field label="Tone instructions" hint="How it should sound, e.g. “Warm and encouraging, like a coach. Short sentences.”">
-              <textarea
-                value={form.toneInstructions}
-                onChange={(e) => set('toneInstructions', e.target.value)}
-                rows={2}
-                maxLength={2000}
-                className={textareaClass}
-              />
-            </Field>
-
-            <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium text-ink">How it refers to its knowledge</span>
-              {(
-                [
-                  ['natural', 'Talks like a person', 'Never mentions notes, documents, or sources; the knowledge is simply its own.'],
-                  ['cite-notes', 'References the clinical notes', 'May say things like “our clinical notes describe…”.'],
-                ] as const
-              ).map(([value, label, hint]) => (
-                <label key={value} className="flex cursor-pointer items-start gap-3">
-                  <input
-                    type="radio"
-                    name="attributionStyle"
-                    checked={form.attributionStyle === value}
-                    onChange={() => set('attributionStyle', value)}
-                    className="mt-1 accent-brand-600"
-                  />
-                  <span>
-                    <span className="block text-sm text-ink">{label}</span>
-                    <span className="block text-xs text-muted">{hint}</span>
-                  </span>
-                </label>
-              ))}
-            </div>
-
-            <div className="flex items-center gap-3">
-              <Toggle
-                checked={form.showCitations}
-                onChange={(v) => set('showCitations', v)}
-                label="Show citations"
-              />
-              <span className="text-sm text-ink">
-                Show citations{' '}
-                <span className="text-xs text-muted">([n] markers in answers + source chips under them)</span>
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <Toggle
-                checked={form.showToolActivity}
-                onChange={(v) => set('showToolActivity', v)}
-                label="Show tool activity"
-              />
-              <span className="text-sm text-ink">
-                Show tool activity{' '}
-                <span className="text-xs text-muted">
-                  (tool mode only: the live status line while it searches + chips under the
-                  answer naming what it checked; off, tool names never reach the browser)
-                </span>
-              </span>
-            </div>
-          </div>
-        </Card>
-
-        {/* --- Messages & copy --- */}
-        <Card>
-          <h2 className="mb-4 text-lg font-semibold text-ink">Messages &amp; copy</h2>
-          <div className="flex flex-col gap-4">
-            <Field label="When the notes don’t cover a question" hint="Returned verbatim instead of an answer.">
-              <textarea
-                value={form.notCoveredMessage}
-                onChange={(e) => set('notCoveredMessage', e.target.value)}
-                rows={2}
-                maxLength={1000}
-                className={textareaClass}
-              />
-            </Field>
-            <Field label="Clinician handoff" hint="Used when a question needs individual medical judgment.">
-              <textarea
-                value={form.clinicianHandoffMessage}
-                onChange={(e) => set('clinicianHandoffMessage', e.target.value)}
-                rows={2}
-                maxLength={500}
-                className={textareaClass}
-              />
-            </Field>
-            <Field label="Chat intro (empty state on /ask)">
-              <textarea
-                value={form.emptyStateHint}
-                onChange={(e) => set('emptyStateHint', e.target.value)}
-                rows={2}
-                maxLength={300}
-                className={textareaClass}
-              />
-            </Field>
-            <div className="flex flex-wrap gap-4">
-              <Field label="Input placeholder">
-                <Input
-                  value={form.inputPlaceholder}
-                  onChange={(e) => set('inputPlaceholder', e.target.value)}
-                  maxLength={200}
-                  className="h-11 w-96 max-w-full"
-                />
-              </Field>
-            </div>
-            <Field
-              label="Disclaimer line"
-              hint="⚠ Shown under the chat on every visit; copy changes here require counsel review."
-            >
-              <Input
-                value={form.disclaimer}
-                onChange={(e) => set('disclaimer', e.target.value)}
-                maxLength={200}
-                className="h-11 w-full max-w-xl"
-              />
-            </Field>
-          </div>
-        </Card>
-
-        {/* --- Companion (pre-onboarding capture) --- */}
-        <Card>
-          <h2 className="mb-1 text-lg font-semibold text-ink">Companion (pre-onboarding)</h2>
-          <p className="mb-4 text-sm text-muted">
-            The words the capture flow says on first contact. The fields it collects and their
-            validation are fixed in code; only this copy is editable.
-          </p>
-          <div className="flex flex-col gap-4">
-            <Field
-              label="Capture intro"
-              hint="Woven in after the visitor's first answer, just before the name question."
-            >
-              <textarea
-                value={form.companionGreeting}
-                onChange={(e) => set('companionGreeting', e.target.value)}
-                rows={2}
-                maxLength={400}
-                className={textareaClass}
-              />
-            </Field>
-            <div className="flex flex-wrap gap-4">
-              <Field label="Ask for name">
-                <Input
-                  value={form.companionNamePrompt}
-                  onChange={(e) => set('companionNamePrompt', e.target.value)}
-                  maxLength={200}
-                  className="h-11 w-96 max-w-full"
-                />
-              </Field>
-              <Field label="Ask for email">
-                <Input
-                  value={form.companionEmailPrompt}
-                  onChange={(e) => set('companionEmailPrompt', e.target.value)}
-                  maxLength={200}
-                  className="h-11 w-96 max-w-full"
-                />
-              </Field>
-              <Field label="Ask for goal">
-                <Input
-                  value={form.companionGoalPrompt}
-                  onChange={(e) => set('companionGoalPrompt', e.target.value)}
-                  maxLength={200}
-                  className="h-11 w-96 max-w-full"
-                />
-              </Field>
-            </div>
-            <Field label="Conversion prompt" hint="Offered once capture is complete.">
-              <textarea
-                value={form.companionConversionPrompt}
-                onChange={(e) => set('companionConversionPrompt', e.target.value)}
-                rows={2}
-                maxLength={400}
-                className={textareaClass}
-              />
-            </Field>
-            <Field label="Conversion button label">
-              <Input
-                value={form.companionConversionCtaLabel}
-                onChange={(e) => set('companionConversionCtaLabel', e.target.value)}
-                maxLength={60}
-                className="h-11 w-72 max-w-full"
-              />
-            </Field>
-          </div>
-        </Card>
-
-        {/* --- Guardrails --- */}
-        <Card>
-          <h2 className="mb-4 text-lg font-semibold text-ink">Guardrails</h2>
-          <div className="flex flex-col gap-4">
-            <Field
-              label="Restricted topics"
-              hint="The bot declines these and points members to the clinical team, even if the notes cover them. Max 20."
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                {form.restrictedTopics.map((topic) => (
-                  <span
-                    key={topic}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-brand-400/15 px-3 py-1 text-sm text-brand-800"
-                  >
-                    {topic}
-                    <button
-                      type="button"
-                      aria-label={`Remove ${topic}`}
-                      onClick={() => set('restrictedTopics', form.restrictedTopics.filter((t) => t !== topic))}
-                      className="text-brand-700 hover:text-brand-900"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-                <Input
-                  value={topicDraft}
-                  onChange={(e) => setTopicDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      addTopic();
-                    }
-                  }}
-                  placeholder="e.g. pregnancy"
-                  className="h-9 max-w-48 text-sm"
-                />
-                <Button variant="outline" size="md" onClick={addTopic} className="h-9 px-3 text-sm">
-                  Add
-                </Button>
-              </div>
-            </Field>
-            <Field
-              label="Additional instructions"
-              hint={`Appended to the prompt after everything else: the free-form knob. ${form.customInstructions.length}/4000`}
-            >
-              <textarea
-                value={form.customInstructions}
-                onChange={(e) => set('customInstructions', e.target.value)}
-                rows={4}
-                maxLength={4000}
-                className={cn(textareaClass, 'font-mono text-xs')}
-              />
-            </Field>
-          </div>
-        </Card>
-
-        {/* --- Retrieval & model --- */}
-        <Card>
-          <h2 className="mb-4 text-lg font-semibold text-ink">Retrieval &amp; model</h2>
-          <div className="flex flex-wrap gap-6">
-            <Field label="Notes per answer (topK)" hint="How many note excerpts to consider. 1–20.">
-              {numberInput('topK', 1, 20)}
-            </Field>
-            <Field label="Match threshold" hint="0–1. How closely a note must match before it’s used. Higher = stricter, more “not covered”.">
-              <Input
-                type="number"
-                min={0}
-                max={1}
-                step={0.05}
-                value={form.similarityFloor}
-                onChange={(e) => set('similarityFloor', Math.min(1, Math.max(0, Number(e.target.value) || 0)))}
-                className="h-11 max-w-32"
-              />
-            </Field>
-            <Field label="Max answer length (tokens)" hint="128–4096.">
-              {numberInput('maxAnswerTokens', 128, 4096)}
-            </Field>
-            <Field label="Model" hint="Anthropic models need Bedrock model access approved on the AWS account.">
-              <div className="flex gap-2">
-                <select
-                  value={modelIsPreset ? form.model : 'custom'}
-                  onChange={(e) => {
-                    if (e.target.value !== 'custom') set('model', e.target.value);
-                  }}
-                  className={selectClass}
-                >
-                  {MODEL_PRESETS.map((m) => (
-                    <option key={m.value} value={m.value}>
-                      {m.label}
-                    </option>
-                  ))}
-                  <option value="custom">Custom…</option>
-                </select>
-                {!modelIsPreset ? (
+      <div className="flex max-w-4xl flex-col gap-6 pb-10">
+          {/* --- Persona & tone --- */}
+          <Panel className={tab === 'persona' ? undefined : 'hidden'}>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-wrap gap-4">
+                <Field label="Name">
                   <Input
-                    value={form.model}
-                    onChange={(e) => set('model', e.target.value)}
-                    placeholder="Bedrock model id"
-                    className="h-11 w-72 max-w-full font-mono text-xs"
+                    value={form.personaName}
+                    onChange={(e) => set('personaName', e.target.value)}
+                    className="h-10 max-w-xs bg-canvas text-sm"
                   />
-                ) : null}
-              </div>
-            </Field>
-          </div>
-
-          <div className="mt-6 flex flex-col gap-3 border-t border-ink/10 pt-4">
-            <div className="flex items-center gap-3">
-              <Toggle
-                checked={form.queryRewriting}
-                onChange={(v) => set('queryRewriting', v)}
-                label="Follow-up understanding"
-              />
-              <span className="text-sm text-ink">
-                Follow-up understanding{' '}
-                <span className="text-xs text-muted">
-                  (rewrites “is there a protocol for that?” into a standalone search using the
-                  conversation — adds a beat of latency on follow-ups only)
-                </span>
-              </span>
-            </div>
-            {form.queryRewriting ? (
-              <Field label="Rewrite model" hint="Small + fast is right here; it only writes search queries.">
-                <select
-                  value={
-                    REWRITE_MODEL_PRESETS.some((m) => m.value === form.rewriteModel)
-                      ? form.rewriteModel
-                      : form.rewriteModel
-                  }
-                  onChange={(e) => set('rewriteModel', e.target.value)}
-                  className={selectClass}
+                </Field>
+                <Field
+                  label="Voice (spoken answers)"
+                  hint="Polly generative-engine voices only; others fail to synthesize."
                 >
-                  {REWRITE_MODEL_PRESETS.map((m) => (
-                    <option key={m.value} value={m.value}>
-                      {m.label}
-                    </option>
-                  ))}
-                  {!REWRITE_MODEL_PRESETS.some((m) => m.value === form.rewriteModel) ? (
-                    <option value={form.rewriteModel}>{form.rewriteModel}</option>
-                  ) : null}
-                </select>
+                  <AdminSelect
+                    value={form.pollyVoiceId}
+                    onChange={(e) => set('pollyVoiceId', e.target.value)}
+                  >
+                    {VOICE_PRESETS.map((v) => (
+                      <option key={v} value={v}>
+                        {v}
+                      </option>
+                    ))}
+                    {!VOICE_PRESETS.includes(form.pollyVoiceId as (typeof VOICE_PRESETS)[number]) ? (
+                      <option value={form.pollyVoiceId}>{form.pollyVoiceId}</option>
+                    ) : null}
+                  </AdminSelect>
+                </Field>
+              </div>
+              <Field label="Who the assistant is" hint="Completes “You are {name}, …” in the prompt.">
+                <AdminTextarea
+                  value={form.personaDescription}
+                  onChange={(e) => set('personaDescription', e.target.value)}
+                  rows={8}
+                  maxLength={1000}
+                />
               </Field>
-            ) : null}
-          </div>
+              <Field
+                label="Tone instructions"
+                hint="How it should sound, e.g. “Warm and encouraging, like a coach. Short sentences.”"
+              >
+                <AdminTextarea
+                  value={form.toneInstructions}
+                  onChange={(e) => set('toneInstructions', e.target.value)}
+                  rows={8}
+                  maxLength={2000}
+                />
+              </Field>
 
-          <div className="mt-6 flex flex-col gap-3 border-t border-ink/10 pt-4">
-            <div className="flex items-center gap-3">
-              <Toggle
-                checked={form.toolsEnabled}
-                onChange={(v) => set('toolsEnabled', v)}
-                label="Tool-calling answers"
-              />
-              <span className="text-sm text-ink">
-                Tool-calling answers{' '}
-                <span className="text-xs text-muted">
-                  (the model decides when to search the notes or the catalogue, and can flag
-                  clinician handoffs — off runs the classic retrieve-then-answer pipeline. This
-                  toggle is the rollback switch; changes land within ~30s, no deploy.)
-                </span>
-              </span>
-            </div>
-            <LastEvalLine />
-            {form.toolsEnabled ? (
-              <div className="flex flex-col gap-2 rounded-card bg-canvas/60 p-3">
-                <p className="text-sm text-ink">
-                  Toolbelt{' '}
-                  <span className="text-xs text-muted">
-                    (per ability: off, or the minimum lifecycle stage that gets it. Someone
-                    below the stage never sees the ability, with no mention of it; changes
-                    land within ~30s and in the audit log. The benchmark's Run-as picker
-                    measures each stage.)
-                  </span>
-                </p>
-                {TOOL_ACCESS_ROWS.map(({ key, name, what }) => (
-                  <div key={key} className="flex flex-wrap items-center gap-3">
-                    <select
-                      value={form[key]}
-                      aria-label={`${name} access`}
-                      onChange={(e) => set(key, e.target.value as BrainForm[typeof key])}
-                      className="h-9 rounded-full border border-line bg-surface px-3 text-sm"
-                    >
-                      {TOOL_ACCESS_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                    <span className="text-sm text-ink">
-                      {name} <span className="text-xs text-muted">({what})</span>
+              <div className="flex flex-col gap-2">
+                <span className="mono-label text-ink">How it refers to its knowledge</span>
+                {(
+                  [
+                    ['natural', 'Talks like a person', 'Never mentions notes, documents, or sources; the knowledge is simply its own.'],
+                    ['cite-notes', 'References the clinical notes', 'May say things like “our clinical notes describe…”.'],
+                  ] as const
+                ).map(([value, label, hint]) => (
+                  <label key={value} className="flex cursor-pointer items-start gap-3">
+                    <input
+                      type="radio"
+                      name="attributionStyle"
+                      checked={form.attributionStyle === value}
+                      onChange={() => set('attributionStyle', value)}
+                      className="mt-1 accent-brand-600"
+                    />
+                    <span>
+                      <span className="block text-sm text-ink">{label}</span>
+                      <span className="block text-xs text-muted">{hint}</span>
                     </span>
-                  </div>
+                  </label>
                 ))}
               </div>
-            ) : null}
-            {form.toolsEnabled ? (
+
+              <div className="flex items-center gap-3">
+                <Toggle
+                  checked={form.showCitations}
+                  onChange={(v) => set('showCitations', v)}
+                  label="Show citations"
+                />
+                <span className="text-sm text-ink">
+                  Show citations{' '}
+                  <span className="text-xs text-muted">([n] markers in answers + source chips under them)</span>
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Toggle
+                  checked={form.showToolActivity}
+                  onChange={(v) => set('showToolActivity', v)}
+                  label="Show tool activity"
+                />
+                <span className="text-sm text-ink">
+                  Show tool activity{' '}
+                  <span className="text-xs text-muted">
+                    (tool mode only: the live status line while it searches + chips under the
+                    answer naming what it checked; off, tool names never reach the browser)
+                  </span>
+                </span>
+              </div>
+            </div>
+          </Panel>
+
+          {/* --- Messages & copy --- */}
+          <Panel className={tab === 'copy' ? undefined : 'hidden'}>
+            <div className="flex flex-col gap-4">
+              <Field label="When the notes don’t cover a question" hint="Returned verbatim instead of an answer.">
+                <AdminTextarea
+                  value={form.notCoveredMessage}
+                  onChange={(e) => set('notCoveredMessage', e.target.value)}
+                  rows={2}
+                  maxLength={1000}
+                />
+              </Field>
+              <Field label="Clinician handoff" hint="Used when a question needs individual medical judgment.">
+                <AdminTextarea
+                  value={form.clinicianHandoffMessage}
+                  onChange={(e) => set('clinicianHandoffMessage', e.target.value)}
+                  rows={2}
+                  maxLength={500}
+                />
+              </Field>
+              <Field label="Chat intro (empty state on /ask)">
+                <AdminTextarea
+                  value={form.emptyStateHint}
+                  onChange={(e) => set('emptyStateHint', e.target.value)}
+                  rows={2}
+                  maxLength={300}
+                />
+              </Field>
+              <div className="flex flex-wrap gap-4">
+                <Field label="Input placeholder">
+                  <Input
+                    value={form.inputPlaceholder}
+                    onChange={(e) => set('inputPlaceholder', e.target.value)}
+                    maxLength={200}
+                    className="h-10 w-96 max-w-full bg-canvas text-sm"
+                  />
+                </Field>
+              </div>
               <Field
-                label="Max tool rounds"
-                hint="1–5. Each round is an extra model call; this caps cost and latency per answer."
+                label="Disclaimer line"
+                hint="⚠ Shown under the chat on every visit; copy changes here require counsel review."
               >
+                <Input
+                  value={form.disclaimer}
+                  onChange={(e) => set('disclaimer', e.target.value)}
+                  maxLength={200}
+                  className="h-10 w-full max-w-xl bg-canvas text-sm"
+                />
+              </Field>
+            </div>
+          </Panel>
+
+          {/* --- Companion (pre-onboarding capture) --- */}
+          <Panel className={tab === 'companion' ? undefined : 'hidden'}>
+            <p className="mb-4 text-sm text-muted">
+              The words the capture flow says on first contact. The fields it collects and their
+              validation are fixed in code; only this copy is editable.
+            </p>
+            <div className="flex flex-col gap-4">
+              <Field
+                label="Capture intro"
+                hint="Woven in after the visitor's first answer, just before the name question."
+              >
+                <AdminTextarea
+                  value={form.companionGreeting}
+                  onChange={(e) => set('companionGreeting', e.target.value)}
+                  rows={2}
+                  maxLength={400}
+                />
+              </Field>
+              <div className="flex flex-wrap gap-4">
+                <Field label="Ask for name">
+                  <Input
+                    value={form.companionNamePrompt}
+                    onChange={(e) => set('companionNamePrompt', e.target.value)}
+                    maxLength={200}
+                    className="h-10 w-96 max-w-full bg-canvas text-sm"
+                  />
+                </Field>
+                <Field label="Ask for email">
+                  <Input
+                    value={form.companionEmailPrompt}
+                    onChange={(e) => set('companionEmailPrompt', e.target.value)}
+                    maxLength={200}
+                    className="h-10 w-96 max-w-full bg-canvas text-sm"
+                  />
+                </Field>
+                <Field label="Ask for goal">
+                  <Input
+                    value={form.companionGoalPrompt}
+                    onChange={(e) => set('companionGoalPrompt', e.target.value)}
+                    maxLength={200}
+                    className="h-10 w-96 max-w-full bg-canvas text-sm"
+                  />
+                </Field>
+              </div>
+              <Field label="Conversion prompt" hint="Offered once capture is complete.">
+                <AdminTextarea
+                  value={form.companionConversionPrompt}
+                  onChange={(e) => set('companionConversionPrompt', e.target.value)}
+                  rows={2}
+                  maxLength={400}
+                />
+              </Field>
+              <Field label="Conversion button label">
+                <Input
+                  value={form.companionConversionCtaLabel}
+                  onChange={(e) => set('companionConversionCtaLabel', e.target.value)}
+                  maxLength={60}
+                  className="h-10 w-72 max-w-full bg-canvas text-sm"
+                />
+              </Field>
+            </div>
+          </Panel>
+
+          {/* --- Guardrails --- */}
+          <Panel className={tab === 'guardrails' ? undefined : 'hidden'}>
+            <div className="flex flex-col gap-4">
+              <Field
+                label="Restricted topics"
+                hint="The bot declines these and points members to the clinical team, even if the notes cover them. Max 20."
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  {form.restrictedTopics.map((topic) => (
+                    <span
+                      key={topic}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-brand-100 px-3 py-1 text-sm text-brand-800"
+                    >
+                      {topic}
+                      <button
+                        type="button"
+                        aria-label={`Remove ${topic}`}
+                        onClick={() => set('restrictedTopics', form.restrictedTopics.filter((t) => t !== topic))}
+                        className="text-brand-700 hover:text-brand-900"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                  <Input
+                    value={topicDraft}
+                    onChange={(e) => setTopicDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addTopic();
+                      }
+                    }}
+                    placeholder="e.g. pregnancy"
+                    className="h-9 max-w-48 bg-canvas text-sm"
+                  />
+                  <Button variant="outline" size="sm" onClick={addTopic}>
+                    Add +
+                  </Button>
+                </div>
+              </Field>
+              <Field
+                label="Additional instructions"
+                hint={`Appended to the prompt after everything else: the free-form knob. ${form.customInstructions.length}/4000`}
+              >
+                <AdminTextarea
+                  value={form.customInstructions}
+                  onChange={(e) => set('customInstructions', e.target.value)}
+                  rows={4}
+                  maxLength={4000}
+                  className="font-code text-xs"
+                />
+              </Field>
+            </div>
+          </Panel>
+
+          {/* --- Retrieval & model --- */}
+          <Panel className={tab === 'retrieval' ? undefined : 'hidden'}>
+            <div className="flex flex-wrap gap-6">
+              <Field label="Notes per answer (topK)" hint="How many note excerpts to consider. 1–20.">
+                {numberInput('topK', 1, 20)}
+              </Field>
+              <Field label="Match threshold" hint="0–1. How closely a note must match before it’s used. Higher = stricter, more “not covered”.">
                 <Input
                   type="number"
-                  min={1}
-                  max={5}
-                  value={form.maxToolRounds}
-                  onChange={(e) =>
-                    set('maxToolRounds', Math.min(5, Math.max(1, Math.round(Number(e.target.value)) || 1)))
-                  }
-                  className="h-11 max-w-32"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={form.similarityFloor}
+                  onChange={(e) => set('similarityFloor', Math.min(1, Math.max(0, Number(e.target.value) || 0)))}
+                  className="h-10 max-w-32 bg-canvas text-sm"
                 />
               </Field>
-            ) : null}
-            <div className="flex items-center gap-3">
-              <Toggle
-                checked={form.promptCache}
-                onChange={(v) => set('promptCache', v)}
-                label="Prompt caching"
-              />
-              <span className="text-sm text-ink">
-                Prompt caching{' '}
-                <span className="text-xs text-muted">
-                  (Bedrock caches the static prompt prefix — pays off mainly with tool-calling
-                  on. Models that don&rsquo;t support it fall back automatically.)
-                </span>
-              </span>
+              <Field label="Max answer length (tokens)" hint="128–4096.">
+                {numberInput('maxAnswerTokens', 128, 4096)}
+              </Field>
+              <Field label="Model" hint="Anthropic models need Bedrock model access approved on the AWS account.">
+                <div className="flex gap-2">
+                  <AdminSelect
+                    value={modelIsPreset ? form.model : 'custom'}
+                    onChange={(e) => {
+                      if (e.target.value !== 'custom') set('model', e.target.value);
+                    }}
+                  >
+                    {MODEL_PRESETS.map((m) => (
+                      <option key={m.value} value={m.value}>
+                        {m.label}
+                      </option>
+                    ))}
+                    <option value="custom">Custom…</option>
+                  </AdminSelect>
+                  {!modelIsPreset ? (
+                    <Input
+                      value={form.model}
+                      onChange={(e) => set('model', e.target.value)}
+                      placeholder="Bedrock model id"
+                      className="h-10 w-72 max-w-full bg-canvas font-code text-xs"
+                    />
+                  ) : null}
+                </div>
+              </Field>
             </div>
+
+            <div className="mt-6 flex flex-col gap-3 border-t border-line/60 pt-4">
+              <div className="flex items-center gap-3">
+                <Toggle
+                  checked={form.queryRewriting}
+                  onChange={(v) => set('queryRewriting', v)}
+                  label="Follow-up understanding"
+                />
+                <span className="text-sm text-ink">
+                  Follow-up understanding{' '}
+                  <span className="text-xs text-muted">
+                    (rewrites “is there a protocol for that?” into a standalone search using the
+                    conversation, adding a beat of latency on follow-ups only)
+                  </span>
+                </span>
+              </div>
+              {form.queryRewriting ? (
+                <Field label="Rewrite model" hint="Small + fast is right here; it only writes search queries.">
+                  <AdminSelect
+                    value={form.rewriteModel}
+                    onChange={(e) => set('rewriteModel', e.target.value)}
+                  >
+                    {REWRITE_MODEL_PRESETS.map((m) => (
+                      <option key={m.value} value={m.value}>
+                        {m.label}
+                      </option>
+                    ))}
+                    {!REWRITE_MODEL_PRESETS.some((m) => m.value === form.rewriteModel) ? (
+                      <option value={form.rewriteModel}>{form.rewriteModel}</option>
+                    ) : null}
+                  </AdminSelect>
+                </Field>
+              ) : null}
+            </div>
+
+            <div className="mt-6 flex flex-col gap-3 border-t border-line/60 pt-4">
+              <div className="flex items-center gap-3">
+                <Toggle
+                  checked={form.toolsEnabled}
+                  onChange={(v) => set('toolsEnabled', v)}
+                  label="Tool-calling answers"
+                />
+                <span className="text-sm text-ink">
+                  Tool-calling answers{' '}
+                  <span className="text-xs text-muted">
+                    (the model decides when to search the notes or the catalogue, and can flag
+                    clinician handoffs; off runs the classic retrieve-then-answer pipeline. This
+                    toggle is the rollback switch; changes land within ~30s, no deploy.)
+                  </span>
+                </span>
+              </div>
+              <LastEvalLine />
+              {form.toolsEnabled ? (
+                <div className="flex flex-col gap-2 rounded-xl border border-line/60 p-4">
+                  <p className="text-sm text-ink">
+                    Toolbelt{' '}
+                    <span className="text-xs text-muted">
+                      (per ability: off, or the minimum lifecycle stage that gets it. Someone
+                      below the stage never sees the ability, with no mention of it; changes
+                      land within ~30s and in the audit log. The benchmark's Run-as picker
+                      measures each stage.)
+                    </span>
+                  </p>
+                  {TOOL_ACCESS_ROWS.map(({ key, name, what }) => (
+                    <div key={key} className="flex flex-wrap items-center gap-3">
+                      <AdminSelect
+                        size="sm"
+                        value={form[key]}
+                        aria-label={`${name} access`}
+                        onChange={(e) => set(key, e.target.value as BrainForm[typeof key])}
+                      >
+                        {TOOL_ACCESS_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </AdminSelect>
+                      <span className="text-sm text-ink">
+                        {name} <span className="text-xs text-muted">({what})</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              {form.toolsEnabled ? (
+                <Field
+                  label="Max tool rounds"
+                  hint="1–5. Each round is an extra model call; this caps cost and latency per answer."
+                >
+                  <Input
+                    type="number"
+                    min={1}
+                    max={5}
+                    value={form.maxToolRounds}
+                    onChange={(e) =>
+                      set('maxToolRounds', Math.min(5, Math.max(1, Math.round(Number(e.target.value)) || 1)))
+                    }
+                    className="h-10 max-w-32 bg-canvas text-sm"
+                  />
+                </Field>
+              ) : null}
+              <div className="flex items-center gap-3">
+                <Toggle
+                  checked={form.promptCache}
+                  onChange={(v) => set('promptCache', v)}
+                  label="Prompt caching"
+                />
+                <span className="text-sm text-ink">
+                  Prompt caching{' '}
+                  <span className="text-xs text-muted">
+                    (Bedrock caches the static prompt prefix, which pays off mainly with
+                    tool-calling on. Models that don&rsquo;t support it fall back automatically.)
+                  </span>
+                </span>
+              </div>
+            </div>
+          </Panel>
+
+          {/* --- Safety floor (read-only) --- */}
+          <Panel className={tab === 'floor' ? undefined : 'hidden'}>
+            <p className="mb-3 text-sm text-muted">
+              These rules are built into the code and cannot be changed or removed from this page.
+            </p>
+            <pre className="rounded-xl bg-canvas p-4 font-code text-xs whitespace-pre-wrap text-ink">
+              {form.toolsEnabled && query.data.toolSafetyFloor
+                ? query.data.toolSafetyFloor
+                : query.data.safetyFloor}
+            </pre>
+          </Panel>
+
+          {/* Sticky save bar: frost floats over content, so glass is sanctioned here.
+              The form is one object, so it saves every tab's changes at once. */}
+          <div className="glass sticky bottom-4 z-30 flex items-center justify-between gap-4 rounded-full py-3 pr-3 pl-5">
+            <span className="text-sm text-muted">
+              {update.isPending
+                ? 'Saving…'
+                : dirty
+                  ? 'Unsaved changes'
+                  : savedAt
+                    ? 'Saved. Live within ~30s.'
+                    : 'All changes saved.'}
+            </span>
+            <Button variant="solid" onClick={save} disabled={update.isPending || !dirty}>
+              Save changes +
+            </Button>
           </div>
-        </Card>
-
-        {/* --- Safety floor (read-only) --- */}
-        <Card className="border border-brand-400/20">
-          <h2 className="mb-2 text-lg font-semibold text-ink">Always enforced</h2>
-          <p className="mb-3 text-sm text-muted">
-            These rules are built into the code and cannot be changed or removed from this page.
-          </p>
-          <pre className="rounded-card bg-canvas p-4 font-mono text-xs whitespace-pre-wrap text-ink">
-            {form.toolsEnabled && query.data.toolSafetyFloor
-              ? query.data.toolSafetyFloor
-              : query.data.safetyFloor}
-          </pre>
-        </Card>
-
-        <div className="flex items-center gap-3">
-          <Button variant="solid" onClick={save} disabled={update.isPending}>
-            {update.isPending ? 'Saving…' : 'Save changes'}
-          </Button>
-          {savedAt && !update.isPending && !update.isError ? (
-            <span className="text-sm text-muted">Saved. Live within ~30s.</span>
-          ) : null}
-        </div>
-        {update.isError ? <ErrorState error={update.error} /> : null}
-        {reset.isError ? <ErrorState error={reset.error} /> : null}
       </div>
     </>
   );
