@@ -11,7 +11,7 @@ export function ValidationReportPanel({ report }: { report: ValidationReportView
     ...report.warnings.map((issue) => ({ ...issue, level: 'warning' as const })),
   ];
   if (rows.length === 0) {
-    return <p className="mono-label text-brand-700">Validates clean. Ready to publish.</p>;
+    return <p className="text-sm text-brand-700">Validates clean. Ready to publish.</p>;
   }
   return (
     <ul className="flex flex-col gap-1" aria-label="Validation report">

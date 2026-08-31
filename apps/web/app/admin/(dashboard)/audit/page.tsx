@@ -53,8 +53,8 @@ export default function AdminAuditPage() {
                           {new Date(log.createdAt).toLocaleString()}
                         </Td>
                         <Td>{log.actorEmail ?? log.actorClerkUserId}</Td>
-                        <Td className="font-mono text-xs">{log.action}</Td>
-                        <Td className="font-mono text-xs">
+                        <Td className="text-xs">{log.action}</Td>
+                        <Td className="text-xs">
                           {log.entityType}
                           {log.entityId ? ` · ${log.entityId}` : ''}
                         </Td>

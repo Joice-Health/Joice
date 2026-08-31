@@ -99,7 +99,7 @@ function SectionAnchors({ className }: { className?: string }) {
         <a
           key={s.id}
           href={`#${s.id}`}
-          className="mono-label block py-1 text-muted transition-colors hover:text-ink"
+          className="block py-1 text-sm text-muted transition-colors hover:text-ink"
         >
           {s.label}
         </a>

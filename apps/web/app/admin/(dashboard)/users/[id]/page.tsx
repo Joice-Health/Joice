@@ -84,7 +84,7 @@ export default function AdminMemberProfilePage({ params }: { params: Promise<{ i
               {me.traits.map((t) => (
                 <tr key={t.key}>
                   <Td>
-                    {t.label} <span className="mono-label text-muted">{t.key}</span>
+                    {t.label} <span className="text-xs text-muted">{t.key}</span>
                   </Td>
                   <Td>{t.value}</Td>
                   <Td>

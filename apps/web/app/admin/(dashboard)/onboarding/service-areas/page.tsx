@@ -131,7 +131,7 @@ export default function AdminServiceAreasPage() {
             {items.map((area) => (
               <tr key={area.stateCode}>
                 <Td>
-                  {usStateName(area.stateCode)} <span className="mono-label text-muted">{area.stateCode}</span>
+                  {usStateName(area.stateCode)} <span className="text-xs text-muted">{area.stateCode}</span>
                 </Td>
                 <Td>
                   <Badge tone={STATUS_TONE[area.status as keyof typeof STATUS_TONE] ?? 'pending'}>{area.status}</Badge>

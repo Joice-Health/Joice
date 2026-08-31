@@ -117,7 +117,7 @@ export default function AdminUsersPage() {
                           ))}
                         </AdminSelect>
                       </Td>
-                      <Td className="font-mono text-xs">{user.clerkUserId}</Td>
+                      <Td className="text-xs">{user.clerkUserId}</Td>
                       <Td>{new Date(user.createdAt).toLocaleDateString()}</Td>
                     </tr>
                   ))

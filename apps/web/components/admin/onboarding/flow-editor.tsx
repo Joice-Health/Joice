@@ -291,7 +291,7 @@ function SectionList({
       {definition.sections.map((section, si) => (
         <div key={section.key}>
           <div className="flex items-center gap-2">
-            <p className="mono-label flex-1 text-ink">{section.title}</p>
+            <p className="flex-1 text-xs tracking-wider text-ink uppercase">{section.title}</p>
             {isProtectedSection(section.key) ? <Badge tone="pending">locked</Badge> : null}
             <button type="button" aria-label={`Move ${section.title} up`} className="text-muted hover:text-ink" onClick={() => moveSection(si, -1)}>
               ↑

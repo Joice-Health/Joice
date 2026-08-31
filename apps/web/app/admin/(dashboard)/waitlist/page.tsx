@@ -180,7 +180,7 @@ export default function AdminWaitlistPage() {
                         </AdminSelect>
                       </Td>
                       <Td>{entry.referralCount}</Td>
-                      <Td className="font-mono text-xs">{entry.referralCode}</Td>
+                      <Td className="text-xs">{entry.referralCode}</Td>
                       <Td>{new Date(entry.createdAt).toLocaleDateString()}</Td>
                     </tr>
                   ))

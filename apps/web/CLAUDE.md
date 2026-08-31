@@ -136,5 +136,7 @@ root CLAUDE.md and `docs/design/01-design-system.md`. In practice:
   (`useConfirm`, replaces `window.confirm`), `shell.tsx`. No weight classes (they render as
   Light and are banned in the admin tree), no `glass` outside the shell top bar, toasts and
   the brain save bar, no `rounded-card` on data surfaces, no Tailwind default palette
-  colours: bad news is the `danger` token. Titles are `display`, labels and table headers
-  `mono-label`. One solid button per page. Design brief: `docs/admin/00-plan.md`.
+  colours: bad news is the `danger` token. Titles and panel headers are `display`, form
+  labels `mono-label`; nav items, table headers (tracked uppercase ink) and cell values are
+  the sans face, and the mono face never appears in nav items or data rows (it reads as a
+  serif at small sizes). One solid button per page. Design brief: `docs/admin/00-plan.md`.

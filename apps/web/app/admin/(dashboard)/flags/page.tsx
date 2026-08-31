@@ -155,7 +155,7 @@ export default function AdminFlagsPage() {
                         onChange={(enabled) => setFlag(flag.id, flag.key, enabled)}
                       />
                     </Td>
-                    <Td className="font-mono text-xs">{flag.key}</Td>
+                    <Td className="text-xs">{flag.key}</Td>
                     <Td className="text-muted">{flag.description || '·'}</Td>
                     <Td>{new Date(flag.updatedAt).toLocaleString()}</Td>
                     <Td className="text-right">

@@ -59,7 +59,7 @@ export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
     <nav className="flex flex-col">
       {NAV_GROUPS.map(({ heading, links }) => (
         <div key={heading} className="mt-6 first:mt-0">
-          <p className="mono-label mb-2 text-canvas/50">{heading}</p>
+          <p className="mb-2 font-mono text-xs tracking-mono uppercase text-canvas/80">{heading}</p>
           <div className="flex flex-col gap-0.5">
             {links.map(({ href, label, exact }) => {
               const active = exact ? pathname === href : pathname.startsWith(href);
@@ -69,7 +69,7 @@ export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
                   href={href}
                   onClick={onNavigate}
                   className={cn(
-                    'mono-label flex items-center rounded-full px-3 py-2 transition-colors',
+                    'flex items-center rounded-full px-3 py-2 text-sm transition-colors',
                     active
                       ? 'bg-surface/15 text-canvas'
                       : 'text-canvas/70 hover:bg-surface/10 hover:text-canvas',

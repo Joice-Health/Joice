@@ -39,7 +39,7 @@ flowchart LR
     subgraph viewport["Viewport (full width)"]
         subgraph rail["bg-ink rail, w-60, sticky h-dvh"]
             B["BrandMark + ADMIN tag"]
-            N["Grouped nav (mono-label)\nOverview / People / Brain /\nOnboarding / Platform"]
+            N["Grouped nav (sans items,\nmono group headers)\nOverview / People / Brain /\nOnboarding / Platform"]
             F["UserButton footer"]
         end
         subgraph main["main, fluid width, px-6 lg:px-10"]
@@ -68,8 +68,9 @@ and new `toast.tsx` / `confirm.tsx` / `shell.tsx`. The key moves:
 |---|---|---|
 | Width | `max-w-7xl` centered | fluid, rail + `min-w-0 flex-1` |
 | Surfaces | `rounded-card glass` + shadow | `rounded-2xl panel` (solid white, frameless) |
-| Titles | `text-2xl font-semibold` (inert weight) | `display text-3xl` |
-| Labels/headers | `text-xs font-semibold uppercase` | `mono-label` |
+| Titles | `text-2xl font-semibold` (inert weight) | `display text-3xl` (panel headers `display text-lg`) |
+| Form labels | `text-sm font-medium` (inert weight) | `mono-label` |
+| Table headers | `text-xs font-semibold uppercase` | `text-xs uppercase tracking-wider text-ink` (sans) |
 | Table rules | `border-ink/10` / `border-ink/5` | `border-line` / `border-line/60` |
 | Badges | amber/sky/emerald/red Tailwind defaults | brand tints + `--color-danger` |
 | Selects | four idioms, two rings | one AdminSelect, ring `brand-600/50` |
@@ -144,3 +145,12 @@ migrate later, separately.
 
 **No persistent desktop top bar (2026-08-31).** The per-page PageHeader is the chrome; a
 second sticky bar would duplicate it and cost vertical space in a data-dense tool.
+
+**The mono face stays out of nav items and data rows (2026-08-31).** Gaisyr Mono's slab
+details read as a serif at small sizes and cost scanability, so navigation items, table
+headers and cell values are the sans face (headers as tracked uppercase ink); panel headers
+moved up to the display face. Mono keeps its device jobs: small labels and eyebrows, badges
+and chips, buttons, code inputs, JSON and debug traces, and the nav group headers (bumped to
+12px at canvas/80 for prominence). True bold is not available anywhere: only the Light cuts
+are licensed and `font-synthesis: none` blocks faking it, so prominence is size, case and
+color by design.

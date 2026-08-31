@@ -121,7 +121,7 @@ export default function AdminOnboardingVersionsPage() {
                   </Td>
                   <Td className="max-w-56 truncate">{v.notes ?? ''}</Td>
                   <Td>
-                    <span className="font-mono text-xs text-muted">{v.logicHash?.slice(0, 8) ?? ''}</span>
+                    <span className="text-xs text-muted">{v.logicHash?.slice(0, 8) ?? ''}</span>
                   </Td>
                   <Td>{v.publishedBy ?? v.createdBy}</Td>
                   <Td>{v.publishedAt ? new Date(v.publishedAt).toLocaleString() : ''}</Td>
@@ -193,7 +193,7 @@ function VersionDiff({ idA, idB }: { idA: string; idB: string }) {
       ) : (
         <>
           <p className="mono-label text-muted">{changed.length} changed path(s)</p>
-          <ul className="mt-2 max-h-64 overflow-y-auto font-mono text-xs text-ink">
+          <ul className="mt-2 max-h-64 overflow-y-auto text-xs text-ink">
             {changed.map((path) => (
               <li key={path} className="border-b border-line/60 py-1">
                 {path}

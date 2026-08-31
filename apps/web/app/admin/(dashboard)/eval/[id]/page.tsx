@@ -79,7 +79,7 @@ export default function AdminEvalRunPage({ params }: { params: Promise<{ id: str
           </span>
           <span className="text-muted">{modeLabel}</span>
           <span className="text-muted">as {run.audience}</span>
-          <span className="font-mono text-xs text-muted">{run.model}</span>
+          <span className="text-xs text-muted">{run.model}</span>
           {run.totalP50Ms !== null ? (
             <span className="text-muted">
               total p50 {run.totalP50Ms}ms / p95 {run.totalP95Ms}ms

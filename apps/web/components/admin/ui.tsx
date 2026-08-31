@@ -71,7 +71,7 @@ export function Panel({
 }
 
 export function PanelHeader({ className, children }: { className?: string; children: ReactNode }) {
-  return <h2 className={cn('mono-label mb-4 text-ink', className)}>{children}</h2>;
+  return <h2 className={cn('display mb-4 text-lg text-ink', className)}>{children}</h2>;
 }
 
 export function Table({ children }: { children: ReactNode }) {
@@ -85,7 +85,10 @@ export function Table({ children }: { children: ReactNode }) {
 export function Th({ className, ...props }: ThHTMLAttributes<HTMLTableCellElement>) {
   return (
     <th
-      className={cn('mono-label border-b border-line px-3 py-2 whitespace-nowrap text-ink', className)}
+      className={cn(
+        'border-b border-line px-3 py-2 text-xs tracking-wider whitespace-nowrap text-ink uppercase',
+        className,
+      )}
       {...props}
     />
   );
@@ -201,7 +204,7 @@ export function Pagination({
   const pages = Math.max(1, Math.ceil(total / limit));
   return (
     <div className="mt-4 flex items-center justify-between">
-      <span className="mono-label text-muted">
+      <span className="text-sm text-muted">
         {total} total · page {page} of {pages}
       </span>
       <div className="flex gap-2">

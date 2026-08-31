@@ -94,7 +94,7 @@ export function RunsTable({
                     {run.mode === 'full' ? (run.toolsEnabled ? 'full + tools' : 'full') : 'retrieval'}
                   </Td>
                   <Td>{run.audience}</Td>
-                  <Td className="font-mono text-xs">{run.model}</Td>
+                  <Td className="text-xs">{run.model}</Td>
                   <Td>{run.totalP50Ms !== null ? `${run.totalP50Ms}ms` : '·'}</Td>
                   <Td>
                     {run.inputTokens !== null

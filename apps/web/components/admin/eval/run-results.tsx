@@ -59,7 +59,7 @@ export function RunResults({
                   {mark ? (
                     <span
                       className={
-                        mark === 'fixed' ? 'mono-label text-brand-700' : 'mono-label text-danger'
+                        mark === 'fixed' ? 'text-xs text-brand-700' : 'text-xs text-danger'
                       }
                     >
                       {mark}

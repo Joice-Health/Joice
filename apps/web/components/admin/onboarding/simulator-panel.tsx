@@ -136,7 +136,7 @@ function ResultView({ result }: { result: SimulateResult }) {
           <Badge tone={result.stoppedAt === 'complete' ? 'active' : result.stoppedAt === 'gate' ? 'suspended' : 'pending'}>
             {result.stoppedAt === 'complete' ? 'completes' : result.stoppedAt === 'gate' ? 'hits a gate' : result.stoppedAt}
           </Badge>
-          {result.segment ? <span className="mono-label text-muted">segment: {result.segment}</span> : null}
+          {result.segment ? <span className="text-sm text-muted">segment: {result.segment}</span> : null}
         </div>
         <Table>
           <thead>
@@ -151,7 +151,7 @@ function ResultView({ result }: { result: SimulateResult }) {
             {result.path.map((step, i) => (
               <tr key={i}>
                 <Td>
-                  <span className={cn('mono-label', step.kind === 'gate' ? 'text-danger' : 'text-muted')}>
+                  <span className={cn('text-xs', step.kind === 'gate' ? 'text-danger' : 'text-muted')}>
                     {step.kind}
                     {step.error ? ' (refused)' : step.skipped ? ' (skipped)' : ''}
                   </span>

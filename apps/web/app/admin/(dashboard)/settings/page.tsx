@@ -146,7 +146,7 @@ export default function AdminSettingsPage() {
               ) : (
                 query.data?.items.map((setting) => (
                   <tr key={setting.id}>
-                    <Td className="font-mono text-xs">{setting.key}</Td>
+                    <Td className="text-xs">{setting.key}</Td>
                     <Td>
                       <code className="block max-w-md truncate font-mono text-xs">
                         {JSON.stringify(setting.value)}

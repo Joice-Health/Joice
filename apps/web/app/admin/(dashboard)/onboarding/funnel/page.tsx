@@ -73,7 +73,7 @@ export default function AdminOnboardingFunnelPage() {
               <ul className="flex flex-wrap gap-4">
                 {Object.entries(funnel.data.gates).map(([outcome, count]) => (
                   <li key={outcome} className="text-sm text-ink">
-                    <span className="mono-label mr-2 text-muted">{outcome}</span>
+                    <span className="mr-2 text-sm text-muted">{outcome}</span>
                     {count}
                   </li>
                 ))}
@@ -99,7 +99,7 @@ export default function AdminOnboardingFunnelPage() {
                   {funnel.data.questions.map((q) => (
                     <tr key={q.questionKey}>
                       <Td>
-                        <span className="font-mono text-xs">{q.questionKey}</span>
+                        <span className="text-xs">{q.questionKey}</span>
                       </Td>
                       <Td>{q.viewed}</Td>
                       <Td>{q.answered}</Td>
