@@ -20,7 +20,7 @@ import {
   type FlowQuestion,
 } from '@joice/core/schemas';
 import { Button, Input, cn } from '@joice/ui';
-import { Badge, Card, EmptyState, ErrorState } from '@/components/admin/ui';
+import { Badge, Panel, EmptyState, ErrorState } from '@/components/admin/ui';
 import { ConditionBuilder } from './condition-builder';
 import { QuestionEditor } from './question-editor';
 import { ValidationReportPanel } from './validation-report';
@@ -49,7 +49,7 @@ export function FlowEditor() {
 
   if (!draftRow) {
     return (
-      <Card>
+      <Panel>
         <EmptyState>No draft right now. The published version is live; make a draft to change it.</EmptyState>
         <div className="mt-4 flex justify-center">
           <Button
@@ -60,7 +60,7 @@ export function FlowEditor() {
             {createDraft.isPending ? 'Creating…' : 'Make a draft +'}
           </Button>
         </div>
-      </Card>
+      </Panel>
     );
   }
   return <DraftEditor draftId={draftRow.id} draftVersion={draftRow.version} phi={phi} />;
@@ -131,7 +131,7 @@ function DraftEditor({
 
   return (
     <div className="flex flex-col gap-6">
-      <Card className="flex flex-wrap items-center justify-between gap-3">
+      <Panel className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Badge tone="pending">draft v{draftVersion}</Badge>
           {phi ? <Badge tone={phi.unlocked ? 'on' : 'suspended'}>{phi.unlocked ? 'health unlocked' : 'health locked'}</Badge> : null}
@@ -153,25 +153,25 @@ function DraftEditor({
           </p>
         ) : null}
         {message ? <p className="mono-label basis-full text-muted">{message}</p> : null}
-      </Card>
+      </Panel>
 
       {report ? (
-        <Card>
+        <Panel>
           <ValidationReportPanel report={report} />
-        </Card>
+        </Panel>
       ) : null}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(240px,1fr)_2fr]">
-        <Card className="self-start">
+        <Panel className="self-start">
           <SectionList definition={definition} selected={selected} onSelect={setSelected} onChange={update} />
-        </Card>
-        <Card>
+        </Panel>
+        <Panel>
           {selected && definition.questions[selected] ? (
             <QuestionEditor definition={definition} questionKey={selected} onChange={(q) => setQuestion(selected, q)} />
           ) : (
             <EmptyState>Pick a question on the left to edit it.</EmptyState>
           )}
-        </Card>
+        </Panel>
       </div>
     </div>
   );

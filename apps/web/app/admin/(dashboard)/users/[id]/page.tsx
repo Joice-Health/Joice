@@ -3,7 +3,7 @@
 import { use } from 'react';
 import Link from 'next/link';
 import { useAdminMemberProfile } from '@joice/api-client';
-import { Badge, Card, EmptyState, ErrorState, PageHeader, Table, Td, Th } from '@/components/admin/ui';
+import { Badge, Panel, EmptyState, ErrorState, PageHeader, Table, Td, Th } from '@/components/admin/ui';
 
 /**
  * One member, read-only: who they are, their tier-bounded traits with
@@ -28,23 +28,23 @@ export default function AdminMemberProfilePage({ params }: { params: Promise<{ i
       </PageHeader>
 
       <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Card>
+        <Panel>
           <p className="mono-label text-muted">Email</p>
           <p className="mt-1 text-base text-ink">{me.email ?? 'unknown'}</p>
-        </Card>
-        <Card>
+        </Panel>
+        <Panel>
           <p className="mono-label text-muted">Goal</p>
           <p className="mt-1 text-base text-ink">{me.goalLabel ?? 'not set'}</p>
           {me.segment ? <Badge tone="active">{me.segment}</Badge> : null}
-        </Card>
-        <Card>
+        </Panel>
+        <Panel>
           <p className="mono-label text-muted">Intake</p>
           <p className="mt-1 text-base text-ink">{me.intake?.status ?? 'none'}</p>
           {me.intake ? <p className="mono-label mt-1 text-muted">flow v{me.intake.flowVersion}</p> : null}
-        </Card>
+        </Panel>
       </div>
 
-      <Card>
+      <Panel>
         {me.traits.length === 0 ? (
           <EmptyState>No profile traits yet.</EmptyState>
         ) : (
@@ -75,7 +75,7 @@ export default function AdminMemberProfilePage({ params }: { params: Promise<{ i
             </tbody>
           </Table>
         )}
-      </Card>
+      </Panel>
     </div>
   );
 }

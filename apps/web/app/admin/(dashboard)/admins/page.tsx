@@ -5,7 +5,7 @@ import { Button } from '@joice/ui';
 import { useAdmins, useSetAdminRole } from '@joice/api-client';
 import {
   Badge,
-  Card,
+  Panel,
   EmptyState,
   ErrorState,
   PageHeader,
@@ -27,7 +27,7 @@ export default function AdminAdminsPage() {
     <>
       <PageHeader title="Admins" />
 
-      <Card>
+      <Panel>
         <p className="mb-4 text-sm text-muted">
           People sign in with Clerk; granting the admin role here unlocks this console for them.
           Invite new people from the Clerk dashboard first.
@@ -85,7 +85,7 @@ export default function AdminAdminsPage() {
           </Table>
         )}
         {setRole.isError ? <ErrorState error={setRole.error} /> : null}
-      </Card>
+      </Panel>
     </>
   );
 }

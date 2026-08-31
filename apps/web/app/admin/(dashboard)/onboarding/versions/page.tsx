@@ -8,7 +8,7 @@ import {
   useRollbackFlow,
 } from '@joice/api-client';
 import { Button } from '@joice/ui';
-import { Badge, Card, EmptyState, ErrorState, PageHeader, Table, Td, Th } from '@/components/admin/ui';
+import { Badge, Panel, EmptyState, ErrorState, PageHeader, Table, Td, Th } from '@/components/admin/ui';
 
 /**
  * Every version of the intake flow. Publishing lives in the editor (it wants
@@ -41,7 +41,7 @@ export default function AdminOnboardingVersionsPage() {
       </PageHeader>
       {message ? <p className="mono-label mb-4 text-muted">{message}</p> : null}
 
-      <Card>
+      <Panel>
         {items.length === 0 ? (
           <EmptyState>No versions yet.</EmptyState>
         ) : (
@@ -92,9 +92,9 @@ export default function AdminOnboardingVersionsPage() {
             </tbody>
           </Table>
         )}
-      </Card>
+      </Panel>
 
-      <Card className="mt-6">
+      <Panel className="mt-6">
         <p className="mono-label text-muted">Compare two versions</p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {[
@@ -118,7 +118,7 @@ export default function AdminOnboardingVersionsPage() {
           ))}
         </div>
         {diffA && diffB ? <VersionDiff idA={diffA} idB={diffB} /> : null}
-      </Card>
+      </Panel>
     </div>
   );
 }

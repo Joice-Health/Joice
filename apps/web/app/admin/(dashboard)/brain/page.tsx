@@ -13,7 +13,7 @@ import {
   type ToolAccess,
   type ToolAccessKey,
 } from '@joice/brain/schemas';
-import { Card, ErrorState, PageHeader, Toggle } from '@/components/admin/ui';
+import { Panel, ErrorState, PageHeader, Toggle } from '@/components/admin/ui';
 import { MODEL_PRESETS } from '@/components/admin/model-presets';
 import { LastEvalLine } from '@/components/admin/eval/last-eval-line';
 
@@ -118,9 +118,9 @@ export default function AdminBrainPage() {
     return (
       <>
         <PageHeader title="Brain" />
-        <Card>
+        <Panel>
           <ErrorState error={query.error} />
-        </Card>
+        </Panel>
       </>
     );
   }
@@ -128,9 +128,9 @@ export default function AdminBrainPage() {
     return (
       <>
         <PageHeader title="Brain" />
-        <Card>
+        <Panel>
           <p className="py-10 text-center text-sm text-muted">Loading…</p>
-        </Card>
+        </Panel>
       </>
     );
   }
@@ -190,7 +190,7 @@ export default function AdminBrainPage() {
 
       <div className="flex flex-col gap-6">
         {/* --- Persona & tone --- */}
-        <Card>
+        <Panel>
           <h2 className="mb-4 text-lg font-semibold text-ink">Persona &amp; tone</h2>
           <div className="flex flex-col gap-4">
             <div className="flex flex-wrap gap-4">
@@ -291,10 +291,10 @@ export default function AdminBrainPage() {
               </span>
             </div>
           </div>
-        </Card>
+        </Panel>
 
         {/* --- Messages & copy --- */}
-        <Card>
+        <Panel>
           <h2 className="mb-4 text-lg font-semibold text-ink">Messages &amp; copy</h2>
           <div className="flex flex-col gap-4">
             <Field label="When the notes don’t cover a question" hint="Returned verbatim instead of an answer.">
@@ -346,10 +346,10 @@ export default function AdminBrainPage() {
               />
             </Field>
           </div>
-        </Card>
+        </Panel>
 
         {/* --- Companion (pre-onboarding capture) --- */}
-        <Card>
+        <Panel>
           <h2 className="mb-1 text-lg font-semibold text-ink">Companion (pre-onboarding)</h2>
           <p className="mb-4 text-sm text-muted">
             The words the capture flow says on first contact. The fields it collects and their
@@ -412,10 +412,10 @@ export default function AdminBrainPage() {
               />
             </Field>
           </div>
-        </Card>
+        </Panel>
 
         {/* --- Guardrails --- */}
-        <Card>
+        <Panel>
           <h2 className="mb-4 text-lg font-semibold text-ink">Guardrails</h2>
           <div className="flex flex-col gap-4">
             <Field
@@ -469,10 +469,10 @@ export default function AdminBrainPage() {
               />
             </Field>
           </div>
-        </Card>
+        </Panel>
 
         {/* --- Retrieval & model --- */}
-        <Card>
+        <Panel>
           <h2 className="mb-4 text-lg font-semibold text-ink">Retrieval &amp; model</h2>
           <div className="flex flex-wrap gap-6">
             <Field label="Notes per answer (topK)" hint="How many note excerpts to consider. 1–20.">
@@ -640,10 +640,10 @@ export default function AdminBrainPage() {
               </span>
             </div>
           </div>
-        </Card>
+        </Panel>
 
         {/* --- Safety floor (read-only) --- */}
-        <Card className="border border-brand-400/20">
+        <Panel className="border border-brand-400/20">
           <h2 className="mb-2 text-lg font-semibold text-ink">Always enforced</h2>
           <p className="mb-3 text-sm text-muted">
             These rules are built into the code and cannot be changed or removed from this page.
@@ -653,7 +653,7 @@ export default function AdminBrainPage() {
               ? query.data.toolSafetyFloor
               : query.data.safetyFloor}
           </pre>
-        </Card>
+        </Panel>
 
         <div className="flex items-center gap-3">
           <Button variant="solid" onClick={save} disabled={update.isPending}>

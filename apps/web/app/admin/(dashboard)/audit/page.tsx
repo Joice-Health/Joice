@@ -4,7 +4,7 @@ import { Fragment, useState } from 'react';
 import { Button } from '@joice/ui';
 import { useAuditLogs } from '@joice/api-client';
 import {
-  Card,
+  Panel,
   EmptyState,
   ErrorState,
   PageHeader,
@@ -23,7 +23,7 @@ export default function AdminAuditPage() {
     <>
       <PageHeader title="Audit log" />
 
-      <Card>
+      <Panel>
         {query.isError ? (
           <ErrorState error={query.error} />
         ) : query.data && query.data.items.length === 0 ? (
@@ -106,7 +106,7 @@ export default function AdminAuditPage() {
             ) : null}
           </>
         )}
-      </Card>
+      </Panel>
     </>
   );
 }

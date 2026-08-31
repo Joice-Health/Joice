@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { Input } from '@joice/ui';
 import { useAdminUsers, useUpdateUserStatus } from '@joice/api-client';
 import {
-  Card,
+  Panel,
   EmptyState,
   ErrorState,
   PageHeader,
@@ -42,7 +42,7 @@ export default function AdminUsersPage() {
     <>
       <PageHeader title="Users" />
 
-      <Card>
+      <Panel>
         <div className="mb-4">
           <Input
             value={search}
@@ -114,7 +114,7 @@ export default function AdminUsersPage() {
           </>
         )}
         {updateStatus.isError ? <ErrorState error={updateStatus.error} /> : null}
-      </Card>
+      </Panel>
     </>
   );
 }

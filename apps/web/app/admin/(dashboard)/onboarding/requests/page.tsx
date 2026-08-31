@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useServiceAreaRequests } from '@joice/api-client';
 import { US_STATES, usStateName } from '@joice/utils';
-import { Card, EmptyState, ErrorState, PageHeader, Pagination, Table, Td, Th } from '@/components/admin/ui';
+import { Panel, EmptyState, ErrorState, PageHeader, Pagination, Table, Td, Th } from '@/components/admin/ui';
 
 /**
  * "Tell me when my state opens." Its own list, deliberately not the waitlist:
@@ -43,7 +43,7 @@ export default function AdminOnboardingRequestsPage() {
         </select>
       </PageHeader>
 
-      <Card>
+      <Panel>
         {query.isPending ? <p className="mono-label text-muted">Loading…</p> : null}
         {data && data.items.length === 0 ? <EmptyState>No requests yet.</EmptyState> : null}
         {data && data.items.length > 0 ? (
@@ -73,7 +73,7 @@ export default function AdminOnboardingRequestsPage() {
             <Pagination page={data.page} total={data.total} limit={data.limit} onPageChange={setPage} />
           </>
         ) : null}
-      </Card>
+      </Panel>
     </div>
   );
 }

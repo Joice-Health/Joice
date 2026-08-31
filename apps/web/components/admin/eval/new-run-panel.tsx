@@ -11,7 +11,7 @@ import {
   type StartEvalRunBody,
 } from '@joice/api-client';
 import { AUDIENCE_TIERS, AUDIENCE_TIER_LABELS, type AudienceTier } from '@joice/brain/schemas';
-import { Card, ErrorState, Toggle } from '@/components/admin/ui';
+import { Panel, ErrorState, Toggle } from '@/components/admin/ui';
 import { MODEL_PRESETS } from '@/components/admin/model-presets';
 import { Field, selectClass } from './form';
 
@@ -66,7 +66,7 @@ export function NewRunPanel({ hasActiveRun }: { hasActiveRun: boolean }) {
   // the card, and a failed settings fetch is visible and retryable.
   if (settings.isError) {
     return (
-      <Card className="mb-6">
+      <Panel className="mb-6">
         <h2 className="mb-2 text-lg font-semibold text-ink">New run</h2>
         <p className="mb-2 text-sm text-muted">
           The brain settings could not be loaded, and a run needs them as its baseline.
@@ -75,15 +75,15 @@ export function NewRunPanel({ hasActiveRun }: { hasActiveRun: boolean }) {
         <Button variant="outline" onClick={() => void settings.refetch()}>
           Try again
         </Button>
-      </Card>
+      </Panel>
     );
   }
   if (!resolved || !knobs) {
     return (
-      <Card className="mb-6">
+      <Panel className="mb-6">
         <h2 className="mb-2 text-lg font-semibold text-ink">New run</h2>
         <p className="text-sm text-muted">Loading the current settings…</p>
-      </Card>
+      </Panel>
     );
   }
 
@@ -125,7 +125,7 @@ export function NewRunPanel({ hasActiveRun }: { hasActiveRun: boolean }) {
   };
 
   return (
-    <Card className="mb-6">
+    <Panel className="mb-6">
       <h2 className="mb-4 text-lg font-semibold text-ink">New run</h2>
 
       <div className="flex flex-wrap items-end gap-6">
@@ -271,6 +271,6 @@ export function NewRunPanel({ hasActiveRun }: { hasActiveRun: boolean }) {
           {error}
         </p>
       ) : null}
-    </Card>
+    </Panel>
   );
 }

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import type { EvalRunSummary, EvalRunsPage } from '@joice/api-client';
-import { Badge, Card, EmptyState, Pagination, Table, Td, Th } from '@/components/admin/ui';
+import { Badge, Panel, EmptyState, Pagination, Table, Td, Th } from '@/components/admin/ui';
 import { relativeTime } from './form';
 
 /**
@@ -39,7 +39,7 @@ export function RunsTable({
   };
 
   return (
-    <Card className="mb-6">
+    <Panel className="mb-6">
       <h2 className="mb-4 text-lg font-semibold text-ink">Runs</h2>
       {items.length === 0 ? (
         <EmptyState>No runs yet. Start one above.</EmptyState>
@@ -104,6 +104,6 @@ export function RunsTable({
       {data && data.total > limit ? (
         <Pagination page={page} limit={limit} total={data.total} onPageChange={onPageChange} />
       ) : null}
-    </Card>
+    </Panel>
   );
 }

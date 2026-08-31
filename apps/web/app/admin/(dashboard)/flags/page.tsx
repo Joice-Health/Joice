@@ -9,7 +9,7 @@ import {
   useUpdateFlag,
 } from '@joice/api-client';
 import {
-  Card,
+  Panel,
   EmptyState,
   ErrorState,
   PageHeader,
@@ -52,7 +52,7 @@ export default function AdminFlagsPage() {
       </PageHeader>
 
       {showForm ? (
-        <Card className="mb-6">
+        <Panel className="mb-6">
           <form onSubmit={onCreate} className="flex flex-wrap items-center gap-3">
             <Input
               value={key}
@@ -76,10 +76,10 @@ export default function AdminFlagsPage() {
             </Button>
           </form>
           {createFlag.isError ? <ErrorState error={createFlag.error} /> : null}
-        </Card>
+        </Panel>
       ) : null}
 
-      <Card>
+      <Panel>
         <p className="mb-4 text-sm text-muted">
           Changes go live within about a minute: the API caches flag reads for ~30s and
           server-rendered pages re-read them on the same cadence.
@@ -134,7 +134,7 @@ export default function AdminFlagsPage() {
         )}
         {updateFlag.isError ? <ErrorState error={updateFlag.error} /> : null}
         {deleteFlag.isError ? <ErrorState error={deleteFlag.error} /> : null}
-      </Card>
+      </Panel>
     </>
   );
 }

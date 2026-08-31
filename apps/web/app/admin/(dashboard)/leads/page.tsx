@@ -5,7 +5,7 @@ import { useAdminLeads } from '@joice/api-client';
 import { CARE_AREAS } from '@joice/brain/schemas';
 import {
   Badge,
-  Card,
+  Panel,
   EmptyState,
   ErrorState,
   PageHeader,
@@ -29,7 +29,7 @@ export default function AdminLeadsPage() {
     <>
       <PageHeader title="Leads" />
 
-      <Card>
+      <Panel>
         {query.isError ? (
           <ErrorState error={query.error} />
         ) : query.data && query.data.items.length === 0 ? (
@@ -74,7 +74,7 @@ export default function AdminLeadsPage() {
             ) : null}
           </>
         )}
-      </Card>
+      </Panel>
     </>
   );
 }

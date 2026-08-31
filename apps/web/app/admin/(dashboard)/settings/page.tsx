@@ -4,7 +4,7 @@ import { useState, type FormEvent } from 'react';
 import { Button, Input } from '@joice/ui';
 import { useDeleteSetting, useSettings, useUpsertSetting } from '@joice/api-client';
 import {
-  Card,
+  Panel,
   EmptyState,
   ErrorState,
   PageHeader,
@@ -56,7 +56,7 @@ export default function AdminSettingsPage() {
     <>
       <PageHeader title="Settings" />
 
-      <Card className="mb-6">
+      <Panel className="mb-6">
         <h2 className="mb-3 text-lg font-semibold text-ink">Add or update a setting</h2>
         <form onSubmit={onSubmit} className="flex flex-col gap-3">
           <div className="flex flex-wrap gap-3">
@@ -99,9 +99,9 @@ export default function AdminSettingsPage() {
           </div>
         </form>
         {upsert.isError ? <ErrorState error={upsert.error} /> : null}
-      </Card>
+      </Panel>
 
-      <Card>
+      <Panel>
         {query.isError ? (
           <ErrorState error={query.error} />
         ) : query.data && query.data.items.length === 0 ? (
@@ -160,7 +160,7 @@ export default function AdminSettingsPage() {
           </Table>
         )}
         {remove.isError ? <ErrorState error={remove.error} /> : null}
-      </Card>
+      </Panel>
     </>
   );
 }

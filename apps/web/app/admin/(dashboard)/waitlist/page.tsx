@@ -9,7 +9,7 @@ import { useAdminWaitlist, useFeatureFlags, useUpdateWaitlistEntry } from '@joic
 import { apiUrl } from '@/lib/env';
 import {
   Badge,
-  Card,
+  Panel,
   EmptyState,
   ErrorState,
   PageHeader,
@@ -92,7 +92,7 @@ export default function AdminWaitlistPage() {
         </Button>
       </PageHeader>
 
-      <Card>
+      <Panel>
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <Input
             value={search}
@@ -178,7 +178,7 @@ export default function AdminWaitlistPage() {
           </>
         )}
         {updateEntry.isError ? <ErrorState error={updateEntry.error} /> : null}
-      </Card>
+      </Panel>
     </>
   );
 }

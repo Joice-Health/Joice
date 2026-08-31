@@ -9,7 +9,7 @@ import {
   useUpdateBrainSettings,
   type BrainSettingsPatchInput,
 } from '@joice/api-client';
-import { Badge, Card, ErrorState, PageHeader } from '@/components/admin/ui';
+import { Badge, Panel, ErrorState, PageHeader } from '@/components/admin/ui';
 import { RunResults } from '@/components/admin/eval/run-results';
 import { relativeTime } from '@/components/admin/eval/form';
 
@@ -60,7 +60,7 @@ export default function AdminEvalRunPage({ params }: { params: Promise<{ id: str
         </Link>
       </PageHeader>
 
-      <Card className="mb-6">
+      <Panel className="mb-6">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
           <Badge tone={run.status}>{run.status}</Badge>
           <span className="text-lg font-semibold text-ink">
@@ -156,12 +156,12 @@ export default function AdminEvalRunPage({ params }: { params: Promise<{ id: str
             {JSON.stringify(run.configSnapshot, null, 2)}
           </pre>
         </details>
-      </Card>
+      </Panel>
 
-      <Card>
+      <Panel>
         <h2 className="mb-4 text-lg font-semibold text-ink">Questions</h2>
         <RunResults results={results} previous={previous.data ?? null} current={run} />
-      </Card>
+      </Panel>
     </>
   );
 }

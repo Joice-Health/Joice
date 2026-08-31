@@ -9,7 +9,7 @@ import {
   useUpdateEvalCase,
   type EvalCaseView,
 } from '@joice/api-client';
-import { Card, EmptyState, ErrorState, Table, Td, Th, Toggle } from '@/components/admin/ui';
+import { Panel, EmptyState, ErrorState, Table, Td, Th, Toggle } from '@/components/admin/ui';
 import { Field, selectClass, textareaClass } from './form';
 
 /** The four tools a case can expect; must track the brain's toolbelt. */
@@ -115,7 +115,7 @@ export function CasesSection() {
   const saving = create.isPending || update.isPending;
 
   return (
-    <Card>
+    <Panel>
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-ink">Benchmark questions</h2>
         <Button variant="outline" onClick={() => setDraft({ ...emptyDraft })} disabled={!!draft}>
@@ -256,6 +256,6 @@ export function CasesSection() {
         </Table>
       )}
       <p className="mt-3 text-xs text-muted">Runs use up to 100 enabled questions.</p>
-    </Card>
+    </Panel>
   );
 }

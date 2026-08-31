@@ -9,7 +9,7 @@ import {
 import { GOAL_VALUES } from '@joice/core/schemas';
 import { US_STATES } from '@joice/utils';
 import { Button, Input, cn } from '@joice/ui';
-import { Badge, Card, ErrorState, Table, Td, Th } from '@/components/admin/ui';
+import { Badge, Panel, ErrorState, Table, Td, Th } from '@/components/admin/ui';
 
 /**
  * "What will this person see, in what order, and why." A persona (state, date
@@ -58,7 +58,7 @@ export function SimulatorPanel() {
 
   return (
     <div className="flex flex-col gap-6">
-      <Card>
+      <Panel>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <label className="flex flex-col gap-1">
             <span className="mono-label text-muted">Version</span>
@@ -132,7 +132,7 @@ export function SimulatorPanel() {
             {error}
           </p>
         ) : null}
-      </Card>
+      </Panel>
 
       {result ? <ResultView result={result} /> : null}
     </div>
@@ -142,7 +142,7 @@ export function SimulatorPanel() {
 function ResultView({ result }: { result: SimulateResult }) {
   return (
     <>
-      <Card>
+      <Panel>
         <div className="flex flex-wrap items-center gap-3">
           <Badge tone={result.stoppedAt === 'complete' ? 'active' : result.stoppedAt === 'gate' ? 'suspended' : 'pending'}>
             {result.stoppedAt === 'complete' ? 'completes' : result.stoppedAt === 'gate' ? 'hits a gate' : result.stoppedAt}
@@ -174,9 +174,9 @@ function ResultView({ result }: { result: SimulateResult }) {
             ))}
           </tbody>
         </Table>
-      </Card>
+      </Panel>
 
-      <Card>
+      <Panel>
         <p className="mono-label text-muted">Why: every rule the engine evaluated, in order</p>
         <ul className="mt-3 flex flex-col gap-2">
           {result.trace.map((entry, i) => (
@@ -191,9 +191,9 @@ function ResultView({ result }: { result: SimulateResult }) {
             </li>
           ))}
         </ul>
-      </Card>
+      </Panel>
 
-      <Card>
+      <Panel>
         <p className="mono-label text-muted">Protocols this persona matches</p>
         <p className="mt-1 text-xs text-muted">
           A recommendation preview from the stored protocol rules: ranked, clinician review
@@ -217,12 +217,12 @@ function ResultView({ result }: { result: SimulateResult }) {
             ))}
           </ul>
         )}
-      </Card>
+      </Panel>
 
-      <Card>
+      <Panel>
         <p className="mono-label text-muted">Derived traits at the end</p>
         <pre className="mt-2 overflow-x-auto rounded-xl bg-canvas p-3 text-xs">{JSON.stringify(result.traits, null, 2)}</pre>
-      </Card>
+      </Panel>
     </>
   );
 }

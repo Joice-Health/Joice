@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useAdminWaitlist, useFeatureFlags } from '@joice/api-client';
-import { Badge, Card, EmptyState, PageHeader, Table, Td, Th } from '@/components/admin/ui';
+import { Badge, Panel, EmptyState, PageHeader, Table, Td, Th } from '@/components/admin/ui';
 
 export default function AdminDashboardPage() {
   const flags = useFeatureFlags();
@@ -18,17 +18,17 @@ export default function AdminDashboardPage() {
       <PageHeader title="Dashboard" />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card>
+        <Panel>
           <p className="text-sm text-muted">Waitlist signups</p>
           <p className="mt-1 text-3xl font-semibold text-ink">{recent.data?.total ?? '—'}</p>
-        </Card>
-        <Card>
+        </Panel>
+        <Panel>
           <p className="text-sm text-muted">Feature flags on</p>
           <p className="mt-1 text-3xl font-semibold text-ink">
             {flags.data ? `${enabledFlags} / ${flags.data.items.length}` : '—'}
           </p>
-        </Card>
-        <Card>
+        </Panel>
+        <Panel>
           <p className="text-sm text-muted">Quick links</p>
           <div className="mt-2 flex flex-col gap-1 text-sm">
             <Link className="text-brand-800 hover:underline" href="/admin/waitlist">
@@ -38,10 +38,10 @@ export default function AdminDashboardPage() {
               Toggle flags →
             </Link>
           </div>
-        </Card>
+        </Panel>
       </div>
 
-      <Card className="mt-6">
+      <Panel className="mt-6">
         <h2 className="mb-4 text-lg font-semibold text-ink">Recent signups</h2>
         {recent.data && recent.data.items.length === 0 ? (
           <EmptyState>No signups yet.</EmptyState>
@@ -71,7 +71,7 @@ export default function AdminDashboardPage() {
             </tbody>
           </Table>
         )}
-      </Card>
+      </Panel>
     </>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useAdminFlowVersions, useOnboardingFunnel } from '@joice/api-client';
-import { Card, EmptyState, ErrorState, PageHeader, Table, Td, Th } from '@/components/admin/ui';
+import { Panel, EmptyState, ErrorState, PageHeader, Table, Td, Th } from '@/components/admin/ui';
 
 /**
  * Per version: starts, per-question reach and drop, gate outcomes,
@@ -47,15 +47,15 @@ export default function AdminOnboardingFunnelPage() {
                 ['Gate hits', Object.values(funnel.data.gates).reduce((a, b) => a + b, 0)],
               ] as const
             ).map(([label, value]) => (
-              <Card key={label}>
+              <Panel key={label}>
                 <p className="mono-label text-muted">{label}</p>
                 <p className="mt-1 text-3xl text-ink">{value}</p>
-              </Card>
+              </Panel>
             ))}
           </div>
 
           {Object.keys(funnel.data.gates).length > 0 ? (
-            <Card className="mb-6">
+            <Panel className="mb-6">
               <p className="mono-label text-muted">Gate outcomes</p>
               <ul className="mt-2 flex flex-wrap gap-4">
                 {Object.entries(funnel.data.gates).map(([outcome, count]) => (
@@ -65,10 +65,10 @@ export default function AdminOnboardingFunnelPage() {
                   </li>
                 ))}
               </ul>
-            </Card>
+            </Panel>
           ) : null}
 
-          <Card>
+          <Panel>
             {funnel.data.questions.length === 0 ? (
               <EmptyState>No question events for this version yet.</EmptyState>
             ) : (
@@ -97,7 +97,7 @@ export default function AdminOnboardingFunnelPage() {
                 </tbody>
               </Table>
             )}
-          </Card>
+          </Panel>
         </>
       ) : null}
     </div>

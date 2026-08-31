@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useAdminFlowVersions, useServiceAreas } from '@joice/api-client';
-import { Badge, Card, PageHeader } from '@/components/admin/ui';
+import { Badge, Panel, PageHeader } from '@/components/admin/ui';
 
 /** The onboarding hub: where things stand and where to do what. */
 export default function AdminOnboardingPage() {
@@ -52,13 +52,13 @@ export default function AdminOnboardingPage() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {cards.map((card) => (
           <Link key={card.href} href={card.href} className="group">
-            <Card className="h-full transition-colors group-hover:bg-surface">
+            <Panel className="h-full transition-colors group-hover:bg-surface">
               <div className="flex items-center justify-between gap-2">
                 <h2 className="text-base text-ink">{card.title}</h2>
                 {card.badge ? <Badge tone="pending">{card.badge}</Badge> : null}
               </div>
               <p className="mt-2 text-sm leading-relaxed text-muted">{card.body}</p>
-            </Card>
+            </Panel>
           </Link>
         ))}
       </div>

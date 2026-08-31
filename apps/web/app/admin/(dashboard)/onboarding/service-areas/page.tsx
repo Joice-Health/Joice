@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useServiceAreas, useUpdateOnboardingSettings, useUpdateServiceArea } from '@joice/api-client';
 import { usStateName } from '@joice/utils';
 import { Button, Input } from '@joice/ui';
-import { Badge, Card, ErrorState, PageHeader, Table, Td, Th } from '@/components/admin/ui';
+import { Badge, Panel, ErrorState, PageHeader, Table, Td, Th } from '@/components/admin/ui';
 
 const STATUS_TONE = { open: 'active', notify: 'pending', closed: 'suspended' } as const;
 
@@ -35,7 +35,7 @@ export default function AdminServiceAreasPage() {
         prescribing and shipping.
       </p>
 
-      <Card className="mb-6">
+      <Panel className="mb-6">
         <div className="flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1">
             <span className="mono-label text-muted">Minimum age (today: {settings.minimumAge})</span>
@@ -67,9 +67,9 @@ export default function AdminServiceAreasPage() {
           </Button>
           {message ? <p className="mono-label text-muted">{message}</p> : null}
         </div>
-      </Card>
+      </Panel>
 
-      <Card>
+      <Panel>
         <Table>
           <thead>
             <tr>
@@ -115,7 +115,7 @@ export default function AdminServiceAreasPage() {
             ))}
           </tbody>
         </Table>
-      </Card>
+      </Panel>
     </div>
   );
 }
