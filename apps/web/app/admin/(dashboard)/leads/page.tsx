@@ -5,12 +5,13 @@ import { useAdminLeads } from '@joice/api-client';
 import { CARE_AREAS } from '@joice/brain/schemas';
 import {
   Badge,
-  Panel,
   EmptyState,
   ErrorState,
   PageHeader,
   Pagination,
+  Panel,
   Table,
+  TableSkeleton,
   Td,
   Th,
 } from '@/components/admin/ui';
@@ -27,14 +28,14 @@ export default function AdminLeadsPage() {
 
   return (
     <>
-      <PageHeader title="Leads" />
+      <PageHeader eyebrow="People" title="Leads" />
 
       <Panel>
         {query.isError ? (
           <ErrorState error={query.error} />
         ) : query.data && query.data.items.length === 0 ? (
           <EmptyState>
-            No leads yet — captured profiles appear here as visitors talk to the companion.
+            No leads yet. Captured profiles appear here as visitors talk to the companion.
           </EmptyState>
         ) : (
           <>
@@ -50,18 +51,22 @@ export default function AdminLeadsPage() {
                 </tr>
               </thead>
               <tbody>
-                {query.data?.items.map((lead) => (
-                  <tr key={lead.id}>
-                    <Td>{lead.name ?? '—'}</Td>
-                    <Td>{lead.email ?? '—'}</Td>
-                    <Td>{lead.goal ? (GOAL_LABEL[lead.goal] ?? lead.goal) : '—'}</Td>
-                    <Td>
-                      <Badge tone={lead.status}>{lead.status}</Badge>
-                    </Td>
-                    <Td>{lead.readyForOnboarding ? 'Yes' : '—'}</Td>
-                    <Td>{new Date(lead.updatedAt).toLocaleDateString()}</Td>
-                  </tr>
-                ))}
+                {query.isPending ? (
+                  <TableSkeleton cols={6} />
+                ) : (
+                  query.data?.items.map((lead) => (
+                    <tr key={lead.id}>
+                      <Td>{lead.name ?? '·'}</Td>
+                      <Td>{lead.email ?? '·'}</Td>
+                      <Td>{lead.goal ? (GOAL_LABEL[lead.goal] ?? lead.goal) : '·'}</Td>
+                      <Td>
+                        <Badge tone={lead.status}>{lead.status}</Badge>
+                      </Td>
+                      <Td>{lead.readyForOnboarding ? 'Yes' : '·'}</Td>
+                      <Td>{new Date(lead.updatedAt).toLocaleDateString()}</Td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </Table>
             {query.data ? (
