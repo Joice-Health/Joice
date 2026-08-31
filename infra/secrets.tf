@@ -39,3 +39,14 @@ resource "aws_secretsmanager_secret_version" "klaviyo_api_key" {
   secret_id     = aws_secretsmanager_secret.klaviyo_api_key.id
   secret_string = var.klaviyo_api_key
 }
+
+# CarePortals CRM service-user password for the api task's subscriber lookups.
+resource "aws_secretsmanager_secret" "careportals_crm_password" {
+  name                    = "${var.project}/careportals-crm-password"
+  recovery_window_in_days = 0
+}
+
+resource "aws_secretsmanager_secret_version" "careportals_crm_password" {
+  secret_id     = aws_secretsmanager_secret.careportals_crm_password.id
+  secret_string = var.careportals_crm_password
+}

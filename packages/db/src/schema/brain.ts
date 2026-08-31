@@ -353,6 +353,13 @@ export const evalRuns = pgTable(
       .notNull()
       .default('running'),
     mode: text('mode', { enum: ['retrieval', 'full'] }).notNull(),
+    /**
+     * The lifecycle stage the run simulated (visitor/lead/user/subscriber).
+     * Subscriber = the full belt; the default keeps pre-tier history honest.
+     */
+    audience: text('audience', { enum: ['visitor', 'lead', 'user', 'subscriber'] })
+      .notNull()
+      .default('subscriber'),
 
     /** The full effective ResolvedBrainConfig the run executed with. */
     configSnapshot: jsonb('config_snapshot').$type<Record<string, unknown>>().notNull(),

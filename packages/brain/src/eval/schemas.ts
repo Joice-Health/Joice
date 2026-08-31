@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { AUDIENCE_TIERS } from '@joice/utils';
 import { brainSettingsPatchSchema } from '../config/schemas';
 
 /**
@@ -35,6 +36,13 @@ export type EvalRunMode = z.infer<typeof evalRunModeSchema>;
  */
 export const startEvalRunSchema = z.object({
   mode: evalRunModeSchema,
+  /**
+   * Which lifecycle stage the run simulates: the pipeline resolves no real
+   * requester in eval, it takes this as a trusted override. Default
+   * subscriber = the full belt, which is what every run before audience
+   * tiers measured, so history keeps its meaning.
+   */
+  audience: z.enum(AUDIENCE_TIERS).default('subscriber'),
   overrides: brainSettingsPatchSchema.default({}),
 });
 export type StartEvalRunInput = z.infer<typeof startEvalRunSchema>;

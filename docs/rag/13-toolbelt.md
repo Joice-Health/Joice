@@ -1,9 +1,10 @@
 <!--
   Approved 2026-08-27. Epic: "Brain: toolbelt and boundaries"
-  https://app.shortcut.com/joice-health/epic/237 (stories sc-238 to sc-240).
+  https://app.shortcut.com/joice-health/epic/237 (stories sc-238 to sc-240, shipped).
+  Extended 2026-08-31 by "Brain: audience tiers"
+  https://app.shortcut.com/joice-health/epic/244 (stories sc-245 to sc-249):
+  the access model section below is that epic's design brief until it lands.
   Keep the decisions log at the bottom current as decisions are made.
-  This file is the design brief until phase 2 lands, then the as-built
-  reference for the toolbelt.
 -->
 
 # 13 — The toolbelt
@@ -71,13 +72,50 @@ Two rules keep this safe as it grows:
    chips on `/ask`. The public config slice exposes the toggle so an
    already-open tab honors a flip within its next answer.
 
+## The access model (audience tiers)
+
+Everyone talking to the companion is at one of four lifecycle stages, the
+universal vocabulary defined once in `packages/utils/src/audience.ts`:
+
+| Tier | Meaning | Resolved from |
+|---|---|---|
+| `visitor` | anonymous, nothing known | neither of the below |
+| `lead` | shared an email | `brain_profiles.email` for the session (pure `peek`, no insert) |
+| `user` | signed-in account | verified `memberId` on the request |
+| `subscriber` | active subscription | `subscribed` on the member context, sourced from CarePortals via the api's SubscriptionPort over `/api/internal/profile` |
+
+Tiers are ordered; `tierAtLeast(a, b)` is the one comparison helper. Resolution
+happens per chat request in the answer service and degrades gracefully: a
+failed lookup lowers the tier, never the answer.
+
+Each tool carries a `settingKey` mapping to one flat brain setting whose value
+is `'off'` or the minimum tier (`toolSearchNotes`, `toolSearchCatalogue`,
+`toolClinicianHandoff`, `toolFlagIntent`; flat because the settings row merges
+shallowly). `buildToolExecutors` filters the belt by setting and audience
+before the model ever sees it: an out-of-tier tool is invisible, not refused.
+Two special rules:
+
+- If `search_notes` itself does not clear the gate, the request runs the
+  classic pipeline; tool mode without retrieval has no grounding.
+- The tools-mode system prompt reflects the advertised belt, so it never
+  demands a tool that is not there.
+
+Variants live in each tool's code keyed on `deps.audience` (admin controls
+availability, code controls behavior): the first is `search_catalogue`, which
+mentions ordering only from `user` up. The eval console records which tier a
+run simulated (default `subscriber`, the full belt).
+
 ## Adding a tool (the checklist)
 
-1. New file in `packages/brain/src/tools/` exporting a `ToolDefinition`:
+1. New file in `packages/brain/src/tools/` exporting a `BrainTool`:
    Bedrock JSON schema + zod input schema (kept together, they move together),
-   the visitor-facing label (empty string = deliberately silent), and the
-   executor factory over `ToolDeps`.
-2. Register it in `tools/index.ts`.
+   the visitor-facing label (empty string = deliberately silent), the
+   `settingKey` naming its access setting, and the executor factory over
+   `ToolDeps` (which carries `audience` for tier variants).
+2. Register it in `tools/index.ts`, add its key to `TOOL_ACCESS_KEYS`, its
+   field to `brainSettingsSchema`, and its default to
+   `DEFAULT_BRAIN_SETTINGS` (config/schemas.ts); the admin Toolbelt card
+   picks it up from the key list.
 3. Decide provenance: registry append (quotable) or not (never cited).
 4. Cross-domain data only through a port; wire the adapter in
    `apps/brain/src/services.ts`.
@@ -97,3 +135,5 @@ Two rules keep this safe as it grows:
 | 2026-08-27 | Visibility = live status + tools-used chips, gated server-side | Showing the work builds trust, but when the switch is off the tool names must not reach the wire at all, not merely be hidden by the client |
 | 2026-08-27 | The eval harness pins showToolActivity on, like showCitations | expectTool scoring reads the tool events this toggle gates at the source; a visitor-facing presentation switch must never blind the quality gate (caught in review before it shipped) |
 | 2026-08-27 | Trace chips record successful completions only, and are not persisted | A 'started' event fires before the loop decides to execute, so a chip could otherwise claim a check that never ran. Stored history restores citations but not the trace; revisit if conversation persistence turns on |
+| 2026-08-31 | Trial subscriptions count as subscriber | CarePortals statuses active/trialing/trial all clear the tier: someone mid-trial has committed payment details and should get the full experience they are trialling. Revisit if trials become free |
+| 2026-08-31 | Subscription lookups never sit on the request path | The adapter answers from cache and revalidates in the background: the internal profile read lives inside the brain's 1500ms budget, and a cold third-party chain there would make subscriber unreachable while degrading the whole member context. Cost: the first turn in a cache window reads user, not subscriber |

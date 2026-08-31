@@ -10,6 +10,7 @@ import {
   useStartEvalRun,
   type StartEvalRunBody,
 } from '@joice/api-client';
+import { AUDIENCE_TIERS, AUDIENCE_TIER_LABELS, type AudienceTier } from '@joice/brain/schemas';
 import { Card, ErrorState, Toggle } from '@/components/admin/ui';
 import { MODEL_PRESETS } from '@/components/admin/model-presets';
 import { Field, selectClass } from './form';
@@ -40,6 +41,7 @@ export function NewRunPanel({ hasActiveRun }: { hasActiveRun: boolean }) {
   const start = useStartEvalRun();
 
   const [mode, setMode] = useState<Mode>('full');
+  const [audience, setAudience] = useState<AudienceTier>('subscriber');
   const [knobs, setKnobs] = useState<Knobs | null>(null);
   const [error, setError] = useState<string | null>(null);
   const seeded = useRef(false);
@@ -109,7 +111,7 @@ export function NewRunPanel({ hasActiveRun }: { hasActiveRun: boolean }) {
   const run = async () => {
     setError(null);
     try {
-      const { run } = await start.mutateAsync({ mode, overrides });
+      const { run } = await start.mutateAsync({ mode, audience, overrides });
       router.push(`/admin/eval/${run.id}`);
     } catch (err) {
       setError(
@@ -137,6 +139,25 @@ export function NewRunPanel({ hasActiveRun }: { hasActiveRun: boolean }) {
             <option value="full">Full answers</option>
           </select>
         </Field>
+
+        {mode === 'full' ? (
+        <Field
+          label="Run as"
+          hint="Which lifecycle stage the benchmark simulates; subscriber sees every tool."
+        >
+          <select
+            value={audience}
+            onChange={(e) => setAudience(e.target.value as AudienceTier)}
+            className={selectClass}
+          >
+            {AUDIENCE_TIERS.map((tier) => (
+              <option key={tier} value={tier}>
+                {AUDIENCE_TIER_LABELS[tier]}
+              </option>
+            ))}
+          </select>
+        </Field>
+        ) : null}
 
         <Field label="Model" hint="For this run only; live settings stay untouched.">
           <div className="flex gap-2">

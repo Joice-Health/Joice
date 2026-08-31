@@ -8,11 +8,65 @@ import {
   useUpdateBrainSettings,
   type AdminBrain,
 } from '@joice/api-client';
+import {
+  AUDIENCE_TIERS,
+  type ToolAccess,
+  type ToolAccessKey,
+} from '@joice/brain/schemas';
 import { Card, ErrorState, PageHeader, Toggle } from '@/components/admin/ui';
 import { MODEL_PRESETS } from '@/components/admin/model-presets';
 import { LastEvalLine } from '@/components/admin/eval/last-eval-line';
 
 type BrainForm = AdminBrain['resolved'];
+
+/**
+ * The per-tool access rows: one flat setting each, 'off' or the minimum
+ * lifecycle stage. Names and one-liners are the admin-facing vocabulary; the
+ * keys are the settings fields (a new tool adds a row here and a field to
+ * the schema, per the docs/rag/13-toolbelt.md checklist).
+ */
+const TOOL_ACCESS_ROWS = [
+  {
+    key: 'toolSearchNotes',
+    name: 'Research library search',
+    what: 'the grounding tool; below this stage the classic pipeline answers instead',
+  },
+  {
+    key: 'toolSearchCatalogue',
+    name: 'Product catalogue',
+    what: 'what Joice sells and availability; ordering talk starts at Users',
+  },
+  {
+    key: 'toolClinicianHandoff',
+    name: 'Clinician handoff card',
+    what: 'connect to the clinical team for individual judgment',
+  },
+  {
+    key: 'toolFlagIntent',
+    name: 'Ready-to-start signal',
+    what: 'invisible nudge that surfaces the join step at the right moment',
+  },
+] as const satisfies ReadonlyArray<{ key: ToolAccessKey; name: string; what: string }>;
+
+// Exhaustiveness: a tool with a settings field but no admin row must not
+// compile (the checklist in docs/rag/13-toolbelt.md leans on this).
+type RowKeys = (typeof TOOL_ACCESS_ROWS)[number]['key'];
+const _allToolKeysHaveRows: ToolAccessKey extends RowKeys ? true : never = true;
+void _allToolKeysHaveRows;
+
+/** Admin-facing labels for each access value, over the shared vocabulary. */
+const TOOL_ACCESS_OPTIONS: ReadonlyArray<{ value: ToolAccess; label: string }> = [
+  { value: 'off', label: 'Off' },
+  { value: 'visitor', label: 'Everyone' },
+  { value: 'lead', label: 'Leads and up' },
+  { value: 'user', label: 'Users and up' },
+  { value: 'subscriber', label: 'Subscribers only' },
+];
+const _allTiersHaveOptions: (typeof TOOL_ACCESS_OPTIONS)[number]['value'][] = [
+  'off',
+  ...AUDIENCE_TIERS,
+];
+void _allTiersHaveOptions;
 
 const REWRITE_MODEL_PRESETS = [
   { value: 'us.amazon.nova-lite-v1:0', label: 'Amazon Nova Lite (fast)' },
@@ -522,6 +576,38 @@ export default function AdminBrainPage() {
               </span>
             </div>
             <LastEvalLine />
+            {form.toolsEnabled ? (
+              <div className="flex flex-col gap-2 rounded-card bg-canvas/60 p-3">
+                <p className="text-sm text-ink">
+                  Toolbelt{' '}
+                  <span className="text-xs text-muted">
+                    (per ability: off, or the minimum lifecycle stage that gets it. Someone
+                    below the stage never sees the ability, with no mention of it; changes
+                    land within ~30s and in the audit log. The benchmark's Run-as picker
+                    measures each stage.)
+                  </span>
+                </p>
+                {TOOL_ACCESS_ROWS.map(({ key, name, what }) => (
+                  <div key={key} className="flex flex-wrap items-center gap-3">
+                    <select
+                      value={form[key]}
+                      aria-label={`${name} access`}
+                      onChange={(e) => set(key, e.target.value as BrainForm[typeof key])}
+                      className="h-9 rounded-full border border-line bg-surface px-3 text-sm"
+                    >
+                      {TOOL_ACCESS_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="text-sm text-ink">
+                      {name} <span className="text-xs text-muted">({what})</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
             {form.toolsEnabled ? (
               <Field
                 label="Max tool rounds"

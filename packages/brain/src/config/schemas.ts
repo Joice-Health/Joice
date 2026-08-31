@@ -1,4 +1,18 @@
 import { z } from 'zod';
+import { AUDIENCE_TIERS, type AudienceTier } from '@joice/utils';
+
+/** A tool-access setting: 'off' or the minimum lifecycle tier that gets the tool. */
+export type ToolAccess = 'off' | AudienceTier;
+
+/** The per-tool access fields; each BrainTool names its own via settingKey. */
+export const TOOL_ACCESS_KEYS = [
+  'toolSearchNotes',
+  'toolSearchCatalogue',
+  'toolClinicianHandoff',
+  'toolFlagIntent',
+] as const;
+
+export type ToolAccessKey = (typeof TOOL_ACCESS_KEYS)[number];
 
 /**
  * Brain settings and the public slice of them.
@@ -73,6 +87,20 @@ export const brainSettingsSchema = z.object({
   /** Max tool-execution rounds per answer — each round is an extra model call. */
   maxToolRounds: z.number().int().min(1).max(5),
   /**
+   * Per-tool access: 'off' disables the tool everywhere; a tier is the
+   * MINIMUM lifecycle stage that gets it (tiers are ordered, see
+   * @joice/utils AUDIENCE_TIERS). One flat field per tool, deliberately not
+   * a nested map: resolve() merges shallowly and a nested object would be
+   * replaced wholesale by any partial write. A tool the requester's tier
+   * does not clear is invisible to the model, never refused. If
+   * search_notes itself is gated for a request, that request runs the
+   * classic pipeline (tool mode without retrieval has no grounding).
+   */
+  toolSearchNotes: z.enum(['off', ...AUDIENCE_TIERS]),
+  toolSearchCatalogue: z.enum(['off', ...AUDIENCE_TIERS]),
+  toolClinicianHandoff: z.enum(['off', ...AUDIENCE_TIERS]),
+  toolFlagIntent: z.enum(['off', ...AUDIENCE_TIERS]),
+  /**
    * Bedrock prompt caching (cachePoint after the static system prompt + tool
    * definitions). Off by default: it only pays once the static prefix crosses
    * the model's minimum cacheable size (~1K tokens — which the tool
@@ -135,6 +163,12 @@ export const DEFAULT_BRAIN_SETTINGS: Omit<BrainSettings, 'model' | 'pollyVoiceId
   maxAnswerTokens: 1024,
   toolsEnabled: false,
   maxToolRounds: 3,
+  // Everyone, so shipping tiers changes nothing; tightening (e.g. handoff to
+  // subscriber) is an admin decision made in /admin/brain, live in ~30s.
+  toolSearchNotes: 'visitor',
+  toolSearchCatalogue: 'visitor',
+  toolClinicianHandoff: 'visitor',
+  toolFlagIntent: 'visitor',
   // On by default: showing the work builds trust, and today's behavior (the
   // status line always streams) is preserved across the upgrade.
   showToolActivity: true,

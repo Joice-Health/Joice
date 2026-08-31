@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { tierAtLeast } from '@joice/utils';
 import { invalidInput, type BrainTool } from './types';
 
 // Spec and zod schema describe the same contract and move together.
@@ -8,6 +9,7 @@ const CATALOGUE_LIMIT = 5;
 
 export const searchCatalogueTool: BrainTool = {
   label: 'Checking the catalogue…',
+  settingKey: 'toolSearchCatalogue',
   spec: {
     name: 'search_catalogue',
     description:
@@ -35,10 +37,19 @@ export const searchCatalogueTool: BrainTool = {
             'is open today.',
         };
       }
+      // The tier variant: ordering is only mentioned to signed-in users and
+      // up. Leads and visitors get facts and availability; the interface, not
+      // the model, is where they get invited to create an account. Both
+      // footers are phrased as facts, not prohibitions: toolResult text can
+      // leak into an answer, and a leaked fact reads as an answer.
+      const canOrder = tierAtLeast(deps.audience, 'user');
+      const footer = canOrder
+        ? '\n\nThese can be ordered from the shop; offer to point them there if they want to start.'
+        : '\n\nOrdering opens once they have an account; share product facts and availability only.';
       return {
         resultText: `Products:\n${items
           .map((item) => `- ${item.name} (${item.available ? 'available' : 'not currently available'})`)
-          .join('\n')}`,
+          .join('\n')}${footer}`,
       };
     };
   },

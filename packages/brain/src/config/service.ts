@@ -1,7 +1,9 @@
 import { appSettings, eq, type Database } from '@joice/db';
 import {
   brainSettingsPatchSchema,
+  brainSettingsSchema,
   DEFAULT_BRAIN_SETTINGS,
+  type BrainSettings,
   type BrainSettingsPatch,
   type ResolvedBrainConfig,
 } from './schemas';
@@ -37,7 +39,25 @@ export function createBrainConfigService(
 
   const resolve = (stored: unknown): ResolvedBrainConfig => {
     const parsed = brainSettingsPatchSchema.safeParse(stored ?? {});
-    const overrides: BrainSettingsPatch = parsed.success ? parsed.data : {};
+    // A corrupt row must not break chat, but since the tool-access fields
+    // became part of this row, silently dropping EVERYTHING on one bad field
+    // would also silently reopen every gate to 'visitor'. Salvage field by
+    // field: keep every value that still validates, warn once about the rest.
+    let overrides: BrainSettingsPatch = parsed.success ? parsed.data : {};
+    if (!parsed.success && stored && typeof stored === 'object') {
+      const salvaged: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(stored)) {
+        const field = brainSettingsSchema.shape[key as keyof BrainSettings];
+        const attempt = field?.safeParse(value);
+        // The parsed value, not the raw one, so trims and coercions apply
+        // exactly as on the normal path.
+        if (attempt?.success) salvaged[key] = attempt.data;
+      }
+      console.warn(
+        `brain settings row partially invalid; salvaged ${Object.keys(salvaged).length}/${Object.keys(stored).length} fields, rest fall back to defaults`,
+      );
+      overrides = salvaged as BrainSettingsPatch;
+    }
     return {
       ...DEFAULT_BRAIN_SETTINGS,
       model: envDefaults.model,

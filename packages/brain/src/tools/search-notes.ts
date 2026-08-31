@@ -41,6 +41,7 @@ function documentTitle(chunk: RetrievedChunk): string {
 
 export const searchNotesTool: BrainTool = {
   label: 'Checking the research library…',
+  settingKey: 'toolSearchNotes',
   spec: {
     name: 'search_notes',
     description:

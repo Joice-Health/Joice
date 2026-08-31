@@ -60,6 +60,9 @@ export const recommendations = createRecommendationService(db, {
   generation,
   getConfig: brainConfig.get,
   ports,
+  // Lead-tier resolution: a pure lookup at request time. profileService is
+  // declared below; the arrow defers the reference until a request arrives.
+  peekProfile: (requester) => profileService.peek(requester),
 });
 
 /**

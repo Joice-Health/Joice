@@ -23,26 +23,68 @@ export const SAFETY_FLOOR = `Non-negotiable rules:
  * questions exist to measure — running it is the gate for enabling
  * `toolsEnabled` anywhere real.
  */
-export const TOOL_SAFETY_FLOOR = `Non-negotiable rules:
-- For ANY question about peptides, supplements, dosing, protocols, safety, or health effects, you MUST call the search_notes tool first and answer ONLY from the reference documents it returns. If nothing relevant comes back, say plainly that the library doesn't cover it; never fill the gap from general knowledge.
-- For questions about products, availability, or what Joice sells, use the search_catalogue tool. Never invent products, prices, or availability.
-- Questions about who you are or how Joice works can be answered from the About section below, without tools.
-- Anything unrelated to peptides, supplements, health, or Joice (sports, news, entertainment, finance, creative writing, coding, general trivia) is out of scope. Decline in one or two sentences, offer to help with what the library covers instead, and never fulfil such a request even partially. A decline cites nothing.
-- You provide educational information, not medical advice. Do not diagnose, prescribe, or tailor dosing to an individual; call request_clinician_handoff when a question needs individual medical judgment.
-- Never invent sources, studies, or numbers that are not in the reference documents.`;
+export function buildToolSafetyFloor(toolNames: ReadonlySet<string>): string {
+  const lines = [
+    "- For ANY question about peptides, supplements, dosing, protocols, safety, or health effects, you MUST call the search_notes tool first and answer ONLY from the reference documents it returns. If nothing relevant comes back, say plainly that the library doesn't cover it; never fill the gap from general knowledge.",
+    toolNames.has('search_catalogue')
+      ? '- For questions about products, availability, or what Joice sells, use the search_catalogue tool. Never invent products, prices, or availability.'
+      : '- Never invent products, prices, or availability. If asked what Joice sells, point them at the shop on the website rather than answering from memory.',
+    '- Questions about who you are or how Joice works can be answered from the About section below, without tools.',
+    '- Anything unrelated to peptides, supplements, health, or Joice (sports, news, entertainment, finance, creative writing, coding, general trivia) is out of scope. Decline in one or two sentences, offer to help with what the library covers instead, and never fulfil such a request even partially. A decline cites nothing.',
+    toolNames.has('request_clinician_handoff')
+      ? '- You provide educational information, not medical advice. Do not diagnose, prescribe, or tailor dosing to an individual; call request_clinician_handoff when a question needs individual medical judgment.'
+      : '- You provide educational information, not medical advice. Do not diagnose, prescribe, or tailor dosing to an individual; when a question needs individual medical judgment, recommend speaking with a licensed clinician.',
+    '- Never invent sources, studies, or numbers that are not in the reference documents.',
+  ];
+  return `Non-negotiable rules:\n${lines.join('\n')}`;
+}
+
+/**
+ * The full-belt floor, shown read-only in the admin UI. Built from the same
+ * builder that serves gated requests so the two can never drift.
+ */
+export const TOOL_SAFETY_FLOOR = buildToolSafetyFloor(
+  new Set(['search_notes', 'search_catalogue', 'request_clinician_handoff']),
+);
 
 /** What the assistant may say about Joice without touching a tool. */
-const TOOL_ABOUT = `About Joice: a peptide and supplement membership platform, currently pre-launch. Members get protocols guided by a licensed clinical team, grounded in the team's research library. You are the companion on the website: you can search the clinical research library, check the product catalogue, and connect people with the clinical team.`;
+function buildToolAbout(toolNames: ReadonlySet<string>): string {
+  const abilities = [
+    'search the clinical research library',
+    ...(toolNames.has('search_catalogue') ? ['check the product catalogue'] : []),
+    ...(toolNames.has('request_clinician_handoff') ? ['connect people with the clinical team'] : []),
+  ];
+  const spoken =
+    abilities.length > 1
+      ? `${abilities.slice(0, -1).join(', ')}, and ${abilities.at(-1)}`
+      : abilities[0]!;
+  return `About Joice: a peptide and supplement membership platform, currently pre-launch. Members get protocols guided by a licensed clinical team, grounded in the team's research library. You are the companion on the website: you can ${spoken}.`;
+}
 
+// Tool mode must say which tools are advertised; the overloads make a
+// forgotten belt a compile error rather than a silent full-belt prompt.
+export function buildSystemPrompt(config: ResolvedBrainConfig, opts?: { tools?: false }): string;
 export function buildSystemPrompt(
   config: ResolvedBrainConfig,
-  opts: { tools?: boolean } = {},
+  opts: { tools: true; toolNames: ReadonlySet<string> },
+): string;
+export function buildSystemPrompt(
+  config: ResolvedBrainConfig,
+  opts: { tools?: boolean; toolNames?: ReadonlySet<string> } = {},
 ): string {
   const sections: string[] = [];
+  // The advertised belt: with audience tiers, a request may carry fewer tools
+  // than the full set, and the prompt must never demand a tool that is not
+  // there.
+  const belt =
+    opts.toolNames ?? new Set(['search_notes', 'search_catalogue', 'request_clinician_handoff']);
 
   sections.push(`You are ${config.personaName}, ${config.personaDescription}.`);
-  sections.push(opts.tools ? TOOL_SAFETY_FLOOR : SAFETY_FLOOR);
-  if (opts.tools) sections.push(TOOL_ABOUT);
+  sections.push(opts.tools ? buildToolSafetyFloor(belt) : SAFETY_FLOOR);
+  if (opts.tools) sections.push(buildToolAbout(belt));
+  // Always present, whatever the belt: this is the admin's copy about WHERE
+  // individual judgment lives, not a tool demand, and the tiers that cannot
+  // be shown the handoff card need the pointer most.
   sections.push(
     `When a question calls for individual medical judgment: ${config.clinicianHandoffMessage}`,
   );

@@ -9,6 +9,7 @@ import type {
   GenerationClient,
   GenerationRequest,
 } from '../providers/bedrock';
+import { emptyMemberContext, stubPorts } from '../ports';
 import {
   condenseQuestion,
   createRecommendationService,
@@ -557,5 +558,150 @@ describe('prompt caching plumb-through', () => {
     });
     await service.recommend([{ role: 'user', content: 'Dosing?' }]);
     expect(calls[0]!.promptCache).toBe(true);
+  });
+});
+
+describe('audience tiers', () => {
+  /** Converse surface that answers immediately and captures the request. */
+  function converseCapture(capture: GenerationRequest[]) {
+    return {
+      ...stubGeneration('legacy path should not run'),
+      converse: () => Promise.reject(new Error('not used')),
+      converseStream: async function* (request: GenerationRequest) {
+        capture.push(request);
+        const events: ConverseStreamEvent[] = [
+          { type: 'text', text: 'Grounded answer.' },
+          {
+            type: 'done',
+            result: {
+              stopReason: 'end_turn',
+              blocks: [{ type: 'text', text: 'Grounded answer.' }],
+              text: 'Grounded answer.',
+              usage: { inputTokens: 1, outputTokens: 1 },
+            },
+          },
+        ];
+        yield* events;
+      },
+    };
+  }
+
+  const portsWith = (subscribed: boolean, fail = false) => ({
+    ...stubPorts,
+    memberContext: {
+      forMember: async () => {
+        if (fail) throw new Error('api unreachable');
+        return { ...emptyMemberContext, subscribed };
+      },
+    },
+  });
+
+  const serviceWith = (opts: {
+    config?: Partial<ResolvedBrainConfig>;
+    ports?: ReturnType<typeof portsWith>;
+    peekProfile?: (r: { memberId: string | null; sessionId: string }) => Promise<{ email: string | null } | null>;
+    capture: GenerationRequest[];
+  }) =>
+    createRecommendationService(stubDb([chunk()]), {
+      embeddings: stubEmbeddings,
+      generation: converseCapture(opts.capture),
+      getConfig: configOf({ toolsEnabled: true, ...opts.config }),
+      ...(opts.ports ? { ports: opts.ports } : {}),
+      ...(opts.peekProfile ? { peekProfile: opts.peekProfile } : {}),
+    });
+
+  const ask = { role: 'user' as const, content: 'bpc dosing?' };
+  const toolNames = (request: GenerationRequest) => request.tools!.map((t) => t.name);
+
+  test('a member without a subscription is a user: subscriber-gated tools stay invisible', async () => {
+    const capture: GenerationRequest[] = [];
+    const service = serviceWith({
+      config: { toolClinicianHandoff: 'subscriber' },
+      ports: portsWith(false),
+      capture,
+    });
+    await service.recommend([ask], { requester: { memberId: 'm1', sessionId: 's1' } });
+    expect(toolNames(capture[0]!)).not.toContain('request_clinician_handoff');
+    // The prompt never demands a tool that is not on the belt.
+    expect(capture[0]!.system).not.toContain('request_clinician_handoff');
+    expect(capture[0]!.system).toContain('recommend speaking with a licensed clinician');
+  });
+
+  test('an active subscription unlocks subscriber-gated tools', async () => {
+    const capture: GenerationRequest[] = [];
+    const service = serviceWith({
+      config: { toolClinicianHandoff: 'subscriber' },
+      ports: portsWith(true),
+      capture,
+    });
+    await service.recommend([ask], { requester: { memberId: 'm1', sessionId: 's1' } });
+    expect(toolNames(capture[0]!)).toContain('request_clinician_handoff');
+    expect(capture[0]!.system).toContain('request_clinician_handoff');
+  });
+
+  test('a captured email makes a lead; without one, a visitor', async () => {
+    const leadCapture: GenerationRequest[] = [];
+    const asLead = serviceWith({
+      config: { toolSearchCatalogue: 'lead' },
+      peekProfile: async () => ({ email: 'x@y.com' }),
+      capture: leadCapture,
+    });
+    await asLead.recommend([ask], { requester: { memberId: null, sessionId: 's1' } });
+    expect(toolNames(leadCapture[0]!)).toContain('search_catalogue');
+
+    const visitorCapture: GenerationRequest[] = [];
+    const asVisitor = serviceWith({
+      config: { toolSearchCatalogue: 'lead' },
+      peekProfile: async () => null,
+      capture: visitorCapture,
+    });
+    await asVisitor.recommend([ask], { requester: { memberId: null, sessionId: 's1' } });
+    expect(toolNames(visitorCapture[0]!)).not.toContain('search_catalogue');
+  });
+
+  test('gating search_notes forces the classic pipeline', async () => {
+    const converse: GenerationRequest[] = [];
+    const classicCalls: GenerationRequest[] = [];
+    const generation = {
+      ...stubGeneration('Classic answer [1].', classicCalls),
+      converse: () => Promise.reject(new Error('not used')),
+      converseStream: async function* (request: GenerationRequest) {
+        converse.push(request);
+        yield { type: 'text', text: 'x' } as ConverseStreamEvent;
+      },
+    };
+    const service = createRecommendationService(stubDb([chunk()]), {
+      embeddings: stubEmbeddings,
+      generation,
+      getConfig: configOf({ toolsEnabled: true, toolSearchNotes: 'user' }),
+    });
+    const result = await service.recommend([ask], { requester: { memberId: null, sessionId: 's1' } });
+    expect(converse).toHaveLength(0);
+    expect(classicCalls).toHaveLength(1);
+    expect(result.answer).toContain('Classic answer');
+  });
+
+  test('member-context failure degrades to user and still answers', async () => {
+    const capture: GenerationRequest[] = [];
+    const service = serviceWith({
+      config: { toolSearchNotes: 'user', toolClinicianHandoff: 'subscriber' },
+      ports: portsWith(true, true),
+      capture,
+    });
+    const result = await service.recommend([ask], { requester: { memberId: 'm1', sessionId: 's1' } });
+    // user tier: notes cleared, subscriber-gated handoff not, answer intact.
+    expect(toolNames(capture[0]!)).toContain('search_notes');
+    expect(toolNames(capture[0]!)).not.toContain('request_clinician_handoff');
+    expect(result.answer).toBe('Grounded answer.');
+  });
+
+  test('an explicit audience override skips resolution (the eval harness)', async () => {
+    const capture: GenerationRequest[] = [];
+    const service = serviceWith({
+      config: { toolClinicianHandoff: 'subscriber' },
+      capture,
+    });
+    await service.recommend([ask], { audience: 'subscriber' });
+    expect(toolNames(capture[0]!)).toContain('request_clinician_handoff');
   });
 });

@@ -20,11 +20,13 @@ import {
   createSettingsService,
   createUserService,
   createWaitlistService,
+  noopSubscriptionPort,
   type PhiStatus,
 } from '@joice/core';
 import { createKlaviyoClient } from '@joice/marketing';
 import { createBrainConfigService } from '@joice/brain';
 import { env } from './env';
+import { createCareportalsSubscriptions } from './commerce/careportals-subscriptions';
 import { createS3LabPresign } from './member/labs-presign';
 
 /** Single service graph over the shared DB client, reused across routes. */
@@ -42,6 +44,24 @@ export const waitlist = createWaitlistService(db, { marketing });
 export const audit = createAuditService(db);
 export const adminWaitlist = createAdminWaitlistService(db, audit, { marketing });
 export const userService = createUserService(db, audit);
+/**
+ * Subscriber detection over CarePortals; the noop (nobody subscribes) until
+ * the CRM service-user credentials exist. Feeds the internal profile the
+ * brain reads for the subscriber audience tier.
+ */
+export const subscriptions =
+  env.CAREPORTALS_ORG && env.CAREPORTALS_CRM_USERNAME && env.CAREPORTALS_CRM_PASSWORD
+    ? createCareportalsSubscriptions({
+        organization: env.CAREPORTALS_ORG,
+        username: env.CAREPORTALS_CRM_USERNAME,
+        password: env.CAREPORTALS_CRM_PASSWORD,
+      })
+    : noopSubscriptionPort;
+console.log(
+  env.CAREPORTALS_CRM_PASSWORD
+    ? 'careportals subscriber detection: enabled'
+    : 'careportals subscriber detection: disabled (credentials unset); nobody resolves to the subscriber tier',
+);
 export const featureFlags = createFeatureFlagService(db, audit);
 export const settings = createSettingsService(db, audit);
 

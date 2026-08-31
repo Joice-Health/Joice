@@ -63,6 +63,24 @@ describe('brain config', () => {
     expect(config.similarityFloor).toBe(0.4);
   });
 
+  test('a valid tool-access setting survives a corrupt sibling field', async () => {
+    // The invariant the salvage exists for: one bad field must not silently
+    // reopen every access gate to the 'visitor' default.
+    const brain = createBrainConfigService(
+      stubDb({
+        rows: () => [
+          { value: { toolClinicianHandoff: 'subscriber', topK: 'garbage', personaName: '  Joice  ' } },
+        ],
+      }),
+      stubAudit,
+      { envDefaults },
+    );
+    const config = await brain.get();
+    expect(config.toolClinicianHandoff).toBe('subscriber');
+    expect(config.topK).toBe(8); // the corrupt field alone falls to default
+    expect(config.personaName).toBe('Joice'); // salvage applies the schema's trim
+  });
+
   test('reads are cached within the TTL and refetched after expiry', async () => {
     let selects = 0;
     let clock = 0;

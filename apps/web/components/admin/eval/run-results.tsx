@@ -13,9 +13,12 @@ type CompareMark = 'fixed' | 'regressed' | null;
 export function RunResults({
   results,
   previous,
+  current,
 }: {
   results: EvalResultView[];
   previous?: EvalRunDetail | null;
+  /** The run these results belong to, for the cross-audience caveat. */
+  current?: EvalRunDetail['run'] | null;
 }) {
   if (results.length === 0) return <EmptyState>No results yet.</EmptyState>;
 
@@ -38,6 +41,9 @@ export function RunResults({
       {previous && (fixed > 0 || regressed > 0) ? (
         <p className="mb-3 text-sm text-muted">
           vs the previous {previous.run.mode} run: {fixed} fixed, {regressed} regressed.
+          {current && previous.run.audience !== current.audience
+            ? ` Note: that run simulated ${previous.run.audience}, this one ${current.audience}; different belts, so treat the comparison loosely.`
+            : ''}
         </p>
       ) : null}
       <ul className="divide-y divide-ink/5">

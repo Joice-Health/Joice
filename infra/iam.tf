@@ -36,6 +36,7 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
           aws_secretsmanager_secret.clerk_secret_key.arn,
           aws_secretsmanager_secret.internal_api_token.arn,
           aws_secretsmanager_secret.klaviyo_api_key.arn,
+          aws_secretsmanager_secret.careportals_crm_password.arn,
         ]
       }
     ]

@@ -1,3 +1,5 @@
+import { tierAtLeast, type AudienceTier } from '@joice/utils';
+import type { ToolAccess } from '../config/schemas';
 import type { ToolExecutor } from '../generation/agent-loop';
 import { clinicianHandoffTool } from './clinician-handoff';
 import { flagIntentTool } from './flag-intent';
@@ -35,13 +37,28 @@ export const toolLabels: Readonly<Record<string, string>> = Object.fromEntries(
 );
 
 /**
- * Builds the per-request executor map. Executors are closures over that
- * request's deps (citation registry, speculative prefetch) — nothing is
- * shared between requests.
+ * Does an access setting admit this audience? 'off' admits nobody; a tier is
+ * the minimum. Undefined means 'visitor' (the schema default), so a minimal
+ * test config gets the full belt.
+ */
+export function toolAccessAllows(setting: ToolAccess | undefined, audience: AudienceTier): boolean {
+  const minimum = setting ?? 'visitor';
+  return minimum !== 'off' && tierAtLeast(audience, minimum);
+}
+
+/**
+ * Builds the per-request executor map, filtered by each tool's access
+ * setting against the requester's audience: a tool the tier does not clear
+ * is never advertised to the model, so it is invisible rather than refused.
+ * Executors are closures over that request's deps (citation registry,
+ * speculative prefetch) — nothing is shared between requests.
  */
 export function buildToolExecutors(deps: ToolDeps): Map<string, ToolExecutor> {
+  const audience = deps.audience;
   return new Map(
-    TOOLS.map((tool) => [tool.spec.name, { spec: tool.spec, execute: tool.create(deps) }]),
+    TOOLS.filter((tool) => toolAccessAllows(deps.config[tool.settingKey], audience)).map(
+      (tool) => [tool.spec.name, { spec: tool.spec, execute: tool.create(deps) }],
+    ),
   );
 }
 

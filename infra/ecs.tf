@@ -156,6 +156,10 @@ resource "aws_ecs_task_definition" "api" {
         # edge — rate limiting trusts only these trailing hops.
         { name = "TRUSTED_PROXY_HOPS", value = "2" },
         { name = "CLERK_PUBLISHABLE_KEY", value = var.clerk_publishable_key },
+        # Subscriber detection over CarePortals; all-empty disables it and
+        # members simply never resolve to the subscriber tier.
+        { name = "CAREPORTALS_ORG", value = var.careportals_org },
+        { name = "CAREPORTALS_CRM_USERNAME", value = var.careportals_crm_username },
         # The admin console edits the brain's settings, so it resolves them
         # against the same defaults the brain does. This service has no Bedrock
         # permissions and never calls a model — see iam.tf.
@@ -180,6 +184,7 @@ resource "aws_ecs_task_definition" "api" {
         # The brain presents this on /api/internal/*; the api verifies it.
         { name = "INTERNAL_API_TOKEN", valueFrom = aws_secretsmanager_secret.internal_api_token.arn },
         { name = "KLAVIYO_API_KEY", valueFrom = aws_secretsmanager_secret.klaviyo_api_key.arn },
+        { name = "CAREPORTALS_CRM_PASSWORD", valueFrom = aws_secretsmanager_secret.careportals_crm_password.arn },
       ]
       logConfiguration = {
         logDriver = "awslogs"

@@ -1,4 +1,14 @@
-import { and, brainProfiles, desc, eq, inArray, isNull, or, type Database } from '@joice/db';
+import {
+  and,
+  brainProfiles,
+  desc,
+  eq,
+  inArray,
+  isNull,
+  or,
+  type BrainProfile,
+  type Database,
+} from '@joice/db';
 import type { LeadSyncPort, ObservationSinkPort, Requester } from '../ports';
 import {
   CAPTURE_FIELDS,
@@ -162,6 +172,17 @@ export function createProfileService(db: Database, deps: { leadSync?: LeadSyncPo
     /** The visitor's lead, created on first contact. */
     async get(requester: Requester) {
       return loadOrCreate(requester);
+    },
+
+    /**
+     * Pure lookup, no insert: the row if one exists, else null. The chat
+     * answer path uses this per request to tell a lead from a visitor
+     * (email captured = lead), and a read must never mint profile rows for
+     * people who only ever asked questions.
+     */
+    async peek(requester: Requester): Promise<BrainProfile | null> {
+      const rows = await db.select().from(brainProfiles).where(scopeFor(requester)).limit(1);
+      return rows[0] ?? null;
     },
 
     /**

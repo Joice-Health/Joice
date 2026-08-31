@@ -173,6 +173,7 @@ describe('startRun', () => {
 
     const run = await service.startRun({
       mode: 'full',
+      audience: 'subscriber',
       overrides: { model: 'claude', toolsEnabled: true, topK: undefined },
       triggeredBy: 'user_1',
       triggeredByEmail: 'shaun@joicehealth.com',
@@ -189,6 +190,7 @@ describe('startRun', () => {
     expect(inserted.overridesApplied).toEqual({ model: 'claude', toolsEnabled: true });
     expect(inserted.model).toBe('claude');
     expect(inserted.toolsEnabled).toBe(true);
+    expect(inserted.audience).toBe('subscriber');
     expect(inserted.totalCases).toBe(1);
     await flush();
   });
@@ -205,7 +207,8 @@ describe('startRun', () => {
     });
 
     await expect(
-      service.startRun({ mode: 'retrieval', overrides: {}, triggeredBy: 'u' }),
+      service.startRun({ mode: 'retrieval',
+      audience: 'subscriber', overrides: {}, triggeredBy: 'u' }),
     ).rejects.toBeInstanceOf(ActiveEvalRunError);
   });
 
@@ -216,7 +219,8 @@ describe('startRun', () => {
       buildService: () => scriptedPipeline({}),
     });
     await expect(
-      service.startRun({ mode: 'full', overrides: {}, triggeredBy: 'u' }),
+      service.startRun({ mode: 'full',
+      audience: 'subscriber', overrides: {}, triggeredBy: 'u' }),
     ).rejects.toBeInstanceOf(NoEvalCasesError);
   });
 
@@ -227,7 +231,8 @@ describe('startRun', () => {
       getConfig: async () => config(),
       buildService: () => scriptedPipeline({ q1: [completeEvent()] }),
     });
-    await service.startRun({ mode: 'full', overrides: {}, triggeredBy: 'u' });
+    await service.startRun({ mode: 'full',
+      audience: 'subscriber', overrides: {}, triggeredBy: 'u' });
     expect(state.limits).toContain(100);
     await flush();
   });
@@ -252,7 +257,8 @@ describe('the executor', () => {
         }),
     });
 
-    await service.startRun({ mode: 'full', overrides: {}, triggeredBy: 'u' });
+    await service.startRun({ mode: 'full',
+      audience: 'subscriber', overrides: {}, triggeredBy: 'u' });
     await flush();
     await flush();
 
@@ -288,7 +294,8 @@ describe('the executor', () => {
       caseTimeoutMs: 20,
     });
 
-    await service.startRun({ mode: 'full', overrides: {}, triggeredBy: 'u' });
+    await service.startRun({ mode: 'full',
+      audience: 'subscriber', overrides: {}, triggeredBy: 'u' });
     await flush(60);
 
     expect(state.resultInserts[0]).toMatchObject({ caseId: 'c1', pass: false });
@@ -313,7 +320,8 @@ describe('the executor', () => {
       },
     });
 
-    await service.startRun({ mode: 'full', overrides: {}, triggeredBy: 'u' });
+    await service.startRun({ mode: 'full',
+      audience: 'subscriber', overrides: {}, triggeredBy: 'u' });
     await flush();
 
     // The stale sweep also writes status failed, so match on the message.
@@ -356,7 +364,8 @@ describe('getRun', () => {
   test('returns the run, its results, and the previous completed run of the same mode', async () => {
     const { db, state } = stubDb();
     state.runRows = [
-      { id: 'run-9', mode: 'full', status: 'completed', startedAt: new Date(5000) },
+      { id: 'run-9', mode: 'full',
+      audience: 'subscriber', status: 'completed', startedAt: new Date(5000) },
     ];
     state.previousRows = [{ id: 'run-8' }];
     state.resultRows = [{ id: 'r1', runId: 'run-9', question: 'q1', pass: true }];
