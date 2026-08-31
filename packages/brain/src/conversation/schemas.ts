@@ -52,10 +52,25 @@ export const citationSchema = z.object({
 
 export type Citation = z.infer<typeof citationSchema>;
 
+export const toolUseTraceSchema = z.object({
+  /** Tool name, e.g. `search_notes`. */
+  name: z.string(),
+  /** The visitor-facing label from the tool's definition. */
+  label: z.string(),
+});
+
+export type ToolUseTrace = z.infer<typeof toolUseTraceSchema>;
+
 export const peptideRecommendationSchema = z.object({
   /** Answer text with inline `[n]` footnote markers. */
   answer: z.string(),
   citations: z.array(citationSchema),
+  /**
+   * Which tools ran for this answer, deduped, silent tools excluded. Present
+   * only in tool mode with showToolActivity on; absent otherwise, so classic
+   * answers and stored history keep their shape.
+   */
+  toolsUsed: z.array(toolUseTraceSchema).optional(),
 });
 
 export type PeptideRecommendation = z.infer<typeof peptideRecommendationSchema>;

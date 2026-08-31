@@ -157,11 +157,17 @@ function scriptedPipeline(script: Record<string, RecommendationStreamEvent[]>) {
 const flush = async (ms = 0) => new Promise((resolve) => setTimeout(resolve, ms));
 
 describe('startRun', () => {
-  test('pins showCitations, merges defined overrides into the snapshot, records what was applied', async () => {
+  test('pins the presentation toggles, merges defined overrides into the snapshot, records what was applied', async () => {
     const { db, state } = stubDb();
     state.caseRows = [caseOf({ question: 'q1', expectSources: ['a.md'] })];
     const service = createEvalService(db, {
-      getConfig: async () => config({ showCitations: false, model: 'nova', toolsEnabled: false }),
+      getConfig: async () =>
+        config({
+          showCitations: false,
+          showToolActivity: false,
+          model: 'nova',
+          toolsEnabled: false,
+        }),
       buildService: () => scriptedPipeline({ q1: [completeEvent()] }),
     });
 
@@ -176,6 +182,9 @@ describe('startRun', () => {
     expect(run.id).toBe(inserted.id as string);
     const snapshot = inserted.configSnapshot as ResolvedBrainConfig;
     expect(snapshot.showCitations).toBe(true); // pinned, whatever the settings say
+    // Pinned too: the executor scores expectTool from tool events, which this
+    // toggle gates at the source; a presentation choice must not blind the run.
+    expect(snapshot.showToolActivity).toBe(true);
     expect(snapshot.model).toBe('claude');
     expect(inserted.overridesApplied).toEqual({ model: 'claude', toolsEnabled: true });
     expect(inserted.model).toBe('claude');

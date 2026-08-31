@@ -14,6 +14,7 @@ export {
   chatActionSchema,
   citationSchema,
   peptideRecommendationSchema,
+  toolUseTraceSchema,
   HANDOFF_REASONS,
   INTENT_KINDS,
   type ChatAction,
@@ -21,6 +22,7 @@ export {
   type ChatRequest,
   type Citation,
   type PeptideRecommendation,
+  type ToolUseTrace,
 } from './conversation/schemas';
 
 export {

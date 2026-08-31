@@ -13,6 +13,7 @@ import {
   useLatestConversation,
   useSubmitProfileField,
   type Citation,
+  type ToolUseTrace,
 } from '@joice/api-client';
 import {
   buildChatHistory,
@@ -44,6 +45,7 @@ export type DisplayMessage =
       role: 'user' | 'assistant';
       content: string;
       citations?: Citation[];
+      toolsUsed?: ToolUseTrace[];
       error?: boolean;
     }
   | { kind: 'capture'; role: 'user' | 'assistant'; content: string }
@@ -386,6 +388,7 @@ export function PeptideChat() {
           updateAssistant({
             content: event.recommendation.answer,
             citations: event.recommendation.citations,
+            toolsUsed: event.recommendation.toolsUsed,
           });
           if (opts.viaVoice) speaker.endStream();
         } else {
@@ -1043,6 +1046,7 @@ export function PeptideChat() {
               const text = message;
               const isError = text.kind === 'text' && Boolean(text.error);
               const citations = text.kind === 'text' ? text.citations : undefined;
+              const toolsUsed = text.kind === 'text' ? text.toolsUsed : undefined;
               return (
                 <div key={i} className={align}>
                   {text.role === 'user' ? (
@@ -1084,6 +1088,23 @@ export function PeptideChat() {
                         />
                       ) : null}
                     </div>
+                  ) : null}
+
+                  {brainUi.showToolActivity && toolsUsed && toolsUsed.length > 0 ? (
+                    // What the companion did for this answer. The server only
+                    // sends the trace when the admin toggle is on; the brainUi
+                    // check just mirrors the showCitations pattern (it can
+                    // only ever hide, never reveal).
+                    <ul className="mt-3 flex flex-wrap gap-2">
+                      {toolsUsed.map((tool) => (
+                        <li
+                          key={tool.name}
+                          className="mono-label rounded-full border border-dotted border-line px-3 py-1 text-muted"
+                        >
+                          {tool.label.replace(/…$/, '')}
+                        </li>
+                      ))}
+                    </ul>
                   ) : null}
 
                   {brainUi.showCitations && citations && citations.length > 0 ? (

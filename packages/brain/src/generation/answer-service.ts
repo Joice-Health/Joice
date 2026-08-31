@@ -13,7 +13,7 @@ import {
   stripThinking,
   stripTrailingCitationClump,
 } from './sanitize';
-import { buildToolExecutors, type NotesPrefetch } from '../tools';
+import { buildToolExecutors, toolLabels, type NotesPrefetch } from '../tools';
 import { citedIndexes, stripCitationMarkers } from '../conversation/citations';
 import { stubPorts, type BrainPorts } from '../ports';
 import type {
@@ -21,6 +21,7 @@ import type {
   ChatMessage,
   Citation,
   PeptideRecommendation,
+  ToolUseTrace,
 } from '../conversation/schemas';
 
 /**
@@ -60,14 +61,6 @@ export type RecommendationStreamEvent =
   | { type: 'tool'; name: string; status: 'started' | 'finished'; ok: boolean; label: string }
   | { type: 'action'; action: ChatAction }
   | { type: 'complete'; recommendation: PeptideRecommendation; usage?: Usage };
-
-/** Status-line copy per tool, mapped server-side so the client stays dumb. */
-const TOOL_LABELS: Record<string, string> = {
-  search_notes: 'Checking the research library…',
-  search_catalogue: 'Checking the catalogue…',
-  request_clinician_handoff: 'Looping in the clinical team…',
-  flag_intent: '',
-};
 
 const CONDENSE_PROMPT =
   "Rewrite the user's last message as a single standalone search query about peptides, " +
@@ -323,12 +316,33 @@ export function createRecommendationService(
     // strips the authoritative text the same way, so both always agree.
     const thinkingFilter = createThinkingStreamFilter();
 
+    // The tools-used trace for the finished answer: deduped, silent tools
+    // (empty label) excluded. Collected regardless of the toggle so the
+    // gate below is one condition, not two bookkeeping paths.
+    const toolsUsed: ToolUseTrace[] = [];
+
     for await (const event of loop) {
       if (event.type === 'delta') {
         const visible = thinkingFilter.push(event.text);
         if (visible) yield { type: 'delta', text: visible };
       } else if (event.type === 'tool') {
-        yield { ...event, label: TOOL_LABELS[event.name] ?? '' };
+        // Status-line copy rides each tool's definition, mapped server-side
+        // so the client stays dumb. showToolActivity gates HERE, before the
+        // wire: off means tool names never leave the service at all.
+        // The trace records only successful completions: 'started' fires off
+        // the model's request before the loop decides to execute (a final
+        // nudged round discards requests), and a chip must never claim a
+        // check that did not happen.
+        const label = toolLabels[event.name] ?? '';
+        if (
+          event.status === 'finished' &&
+          event.ok &&
+          label &&
+          !toolsUsed.some((t) => t.name === event.name)
+        ) {
+          toolsUsed.push({ name: event.name, label });
+        }
+        if (config.showToolActivity) yield { ...event, label };
       } else if (event.type === 'action') {
         yield event;
       } else {
@@ -338,6 +352,9 @@ export function createRecommendationService(
           event.text.trim().length > 0
             ? finalize(config, event.text, registry)
             : { answer: config.notCoveredMessage, citations: [] };
+        if (config.showToolActivity && toolsUsed.length > 0) {
+          recommendation.toolsUsed = toolsUsed;
+        }
         yield { type: 'complete', recommendation, usage: event.usage };
       }
     }
