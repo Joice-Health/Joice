@@ -36,6 +36,8 @@
   --color-muted: oklch(0.52 0.02 105);
   /* Hairlines are drawn in stone. */
   --color-line: oklch(0.732 0.012 89.8);
+  /* The one red: errors, destructive actions, failed states. >=5:1 on cream and white. */
+  --color-danger: oklch(0.5 0.19 29);
 
   /* Membership-card gradient (waitlist share card), the olive turned to gold. */
   --color-card-from: oklch(0.72 0.13 95);
