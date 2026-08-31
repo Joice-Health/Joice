@@ -1,6 +1,6 @@
 ---
 name: wrap-up
-description: "Close the loop when Joice work ships: bring docs/ to as-built, sweep Shortcut story states and post a product-voiced epic status comment, and write or update the feature's Notion page under the Documentation page in the Joice Health workspace. MANDATORY TRIGGERS: a feature, phase, or epic just finished; before claiming an epic done; the user says 'wrap up', 'wrap-up', 'close out', 'ship the docs'. ALSO TRIGGER after a batch of fixes that touched shipped behavior, to refresh the Notion changelog. Do NOT trigger mid-build for a single story; story states move with the code as part of normal work."
+description: "Close the loop when Joice work ships: bring docs/ to as-built, sweep Shortcut story states and post a product-voiced epic status comment, write or update the feature's Notion page under the Documentation page in the Joice Health workspace, and hand the user a Slack-ready announcement to paste. MANDATORY TRIGGERS: a feature, phase, or epic just finished; before claiming an epic done; the user says 'wrap up', 'wrap-up', 'close out', 'ship the docs'. ALSO TRIGGER after a batch of fixes that touched shipped behavior, to refresh the Notion changelog. Do NOT trigger mid-build for a single story; story states move with the code as part of normal work."
 ---
 
 # Wrap-up: three surfaces current when work ships
@@ -40,6 +40,21 @@ Target: a sub-page per feature under the **Documentation** page in the **Joice H
    - **Changelog**: a table (date, what changed, in plain words). Append a row on every later update; never rewrite history.
 3. On later runs (fixes, follow-ups): update the affected sections and append the changelog row; keep the page's URL stable.
 
-## Step 4: report
+## Step 4: the Slack handoff
 
-Tell the user what landed on each surface, with links: docs files touched, the epic comment URL, the Notion page URL (or "pending auth"). Note anything still owed and by whom.
+Draft the announcement the user will post in Slack; nothing posts automatically. Include it in the final report inside a fenced code block so the formatting survives copy-paste.
+
+Voice: cross-functional and plain, the same product voice as Notion. Someone in marketing, clinical, or ops should get it with zero context. No code identifiers, no em dashes. Aim for under 150 words.
+
+Shape:
+
+1. A lead sentence: what shipped and why it matters, with an emoji up front if one fits.
+2. `*What this means for you*`: two to four bullets, one per audience the change actually touches (product, marketing, clinical, ops, admins). Skip audiences it does not touch.
+3. `*Try it*`: where to click, one line.
+4. `*More*`: the Notion page and the Shortcut epic as links.
+
+Write it in Slack's own formatting, not Markdown: bold is single asterisks (`*bold*`), bullets are `•`, links are `<https://example.com|label>`, sections separated by blank lines, no headings. Slack renders none of GitHub's Markdown, so a Markdown message pastes badly.
+
+## Step 5: report
+
+Tell the user what landed on each surface, with links: docs files touched, the epic comment URL, the Notion page URL (or "pending auth"). Note anything still owed and by whom. End with the Slack message from step 4, ready to paste.

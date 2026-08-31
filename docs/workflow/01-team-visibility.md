@@ -35,7 +35,13 @@ flowchart TD
     wrap --> asbuilt[docs/ brought to as-built]
     wrap --> comment[Epic status comment + epic done]
     wrap --> notion[Notion page: what it is, how to use it, changelog]
+    wrap --> slack[Slack announcement, handed over ready to paste]
 ```
+
+Wrap-up also drafts a Slack announcement in the same product voice, formatted for Slack, and
+hands it over for a person to post. **Why not a fourth surface:** Slack is where the team
+hears the news, not where it lives; the message stays short and links to the Notion page and
+the epic instead of duplicating them, so there is nothing in Slack to go stale.
 
 Small fixes skip the epic: one story on the feature's epic (or the standing "Maintenance"
 epic), docs updated in the same PR, and a Notion changelog row at the next wrap-up if the fix
