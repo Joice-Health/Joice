@@ -292,6 +292,7 @@ const routes = app
       inputPlaceholder: config.inputPlaceholder,
       disclaimer: config.disclaimer,
       showCitations: config.showCitations,
+      showToolActivity: config.showToolActivity,
       // Env-derived, not an admin setting: the UI only offers "pick up where
       // you left off" when the server is actually storing threads.
       historyEnabled: persistConversations,

@@ -26,6 +26,13 @@ export const brainSettingsSchema = z.object({
   attributionStyle: z.enum(['cite-notes', 'natural']),
   /** Controls both the [n]-marker instruction and the UI chips. */
   showCitations: z.boolean(),
+  /**
+   * Whether visitors see what the companion is doing in tool mode: the live
+   * status line while a tool runs and the tools-used chips on the finished
+   * answer. Gated server-side (answer-service): when off, tool names never
+   * reach the wire at all rather than being hidden by the client.
+   */
+  showToolActivity: z.boolean(),
 
   /** Copy. */
   notCoveredMessage: z.string().trim().min(1).max(1000),
@@ -128,6 +135,9 @@ export const DEFAULT_BRAIN_SETTINGS: Omit<BrainSettings, 'model' | 'pollyVoiceId
   maxAnswerTokens: 1024,
   toolsEnabled: false,
   maxToolRounds: 3,
+  // On by default: showing the work builds trust, and today's behavior (the
+  // status line always streams) is preserved across the upgrade.
+  showToolActivity: true,
   promptCache: false,
   queryRewriting: true,
   rewriteModel: 'us.amazon.nova-lite-v1:0',
@@ -143,6 +153,7 @@ export const brainUiSchema = z.object({
   inputPlaceholder: z.string(),
   disclaimer: z.string(),
   showCitations: z.boolean(),
+  showToolActivity: z.boolean(),
   /** Server-side thread persistence is on (env-derived, not admin-set). */
   historyEnabled: z.boolean(),
 });
@@ -159,6 +170,7 @@ export const BRAIN_UI_DEFAULTS: BrainUi = {
   inputPlaceholder: DEFAULT_BRAIN_SETTINGS.inputPlaceholder,
   disclaimer: DEFAULT_BRAIN_SETTINGS.disclaimer,
   showCitations: DEFAULT_BRAIN_SETTINGS.showCitations,
+  showToolActivity: DEFAULT_BRAIN_SETTINGS.showToolActivity,
   // Conservative while loading: never offer resume the server can't serve.
   historyEnabled: false,
 };

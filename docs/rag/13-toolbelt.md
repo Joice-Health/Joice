@@ -62,9 +62,14 @@ Two rules keep this safe as it grows:
    signature. The UI labels move out of `answer-service.ts` into the
    definitions so a new tool cannot forget its label. This doc gains the
    full adding-a-tool checklist as-built.
-3. **Tool visibility** (sc-240): `showToolActivity` brain setting (default
-   on), gated server-side so tool names never reach the wire when off; the
-   finished answer carries a deduped `toolsUsed` trace rendered as chips.
+3. **Tool visibility** (sc-240): the `showToolActivity` brain setting
+   (default on, managed on `/admin/brain` next to Show citations). The gate
+   lives in `answer-service.ts`'s stream re-yield, so when it is off tool
+   names never reach the wire at all; when on, the finished answer also
+   carries a deduped `toolsUsed` trace (name + label, silent tools excluded)
+   in the recommendation payload, rendered as chips beside the citation
+   chips on `/ask`. The public config slice exposes the toggle so an
+   already-open tab honors a flip within its next answer.
 
 ## Adding a tool (the checklist)
 

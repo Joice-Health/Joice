@@ -221,6 +221,21 @@ export default function AdminBrainPage() {
                 <span className="text-xs text-muted">([n] markers in answers + source chips under them)</span>
               </span>
             </div>
+
+            <div className="flex items-center gap-3">
+              <Toggle
+                checked={form.showToolActivity}
+                onChange={(v) => set('showToolActivity', v)}
+                label="Show tool activity"
+              />
+              <span className="text-sm text-ink">
+                Show tool activity{' '}
+                <span className="text-xs text-muted">
+                  (tool mode only: the live status line while it searches + chips under the
+                  answer naming what it checked; off, tool names never reach the browser)
+                </span>
+              </span>
+            </div>
           </div>
         </Card>
 

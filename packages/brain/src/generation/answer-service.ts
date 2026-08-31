@@ -21,6 +21,7 @@ import type {
   ChatMessage,
   Citation,
   PeptideRecommendation,
+  ToolUseTrace,
 } from '../conversation/schemas';
 
 /**
@@ -315,14 +316,24 @@ export function createRecommendationService(
     // strips the authoritative text the same way, so both always agree.
     const thinkingFilter = createThinkingStreamFilter();
 
+    // The tools-used trace for the finished answer: deduped, silent tools
+    // (empty label) excluded. Collected regardless of the toggle so the
+    // gate below is one condition, not two bookkeeping paths.
+    const toolsUsed: ToolUseTrace[] = [];
+
     for await (const event of loop) {
       if (event.type === 'delta') {
         const visible = thinkingFilter.push(event.text);
         if (visible) yield { type: 'delta', text: visible };
       } else if (event.type === 'tool') {
         // Status-line copy rides each tool's definition, mapped server-side
-        // so the client stays dumb.
-        yield { ...event, label: toolLabels[event.name] ?? '' };
+        // so the client stays dumb. showToolActivity gates HERE, before the
+        // wire: off means tool names never leave the service at all.
+        const label = toolLabels[event.name] ?? '';
+        if (event.status === 'started' && label && !toolsUsed.some((t) => t.name === event.name)) {
+          toolsUsed.push({ name: event.name, label });
+        }
+        if (config.showToolActivity) yield { ...event, label };
       } else if (event.type === 'action') {
         yield event;
       } else {
@@ -332,6 +343,9 @@ export function createRecommendationService(
           event.text.trim().length > 0
             ? finalize(config, event.text, registry)
             : { answer: config.notCoveredMessage, citations: [] };
+        if (config.showToolActivity && toolsUsed.length > 0) {
+          recommendation.toolsUsed = toolsUsed;
+        }
         yield { type: 'complete', recommendation, usage: event.usage };
       }
     }

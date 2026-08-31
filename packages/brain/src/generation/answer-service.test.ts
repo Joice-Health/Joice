@@ -427,6 +427,41 @@ describe('tools mode (toolsEnabled=true)', () => {
     expect(capture[0]!.system).toContain('MUST call the search_notes tool');
   });
 
+  test('the tools-used trace rides the finished answer', async () => {
+    const service = createRecommendationService(stubDb([chunk()]), {
+      embeddings: stubEmbeddings,
+      generation: toolGeneration(searchThenAnswer('bpc dosing', 'Dosed at 250-500mcg [1].')),
+      getConfig: configOf({ toolsEnabled: true }),
+    });
+
+    const result = await service.recommend([{ role: 'user', content: 'bpc dosing?' }]);
+    expect(result.toolsUsed).toEqual([
+      { name: 'search_notes', label: 'Checking the research library…' },
+    ]);
+  });
+
+  test('showToolActivity=false: no tool events on the wire, no trace on the answer', async () => {
+    const service = createRecommendationService(stubDb([chunk()]), {
+      embeddings: stubEmbeddings,
+      generation: toolGeneration(searchThenAnswer('bpc dosing', 'Dosed at 250-500mcg [1].')),
+      getConfig: configOf({ toolsEnabled: true, showToolActivity: false }),
+    });
+
+    const events = [];
+    for await (const event of service.recommendStream([{ role: 'user', content: 'bpc dosing?' }])) {
+      events.push(event);
+    }
+
+    // The gate is server-side and total: nothing tool-shaped reaches the wire.
+    expect(events.filter((e) => e.type === 'tool')).toHaveLength(0);
+    const complete = events.at(-1)!;
+    if (complete.type !== 'complete') throw new Error('expected complete');
+    expect(complete.recommendation.toolsUsed).toBeUndefined();
+    // The answer itself is untouched by the toggle.
+    expect(complete.recommendation.answer).toBe('Dosed at 250-500mcg [1].');
+    expect(complete.recommendation.citations).toHaveLength(1);
+  });
+
   test('a loop that ends with no prose falls back to the not-covered copy', async () => {
     const service = createRecommendationService(stubDb([chunk()]), {
       embeddings: stubEmbeddings,

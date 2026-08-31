@@ -75,4 +75,9 @@ export type {
   WaitlistEntryView,
   WaitlistStats,
 } from '@joice/core';
-export type { ChatMessage, Citation, PeptideRecommendation } from '@joice/brain/schemas';
+export type {
+  ChatMessage,
+  Citation,
+  PeptideRecommendation,
+  ToolUseTrace,
+} from '@joice/brain/schemas';

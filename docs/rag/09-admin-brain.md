@@ -37,6 +37,7 @@ flowchart LR
 | **Tone instructions** | Free-text style directive (e.g. "warm and encouraging, short sentences") |
 | **How it refers to its knowledge** | **Talks like a person** = never mentions notes/documents/sources — the knowledge is simply its own. **References the clinical notes** = may say "our clinical notes describe…" |
 | **Show citations** | On: answers carry `[n]` markers + source chips under them. Off: markers are suppressed (and defensively stripped) and chips hidden |
+| **Show tool activity** | Tool mode only. On (default): visitors see the live status line while a tool runs ("Checking the research library") and chips under the finished answer naming what was checked. Off: gated server-side, tool names never reach the browser at all. Silent tools (the buying-signal nudge) never appear either way |
 | **Not-covered message** | Returned verbatim when no note clears the match threshold (the model is never called) |
 | **Clinician handoff** | What it says when a question needs individual medical judgment |
 | **Chat intro / placeholder / disclaimer** | The `/ask` page copy (served publicly via `GET /api/brain`). ⚠ Disclaimer changes require counsel review |
