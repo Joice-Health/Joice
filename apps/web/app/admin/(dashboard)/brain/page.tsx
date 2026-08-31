@@ -14,6 +14,35 @@ import { LastEvalLine } from '@/components/admin/eval/last-eval-line';
 
 type BrainForm = AdminBrain['resolved'];
 
+/**
+ * The per-tool access rows: one flat setting each, 'off' or the minimum
+ * lifecycle stage. Names and one-liners are the admin-facing vocabulary; the
+ * keys are the settings fields (a new tool adds a row here and a field to
+ * the schema, per the docs/rag/13-toolbelt.md checklist).
+ */
+const TOOL_ACCESS_ROWS = [
+  {
+    key: 'toolSearchNotes',
+    name: 'Research library search',
+    what: 'the grounding tool; below this stage the classic pipeline answers instead',
+  },
+  {
+    key: 'toolSearchCatalogue',
+    name: 'Product catalogue',
+    what: 'what Joice sells and availability; ordering talk starts at Users',
+  },
+  {
+    key: 'toolClinicianHandoff',
+    name: 'Clinician handoff card',
+    what: 'connect to the clinical team for individual judgment',
+  },
+  {
+    key: 'toolFlagIntent',
+    name: 'Ready-to-start signal',
+    what: 'invisible nudge that surfaces the join step at the right moment',
+  },
+] as const satisfies ReadonlyArray<{ key: keyof BrainForm; name: string; what: string }>;
+
 const REWRITE_MODEL_PRESETS = [
   { value: 'us.amazon.nova-lite-v1:0', label: 'Amazon Nova Lite (fast)' },
   { value: 'us.amazon.nova-pro-v1:0', label: 'Amazon Nova Pro' },
@@ -522,6 +551,37 @@ export default function AdminBrainPage() {
               </span>
             </div>
             <LastEvalLine />
+            {form.toolsEnabled ? (
+              <div className="flex flex-col gap-2 rounded-card bg-canvas/60 p-3">
+                <p className="text-sm text-ink">
+                  Toolbelt{' '}
+                  <span className="text-xs text-muted">
+                    (per ability: off, or the minimum lifecycle stage that gets it. Someone
+                    below the stage never sees the ability, with no mention of it; changes
+                    land within ~30s and in the audit log. The benchmark's Run-as picker
+                    measures each stage.)
+                  </span>
+                </p>
+                {TOOL_ACCESS_ROWS.map(({ key, name, what }) => (
+                  <div key={key} className="flex flex-wrap items-center gap-3">
+                    <select
+                      value={form[key]}
+                      onChange={(e) => set(key, e.target.value as BrainForm[typeof key])}
+                      className="h-9 rounded-full border border-line bg-surface px-3 text-sm"
+                    >
+                      <option value="off">Off</option>
+                      <option value="visitor">Everyone</option>
+                      <option value="lead">Leads and up</option>
+                      <option value="user">Users and up</option>
+                      <option value="subscriber">Subscribers only</option>
+                    </select>
+                    <span className="text-sm text-ink">
+                      {name} <span className="text-xs text-muted">({what})</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
             {form.toolsEnabled ? (
               <Field
                 label="Max tool rounds"

@@ -7,6 +7,11 @@
 
 # 12: The eval console
 
+> Since epic 244 a run also picks the lifecycle stage it simulates (Run as:
+> visitor / lead / user / subscriber, default subscriber = the full belt).
+> The stage rides the run row and the detail page, and the fixed/regressed
+> summary flags cross-stage comparisons. The CLI mirror is `--audience`.
+
 An admin surface for tuning the AI with numbers. Runs the golden question set
 against the live pipeline from `/admin/eval`, records every run, compares runs
 over time, and can promote a winning experiment's settings to the live config
