@@ -44,6 +44,12 @@ export interface MemberContext {
   orders: MemberOrder[];
   /** Protocols a clinician has assigned them. */
   protocols: MemberProtocol[];
+  /**
+   * Active subscription, per the platform (CarePortals through the api's
+   * SubscriptionPort). Lifts a user to the subscriber tier; false whenever
+   * the platform cannot say, so a lookup failure can only lower access.
+   */
+  subscribed: boolean;
 }
 
 export interface MemberOrder {
@@ -117,6 +123,7 @@ export const emptyMemberContext: MemberContext = {
   traitsSummary: [],
   orders: [],
   protocols: [],
+  subscribed: false,
 };
 
 export interface BrainPorts {

@@ -9,6 +9,7 @@ export const flagIntentTool: BrainTool = {
   // Deliberately silent: a buying signal is interface plumbing, and announcing
   // "noting your interest…" mid-answer would be creepy rather than transparent.
   label: '',
+  settingKey: 'toolFlagIntent',
   spec: {
     name: 'flag_intent',
     description:

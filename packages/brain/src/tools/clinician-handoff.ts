@@ -7,6 +7,7 @@ const handoffInput = z.object({ reason: z.enum(HANDOFF_REASONS) });
 
 export const clinicianHandoffTool: BrainTool = {
   label: 'Looping in the clinical team…',
+  settingKey: 'toolClinicianHandoff',
   spec: {
     name: 'request_clinician_handoff',
     description:

@@ -13,7 +13,8 @@ import {
   stripThinking,
   stripTrailingCitationClump,
 } from './sanitize';
-import { buildToolExecutors, toolLabels, type NotesPrefetch } from '../tools';
+import type { AudienceTier } from '@joice/utils';
+import { buildToolExecutors, toolAccessAllows, toolLabels, type NotesPrefetch } from '../tools';
 import { citedIndexes, stripCitationMarkers } from '../conversation/citations';
 import { stubPorts, type BrainPorts } from '../ports';
 import type {
@@ -133,9 +134,18 @@ export function createRecommendationService(
     getConfig: () => Promise<ResolvedBrainConfig>;
     /** Catalogue (and later member context) adapters. Stubs by default. */
     ports?: BrainPorts;
+    /**
+     * Pure lead lookup for anonymous requesters (profileService.peek): a row
+     * with an email means the lead tier. Optional: absent (tests, eval)
+     * means anonymous requesters resolve to visitor.
+     */
+    peekProfile?: (requester: {
+      memberId: string | null;
+      sessionId: string;
+    }) => Promise<{ email: string | null } | null>;
   },
 ) {
-  const { embeddings, generation, getConfig } = deps;
+  const { embeddings, generation, getConfig, peekProfile } = deps;
   const ports = deps.ports ?? stubPorts;
 
   async function retrieve(
@@ -177,19 +187,40 @@ export function createRecommendationService(
   }
 
   /**
-   * The member suffix for a signed-in requester, or undefined. Failure never
-   * fails the answer: the api being unreachable degrades to an anonymous turn,
-   * with one log line.
+   * Who is asking, resolved once per request: the audience tier and the
+   * member prompt suffix, from a single member-context fetch. Failure never
+   * fails the answer, and every lookup error degrades to the LOWER tier, so
+   * broken plumbing can only ever narrow access:
+   * member context unreachable = user (with an anonymous turn), lead lookup
+   * unreachable = visitor. An explicit `audience` (the eval harness) skips
+   * resolution entirely.
    */
-  async function memberSuffixFor(requester?: { memberId: string | null }): Promise<string | undefined> {
-    if (!requester?.memberId) return undefined;
-    try {
-      const ctx = await ports.memberContext.forMember(requester.memberId);
-      return buildMemberSuffix(ctx);
-    } catch (error) {
-      console.warn(`member context unavailable (${(error as Error).message?.slice(0, 120)})`);
-      return undefined;
+  async function requestIdentity(
+    requester?: { memberId: string | null; sessionId?: string },
+    audienceOverride?: AudienceTier,
+  ): Promise<{ audience: AudienceTier; suffix?: string }> {
+    if (audienceOverride) return { audience: audienceOverride };
+    if (requester?.memberId) {
+      try {
+        const ctx = await ports.memberContext.forMember(requester.memberId);
+        return {
+          audience: ctx.subscribed ? 'subscriber' : 'user',
+          suffix: buildMemberSuffix(ctx),
+        };
+      } catch (error) {
+        console.warn(`member context unavailable (${(error as Error).message?.slice(0, 120)})`);
+        return { audience: 'user' };
+      }
     }
+    if (requester?.sessionId && peekProfile) {
+      try {
+        const profile = await peekProfile({ memberId: null, sessionId: requester.sessionId });
+        if (profile?.email) return { audience: 'lead' };
+      } catch (error) {
+        console.warn(`lead lookup unavailable (${(error as Error).message?.slice(0, 120)})`);
+      }
+    }
+    return { audience: 'visitor' };
   }
 
   function buildRequest(
@@ -264,6 +295,7 @@ export function createRecommendationService(
   async function* toolStream(
     config: ResolvedBrainConfig,
     messages: ChatMessage[],
+    audience: AudienceTier,
     systemSuffix?: string,
   ): AsyncGenerator<RecommendationStreamEvent> {
     const question = messages[messages.length - 1]!.content;
@@ -285,6 +317,7 @@ export function createRecommendationService(
       config,
       registry,
       prefetch,
+      audience,
     });
 
     const citationReminder = config.showCitations
@@ -296,7 +329,9 @@ export function createRecommendationService(
       request: {
         model: config.model,
         maxTokens: config.maxAnswerTokens,
-        system: buildSystemPrompt(config, { tools: true }),
+        // The prompt reflects the ADVERTISED belt: it must never demand a
+        // tool the requester's tier filtered out.
+        system: buildSystemPrompt(config, { tools: true, toolNames: new Set(executors.keys()) }),
         ...(systemSuffix ? { systemSuffix } : {}),
         turns: [
           ...messages.slice(0, -1),
@@ -360,18 +395,34 @@ export function createRecommendationService(
     }
   }
 
+  /**
+   * Tool mode runs only when search_notes clears the requester's tier: tool
+   * mode without retrieval has no grounding, and the floor's "MUST call
+   * search_notes" would demand the impossible. A gated search_notes means
+   * the classic pipeline, which is tier-agnostic by construction.
+   */
+  function toolModeFor(config: ResolvedBrainConfig, audience: AudienceTier): boolean {
+    return (
+      config.toolsEnabled && toolCapable() && toolAccessAllows(config.toolSearchNotes, audience)
+    );
+  }
+
   async function recommend(
     messages: ChatMessage[],
-    opts: { requester?: { memberId: string | null } } = {},
+    opts: {
+      requester?: { memberId: string | null; sessionId?: string };
+      /** Trusted internal override (the eval harness); skips resolution. */
+      audience?: AudienceTier;
+    } = {},
   ): Promise<PeptideRecommendation> {
     const config = await getConfig();
-    const suffix = await memberSuffixFor(opts.requester);
-    if (config.toolsEnabled && toolCapable()) {
+    const { audience, suffix } = await requestIdentity(opts.requester, opts.audience);
+    if (toolModeFor(config, audience)) {
       let recommendation: PeptideRecommendation = {
         answer: config.notCoveredMessage,
         citations: [],
       };
-      for await (const event of toolStream(config, messages, suffix)) {
+      for await (const event of toolStream(config, messages, audience, suffix)) {
         if (event.type === 'complete') recommendation = event.recommendation;
       }
       return recommendation;
@@ -387,12 +438,16 @@ export function createRecommendationService(
 
   async function* recommendStream(
     messages: ChatMessage[],
-    opts: { requester?: { memberId: string | null } } = {},
+    opts: {
+      requester?: { memberId: string | null; sessionId?: string };
+      /** Trusted internal override (the eval harness); skips resolution. */
+      audience?: AudienceTier;
+    } = {},
   ): AsyncGenerator<RecommendationStreamEvent> {
     const config = await getConfig();
-    const suffix = await memberSuffixFor(opts.requester);
-    if (config.toolsEnabled && toolCapable()) {
-      yield* toolStream(config, messages, suffix);
+    const { audience, suffix } = await requestIdentity(opts.requester, opts.audience);
+    if (toolModeFor(config, audience)) {
+      yield* toolStream(config, messages, audience, suffix);
       return;
     }
 

@@ -1,3 +1,5 @@
+import type { AudienceTier } from '@joice/utils';
+import type { ToolAccess, ToolAccessKey } from '../config/schemas';
 import type { ToolExecutor, ToolOutcome } from '../generation/agent-loop';
 import type { RetrievedChunk } from '../generation/answer-service';
 import type { CatalogPort } from '../ports';
@@ -19,6 +21,12 @@ export interface BrainTool {
    */
   label: string;
   /**
+   * The flat brain setting governing this tool's access ('off' or the
+   * minimum audience tier). Declared on the tool so the registry can gate
+   * without a parallel table; a tool without an access setting cannot exist.
+   */
+  settingKey: ToolAccessKey;
+  /**
    * Builds the executor for one request. Executors are closures over that
    * request's deps (citation registry, speculative prefetch) — nothing is
    * shared between requests.
@@ -37,7 +45,19 @@ export interface ToolDeps {
     opts: { topK: number; similarityFloor: number; sourceTypes?: string[] },
   ) => Promise<RetrievedChunk[]>;
   catalog: CatalogPort;
-  config: { topK: number; similarityFloor: number };
+  /**
+   * Retrieval knobs plus the per-tool access settings (a full
+   * ResolvedBrainConfig satisfies this). Access fields are optional so unit
+   * tests can pass a minimal config; a missing field means 'visitor'
+   * (available to everyone), matching the schema defaults.
+   */
+  config: { topK: number; similarityFloor: number } & Partial<Record<ToolAccessKey, ToolAccess>>;
+  /**
+   * The requester's lifecycle tier, gating the belt and steering variants.
+   * Production always passes it (answer-service resolves it per request);
+   * absent means 'subscriber' (the full belt) purely as a test convenience.
+   */
+  audience?: AudienceTier;
   /**
    * The request's provenance registry. search_notes appends every chunk it
    * returns, and numbers its results against the registry's global index —

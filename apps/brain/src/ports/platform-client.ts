@@ -49,6 +49,7 @@ export function createPlatformPorts(opts: {
             goalLabel: string | null;
             segment: string | null;
             traits: Array<{ key: string; label: string; value: string }>;
+            subscribed?: boolean;
           };
           return {
             firstName: body.firstName,
@@ -67,6 +68,9 @@ export function createPlatformPorts(opts: {
             // Orders and protocols arrive with commerce; the shape is ready.
             orders: [],
             protocols: [],
+            // Absent on an older api build means false: never lift a tier on
+            // a guess.
+            subscribed: body.subscribed === true,
           };
         } catch (error) {
           console.warn(`platform profile read failed (${(error as Error).message?.slice(0, 120)})`);
