@@ -51,9 +51,11 @@ Page 10 (protocol readiness) arrives with Phase 5; see section 7 of the brief. *
 
 ## Shop (CarePortals certification storefront)
 
-The bare-bones public shopping flow built for the certification audit: `/home` → `/shop` →
-`/shop/[id]` → `/checkout`, handing off to CarePortals' hosted checkout. Behind the `shop`
-flag; the permanent `/terms` `/privacy` `/faq` pages ship alongside it.
+The bare-bones public shopping flow built for the certification audit, now live at the
+site root: `/` → `/shop` → `/shop/[id]` → `/checkout`, handing off to CarePortals' hosted
+checkout (`/home`, the landing's original URL, 308s to `/`). Behind the `shop` flag, which
+outranks every other flag at the root; the permanent `/terms` `/privacy` `/faq` pages ship
+alongside it.
 
 | Doc | What it covers |
 |---|---|

@@ -142,15 +142,17 @@ product, Notion to the whole team. Same facts, three voices. Full doc:
 
 ## Access model (four tiers)
 
-1. **Public**: `/waitlist` (+ `?ref=` referral links), the certification storefront, and the
-   legal pages. The waitlist sits behind the `waitlist` feature flag (seeded on by migration,
-   toggled in `/admin/flags`); off, `/waitlist` and the public `/api/waitlist*` endpoints close
-   and visitors land on `/coming-soon` ("Something special is coming"). The **storefront**
-   (`/home`, `/shop`, `/shop/[id]`, `/checkout` — `apps/web/app/(shop)/`, docs in
-   `docs/shop/00-plan.md`) pulls products and carts live from the CarePortals Public API
-   (`lib/careportals/`) and hands checkout off to the hosted portal at care.joicehealth.com;
-   it sits behind the `shop` flag (seeded ON — the audit is the point; toggling it off in
-   `/admin/flags` is the post-audit kill switch). `/terms`, `/privacy`, `/faq`
+1. **Public**: the storefront at the site root, `/waitlist` (+ `?ref=` referral links), and
+   the legal pages. The **storefront** (`/`, `/shop`, `/shop/[id]`, `/checkout` —
+   `apps/web/app/(shop)/`, docs in `docs/shop/00-plan.md`; the landing's original `/home`
+   URL 308s to `/`) is live at joicehealth.com since sc-251: it pulls products and carts
+   live from the CarePortals Public API (`lib/careportals/`) and hands checkout off to the
+   hosted portal at care.joicehealth.com. It sits behind the `shop` flag, which **outranks
+   every other flag at the root**: toggling it off in `/admin/flags` is the kill switch
+   that returns the public to `/waitlist`. The waitlist sits behind the `waitlist` feature
+   flag (seeded on by migration, toggled in `/admin/flags`); off, `/waitlist` and the
+   public `/api/waitlist*` endpoints close and visitors land on `/coming-soon` ("Something
+   special is coming"). `/terms`, `/privacy`, `/faq`
    (`app/(legal)/`) are permanent, flag-free public pages. The intake flow
    (`/get-started`, `/api/onboarding/*`) sits behind the `onboarding` flag (seeded off) and,
    like every other page, behind the team gate until launch.

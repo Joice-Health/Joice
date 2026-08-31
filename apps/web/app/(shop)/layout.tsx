@@ -3,12 +3,11 @@ import { ShopNav } from '@/components/shop/shop-nav';
 import { ShopFooter } from '@/components/shop/shop-footer';
 
 /**
- * Shell for the public certification storefront (docs/shop/00-plan.md): the
- * (site) shell minus everything that leads into the gated site (announcement
- * bar, companion pill, the nav's link list). Noindexed while pre-launch;
- * auditors get URLs directly. Pages gate themselves with requireShopEnabled().
+ * Shell for the public storefront (docs/shop/00-plan.md): the (site) shell
+ * minus everything that leads into the gated site (announcement bar, companion
+ * pill, the nav's link list). Indexable since the storefront became the live
+ * site root (sc-251). Pages gate themselves with requireShopEnabled().
  */
-export const metadata = { robots: { index: false, follow: false } };
 
 export default function ShopLayout({ children }: { children: ReactNode }) {
   return (
