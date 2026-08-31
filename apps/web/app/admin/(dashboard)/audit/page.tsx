@@ -4,12 +4,13 @@ import { Fragment, useState } from 'react';
 import { Button } from '@joice/ui';
 import { useAuditLogs } from '@joice/api-client';
 import {
-  Panel,
   EmptyState,
   ErrorState,
   PageHeader,
   Pagination,
+  Panel,
   Table,
+  TableSkeleton,
   Td,
   Th,
 } from '@/components/admin/ui';
@@ -21,7 +22,7 @@ export default function AdminAuditPage() {
 
   return (
     <>
-      <PageHeader title="Audit log" />
+      <PageHeader eyebrow="Platform" title="Audit log" />
 
       <Panel>
         {query.isError ? (
@@ -41,6 +42,7 @@ export default function AdminAuditPage() {
                 </tr>
               </thead>
               <tbody>
+                {query.isPending ? <TableSkeleton cols={5} /> : null}
                 {query.data?.items.map((log) => {
                   const expanded = expandedId === log.id;
                   const hasDetail = log.before != null || log.after != null;
@@ -69,21 +71,17 @@ export default function AdminAuditPage() {
                       </tr>
                       {expanded ? (
                         <tr>
-                          <Td colSpan={5} className="bg-white/40">
+                          <Td colSpan={5} className="bg-canvas/60">
                             <div className="grid grid-cols-1 gap-4 py-2 sm:grid-cols-2">
                               <div>
-                                <p className="mb-1 text-xs font-semibold text-muted uppercase">
-                                  Before
-                                </p>
-                                <pre className="overflow-x-auto rounded-card bg-ink/5 p-3 font-mono text-xs">
+                                <p className="mono-label mb-1 text-muted">Before</p>
+                                <pre className="overflow-x-auto rounded-xl bg-ink/5 p-3 font-mono text-xs">
                                   {JSON.stringify(log.before ?? null, null, 2)}
                                 </pre>
                               </div>
                               <div>
-                                <p className="mb-1 text-xs font-semibold text-muted uppercase">
-                                  After
-                                </p>
-                                <pre className="overflow-x-auto rounded-card bg-ink/5 p-3 font-mono text-xs">
+                                <p className="mono-label mb-1 text-muted">After</p>
+                                <pre className="overflow-x-auto rounded-xl bg-ink/5 p-3 font-mono text-xs">
                                   {JSON.stringify(log.after ?? null, null, 2)}
                                 </pre>
                               </div>
