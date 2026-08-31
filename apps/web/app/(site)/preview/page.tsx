@@ -8,9 +8,10 @@ import { Teasers } from '@/components/home/teasers';
 import { GetStartedCta } from '@/components/ui/get-started-cta';
 
 /**
- * Main site home, team-gated until SITE_LAUNCHED (middleware redirects the
- * public to /waitlist). Copy is placeholder until the content pass. Nav/footer
- * live in the (site) layout; sections live in components/home.
+ * The future main-site landing, parked at /preview while the storefront owns
+ * the site root (sc-251): team-gated until SITE_LAUNCHED (middleware redirects
+ * the public to /waitlist). Copy is placeholder until the content pass.
+ * Nav/footer live in the (site) layout; sections live in components/home.
  */
 export default function Home() {
   return (

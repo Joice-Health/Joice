@@ -15,8 +15,12 @@ web-specific detail.
 - `/coming-soon`: public. The bare "Something special is coming." page shown while the waitlist
   flag is off; redirects back to `/waitlist` once it is on. Must stay in `PUBLIC_PATHS` or the
   preview gate bounces it to `/waitlist` and loops.
-- `/home`, `/shop`, `/shop/[id]`, `/checkout` — public, the certification storefront
-  (`app/(shop)/`, docs: `docs/shop/00-plan.md`). Every page opens with
+- `/`, `/shop`, `/shop/[id]`, `/checkout` — public, the storefront (`app/(shop)/`, docs:
+  `docs/shop/00-plan.md`), live at the joicehealth.com root since sc-251. The root page is
+  the storefront landing; `/home`, its original URL, 308s to `/` via `next.config.ts`
+  because auditors hold direct links. The `shop` flag outranks every other flag at the
+  root: on, the landing renders; off, the public falls to `/waitlist` and from there to
+  `/coming-soon` when the waitlist flag is off too. Every page opens with
   `requireShopEnabled()` (`lib/shop-gate.ts`) AND exports `dynamic = 'force-dynamic'`: a
   statically prerendered page bakes the build-time flag answer (always off, CI has no API)
   into the artifact as a 307, and the live flag can never open it. The `shop` flag off
@@ -39,8 +43,10 @@ web-specific detail.
   answers (edits come from an approved doc, and the insurance answer deliberately tracks
   Terms section 5); `/privacy` and `/terms` carry their approved copy verbatim (the copy
   of record, its own punctuation kept); no legal placeholder remains.
-- `/` and future site pages — final URLs, gated by `middleware.ts` until `SITE_LAUNCHED=true`;
-  anonymous → redirected to `/waitlist` (public must never see a login).
+- Future site pages (`/explore`, `/story`, ... and the future main-site landing, parked at
+  `/preview` while the storefront owns `/`) — gated by `middleware.ts` until
+  `SITE_LAUNCHED=true`; anonymous → redirected to `/waitlist` (public must never see a
+  login).
 - `/get-started`: the intake flow. The server component reads the `onboarding` flag
   (`flagEnabled`): on, it mounts `components/onboarding/flow.tsx` (the server-driven step
   runner over the `@joice/api-client` intake hooks); off, the companion lead summary. The runner

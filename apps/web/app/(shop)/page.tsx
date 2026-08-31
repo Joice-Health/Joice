@@ -5,8 +5,13 @@ import { HowItWorks } from '@/components/home/how-it-works';
 import { ShopCta } from '@/components/shop/shop-cta';
 
 export const metadata: Metadata = {
-  title: 'Home · Joice',
+  title: 'Joice · Clinician-guided peptide care',
   description: 'Clinician-guided peptide care, priced near cost, on purpose.',
+  openGraph: {
+    title: 'Joice · Clinician-guided peptide care',
+    description: 'Clinician-guided peptide care, priced near cost, on purpose.',
+    type: 'website',
+  },
 };
 
 /**
@@ -18,9 +23,13 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 /**
- * The storefront landing: the main-site landing stripped to hero, the three
- * steps (HowItWorks is link-free, so it is shared, not copied) and the closing
- * statement. Every action leads to /shop.
+ * The site root: the storefront landing, live at joicehealth.com. The `shop`
+ * flag outranks every other flag here: flag on, this page renders; flag off,
+ * requireShopEnabled sends the public to /waitlist (which itself falls back to
+ * /coming-soon when the waitlist flag is off). The old /home URL 308s here via
+ * next.config.ts. The team's preview of the future main-site landing lives at
+ * /preview. Hero, the three steps (HowItWorks is link-free, so it is shared,
+ * not copied) and the closing statement; every action leads to /shop.
  */
 export default async function ShopHomePage() {
   await requireShopEnabled();

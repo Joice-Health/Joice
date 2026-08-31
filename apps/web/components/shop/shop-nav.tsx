@@ -23,7 +23,7 @@ export function ShopNav() {
           </a>
         </nav>
 
-        <Link href="/home" aria-label="Joice home" className="justify-self-center">
+        <Link href="/" aria-label="Joice home" className="justify-self-center">
           <BrandMark />
         </Link>
 

@@ -3,10 +3,11 @@ import { ShopNav } from '@/components/shop/shop-nav';
 import { ShopFooter } from '@/components/shop/shop-footer';
 
 /**
- * Shell for the public certification storefront (docs/shop/00-plan.md): the
- * (site) shell minus everything that leads into the gated site (announcement
- * bar, companion pill, the nav's link list). Noindexed while pre-launch;
- * auditors get URLs directly. Pages gate themselves with requireShopEnabled().
+ * Shell for the public storefront (docs/shop/00-plan.md): the (site) shell
+ * minus everything that leads into the gated site (announcement bar, companion
+ * pill, the nav's link list). Live at the site root but deliberately
+ * noindexed: Shaun's call (sc-251), the storefront is reachable, not
+ * searchable. Pages gate themselves with requireShopEnabled().
  */
 export const metadata = { robots: { index: false, follow: false } };
 

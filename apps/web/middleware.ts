@@ -29,16 +29,19 @@ const isMemberRoute = createRouteMatcher(['/welcome(.*)']);
 
 // /health is the ALB liveness check (app/health/route.ts): it must answer 200
 // with no cookie, so it sits outside the gate.
-// /home through /checkout are the certification storefront (docs/shop/00-plan.md):
-// the pages themselves check the `shop` flag and redirect to /waitlist when it
-// is off. /terms, /privacy and /faq are permanent legal pages, flag-free.
-// Note /shop covers /shop/[id] via the prefix match; /products stays gated.
+// / through /checkout are the public storefront (docs/shop/00-plan.md): the
+// root is the storefront landing (sc-251; /home 308s to it in next.config.ts)
+// and the pages themselves check the `shop` flag, which outranks every other
+// flag, redirecting to /waitlist when it is off. '/' matches only exactly
+// (nothing starts with '//'), so every other path stays gated. /terms,
+// /privacy and /faq are permanent legal pages, flag-free. Note /shop covers
+// /shop/[id] via the prefix match; /products and /preview stay gated.
 const PUBLIC_PATHS = [
+  '/',
   '/waitlist',
   '/coming-soon',
   '/team',
   '/health',
-  '/home',
   '/shop',
   '/checkout',
   '/terms',
