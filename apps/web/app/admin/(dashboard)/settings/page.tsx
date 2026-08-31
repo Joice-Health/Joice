@@ -92,7 +92,7 @@ export default function AdminSettingsPage() {
               pattern="[a-z0-9_.\-]+"
               title="Lowercase letters, digits, _ . - only"
               required
-              className="h-10 max-w-xs bg-canvas font-mono text-sm"
+              className="h-10 max-w-xs bg-canvas font-code text-sm"
             />
             <Input
               value={description}
@@ -109,7 +109,7 @@ export default function AdminSettingsPage() {
             aria-label="Setting value (JSON)"
             required
             rows={3}
-            className="max-w-2xl font-mono"
+            className="max-w-2xl font-code"
           />
           {parseError ? (
             <p className="text-sm text-danger" role="alert">
@@ -148,7 +148,7 @@ export default function AdminSettingsPage() {
                   <tr key={setting.id}>
                     <Td className="text-xs">{setting.key}</Td>
                     <Td>
-                      <code className="block max-w-md truncate font-mono text-xs">
+                      <code className="block max-w-md truncate font-code text-xs">
                         {JSON.stringify(setting.value)}
                       </code>
                     </Td>

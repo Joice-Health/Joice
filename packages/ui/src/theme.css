@@ -46,6 +46,9 @@
   --font-sans: var(--font-ginto), 'Helvetica Neue', Arial, sans-serif;
   --font-display: var(--font-ginto-nord), 'Arial Narrow', 'Helvetica Neue', sans-serif;
   --font-mono: var(--font-gaisyr), 'Courier New', ui-monospace, monospace;
+  /* Code, JSON and technical values: a neutral system monospace. Gaisyr's slab
+     details read as a serif at small sizes, so it never carries code. */
+  --font-code: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
 
   /* Tracking per face, from the type specimen. */
   --tracking-sans: 0.01em;

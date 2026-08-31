@@ -139,4 +139,7 @@ root CLAUDE.md and `docs/design/01-design-system.md`. In practice:
   colours: bad news is the `danger` token. Titles and panel headers are `display`, form
   labels `mono-label`; nav items, table headers (tracked uppercase ink) and cell values are
   the sans face, and the mono face never appears in nav items or data rows (it reads as a
-  serif at small sizes). One solid button per page. Design brief: `docs/admin/00-plan.md`.
+  serif at small sizes). JSON boxes, key/model inputs and `pre`/`code` blocks use
+  `font-code` (system monospace token), never `font-mono`; bare `pre` needs the class
+  explicitly or preflight hands it Gaisyr. One solid button per page. Design brief:
+  `docs/admin/00-plan.md`.

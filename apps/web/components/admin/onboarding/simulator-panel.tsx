@@ -103,7 +103,7 @@ export function SimulatorPanel() {
               value={extra}
               onChange={(e) => setExtra(e.target.value)}
               rows={6}
-              className="font-mono text-xs"
+              className="font-code text-xs"
             />
           </label>
           <div className="flex flex-col gap-3">
@@ -175,7 +175,7 @@ function ResultView({ result }: { result: SimulateResult }) {
                   <span className="mono-label mr-2 text-muted">{entry.path}</span>
                   <WhySummary why={entry.why} />
                 </summary>
-                <pre className="mt-2 overflow-x-auto rounded-xl bg-canvas p-3 text-xs">{JSON.stringify(entry.why, null, 2)}</pre>
+                <pre className="mt-2 overflow-x-auto rounded-xl bg-canvas p-3 font-code text-xs">{JSON.stringify(entry.why, null, 2)}</pre>
               </details>
             </li>
           ))}
@@ -200,7 +200,7 @@ function ResultView({ result }: { result: SimulateResult }) {
                     {match.label}
                     <span className="mono-label ml-2 text-muted">priority {match.priority}</span>
                   </summary>
-                  <pre className="mt-2 overflow-x-auto rounded-xl bg-canvas p-3 text-xs">{JSON.stringify(match.why, null, 2)}</pre>
+                  <pre className="mt-2 overflow-x-auto rounded-xl bg-canvas p-3 font-code text-xs">{JSON.stringify(match.why, null, 2)}</pre>
                 </details>
               </li>
             ))}
@@ -210,7 +210,7 @@ function ResultView({ result }: { result: SimulateResult }) {
 
       <Panel>
         <PanelHeader className="mb-2">Derived traits at the end</PanelHeader>
-        <pre className="overflow-x-auto rounded-xl bg-canvas p-3 text-xs">{JSON.stringify(result.traits, null, 2)}</pre>
+        <pre className="overflow-x-auto rounded-xl bg-canvas p-3 font-code text-xs">{JSON.stringify(result.traits, null, 2)}</pre>
       </Panel>
     </>
   );

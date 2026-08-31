@@ -82,7 +82,7 @@ export function RunResults({
                       {(result.citations as { sourcePath?: string }[]).map((c, j) => (
                         <span
                           key={j}
-                          className="rounded-full bg-brand-100 px-2.5 py-0.5 font-mono text-[10px] text-brand-800"
+                          className="rounded-full bg-brand-100 px-2.5 py-0.5 font-code text-[10px] text-brand-800"
                         >
                           {c.sourcePath ?? 'source'}
                         </span>

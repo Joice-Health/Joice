@@ -131,7 +131,7 @@ export function QuestionEditor({
       {isCustomTrait(question.trait) ? (
         <label className="flex flex-col gap-1">
           <span className="mono-label text-muted">Custom trait key (custom.snake_case; always marketing tier)</span>
-          <Input value={question.trait} onChange={(e) => set({ trait: e.target.value })} className="max-w-sm bg-canvas font-mono text-sm" />
+          <Input value={question.trait} onChange={(e) => set({ trait: e.target.value })} className="max-w-sm bg-canvas font-code text-sm" />
         </label>
       ) : null}
 
@@ -187,7 +187,7 @@ function OptionList({
               value={option.value}
               placeholder="value"
               onChange={(e) => onChange(options.map((o, j) => (j === i ? { ...o, value: e.target.value } : o)))}
-              className="h-9 max-w-44 bg-canvas px-3 font-mono text-xs"
+              className="h-9 max-w-44 bg-canvas px-3 font-code text-xs"
             />
             <Input
               aria-label="Label"

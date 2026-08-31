@@ -110,7 +110,7 @@ export default function AdminEvalRunPage({ params }: { params: Promise<{ id: str
               {overrideKeys.map((key) => (
                 <span
                   key={key}
-                  className="rounded-full bg-brand-100 px-2.5 py-0.5 font-mono text-[11px] text-brand-800"
+                  className="rounded-full bg-brand-100 px-2.5 py-0.5 font-code text-[11px] text-brand-800"
                 >
                   {key} = {JSON.stringify(overrides[key])}
                 </span>
@@ -137,7 +137,7 @@ export default function AdminEvalRunPage({ params }: { params: Promise<{ id: str
                   This saves the overrides to the LIVE settings (audit-logged as a normal
                   settings change):
                 </p>
-                <ul className="mb-3 space-y-1 font-mono text-xs text-muted">
+                <ul className="mb-3 space-y-1 font-code text-xs text-muted">
                   {overrideKeys.map((key) => (
                     <li key={key}>
                       {key}: {resolved ? JSON.stringify(resolved[key]) : '?'} {'->'}{' '}
@@ -167,7 +167,7 @@ export default function AdminEvalRunPage({ params }: { params: Promise<{ id: str
           <summary className="cursor-pointer text-xs text-muted">
             Full configuration this run executed with
           </summary>
-          <pre className="mt-2 max-h-80 overflow-auto rounded-xl bg-canvas p-3 font-mono text-xs text-ink">
+          <pre className="mt-2 max-h-80 overflow-auto rounded-xl bg-canvas p-3 font-code text-xs text-ink">
             {JSON.stringify(run.configSnapshot, null, 2)}
           </pre>
         </details>

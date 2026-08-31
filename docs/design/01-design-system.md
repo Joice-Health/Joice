@@ -43,6 +43,10 @@ GROWTH / (99% PURITY)", so care areas, benefits, page titles, closing statements
 Because only Light ships, `html { font-synthesis: none }` stops the browser faking bold and
 oblique. Emphasis comes from size, case, or a bracket, never weight.
 
+Code, JSON and technical values use the `--font-code` token (a neutral system monospace:
+SF Mono/Menlo/Consolas), never Gaisyr, whose slab details read as a serif at small sizes.
+Gaisyr is a voice for labels, nav, buttons and indices, not a code face.
+
 ## Devices
 
 - **Brackets** mark a variable inside the system: the person (`[ you ]`), a place in a real

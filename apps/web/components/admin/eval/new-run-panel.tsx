@@ -175,7 +175,7 @@ export function NewRunPanel({ hasActiveRun }: { hasActiveRun: boolean }) {
                 value={knobs.model}
                 onChange={(e) => set('model', e.target.value)}
                 placeholder="Bedrock model id"
-                className="h-10 w-72 max-w-full bg-canvas font-mono text-xs"
+                className="h-10 w-72 max-w-full bg-canvas font-code text-xs"
               />
             ) : null}
           </div>

@@ -78,10 +78,13 @@ and new `toast.tsx` / `confirm.tsx` / `shell.tsx`. The key moves:
 | Mutation feedback | swapped button labels, ad hoc lines | toast (glass pill, bottom right) |
 | Destructive confirm | `window.confirm()` | styled centered dialog, promise API |
 
-One token is added to [theme.css](../../packages/ui/src/theme.css):
+Two tokens are added to [theme.css](../../packages/ui/src/theme.css):
 `--color-danger: oklch(0.5 0.19 29)`, the single semantic red for errors, failed states and
 destructive actions (red already leaked in unofficially via `text-red-600` and
-`ring-red-700/50`).
+`ring-red-700/50`), and `--font-code`, a neutral system monospace (SF Mono/Menlo/Consolas)
+for JSON boxes, key and model inputs, and `pre`/`code` blocks; Gaisyr Mono never carries
+code (its slab details read as a serif), and bare `pre` elements must set `font-code`
+explicitly because Tailwind's preflight would hand them Gaisyr.
 
 ## 4. Implementation plan
 
@@ -95,9 +98,9 @@ Phases land in order; the app stays shippable between them.
 3. **Phase 3, sweeps**: every page through the ten-point checklist (Panel, PageHeader with
    eyebrow/breadcrumbs, no inert weights, ink table text, kit controls, skeletons,
    EmptyState actions, toasts, confirms, width discipline). Page-specific work: the brain
-   settings page gets a `max-w-3xl` column, an `xl:` sticky anchor rail and a sticky glass
-   save bar; the onboarding hub becomes an indexed hairline list now that its sub-pages are
-   in the nav.
+   settings page becomes a tabbed control panel (one concern per underline tab, a `max-w-4xl`
+   column, and a sticky glass save bar whose one form object spans every tab); the
+   onboarding hub becomes an indexed hairline list now that its sub-pages are in the nav.
 4. **Done-check**: greps that must return zero in the admin tree: inert weight classes,
    `glass` outside floating chrome, `shadow-[`, `window.confirm`, off-system palette
    colors, `rounded-card`, `ring-brand-300`, `border-ink/5`, lone "Loading..." lines.
@@ -145,6 +148,17 @@ migrate later, separately.
 
 **No persistent desktop top bar (2026-08-31).** The per-page PageHeader is the chrome; a
 second sticky bar would duplicate it and cost vertical space in a data-dense tool.
+
+**The brain page is tabs, not a scroll with a side rail (2026-08-31).** The first cut was a
+`max-w-3xl` column with anchor links on the right; on a full-width admin that read as a
+narrow magazine column beside dead space. Six underline tabs (sans, active carries a
+brand-600 rule) show one concern at a time in a `max-w-4xl` column; hidden tabs stay
+mounted, so the single form object and the sticky save bar span all of them and Save always
+saves everything.
+
+**Code wears `--font-code`, never Gaisyr (2026-08-31).** JSON text boxes, key and model
+inputs, and `pre`/`code` blocks looked serif in Gaisyr Mono. They now use the neutral
+system monospace token, which keeps code alignment without the slab look.
 
 **The mono face stays out of nav items and data rows (2026-08-31).** Gaisyr Mono's slab
 details read as a serif at small sizes and cost scanability, so navigation items, table

@@ -96,7 +96,7 @@ export default function AdminFlagsPage() {
               pattern="[a-z0-9_.\-]+"
               title="Lowercase letters, digits, _ . - only"
               required
-              className="h-10 max-w-xs bg-canvas font-mono text-sm"
+              className="h-10 max-w-xs bg-canvas font-code text-sm"
             />
             <Input
               value={description}

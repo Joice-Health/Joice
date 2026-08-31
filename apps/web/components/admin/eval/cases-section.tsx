@@ -171,7 +171,7 @@ export function CasesSection() {
                   value={draft.expectSources}
                   onChange={(e) => set('expectSources', e.target.value)}
                   rows={3}
-                  className="w-80 font-mono text-xs"
+                  className="w-80 font-code text-xs"
                 />
               </Field>
               <Field label="Expected tool" hint="Only judged when tool mode is on.">

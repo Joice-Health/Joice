@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Button, Input } from '@joice/ui';
+import { Button, Input, cn } from '@joice/ui';
 import {
   useBrainSettings,
   useResetBrainSettings,
@@ -78,41 +78,47 @@ const REWRITE_MODEL_PRESETS = [
 
 const VOICE_PRESETS = ['Ruth', 'Danielle', 'Joanna', 'Salli', 'Tiffany', 'Matthew', 'Stephen'] as const;
 
-/** The in-page sections; ids anchor the side rail. */
-const SECTIONS = [
-  { id: 'persona', label: 'Persona & tone' },
-  { id: 'copy', label: 'Messages & copy' },
-  { id: 'companion', label: 'Companion' },
-  { id: 'guardrails', label: 'Guardrails' },
-  { id: 'retrieval', label: 'Retrieval & model' },
-  { id: 'floor', label: 'Always enforced' },
+/** One concern per tab; the form stays one object across all of them. */
+const TABS = [
+  { key: 'persona', label: 'Persona & tone' },
+  { key: 'copy', label: 'Messages & copy' },
+  { key: 'companion', label: 'Companion' },
+  { key: 'guardrails', label: 'Guardrails' },
+  { key: 'retrieval', label: 'Retrieval & model' },
+  { key: 'floor', label: 'Safety floor' },
 ] as const;
+type TabKey = (typeof TABS)[number]['key'];
 
-function SectionHeading({ children }: { children: string }) {
-  return <h2 className="display mb-4 text-lg text-ink">{children}</h2>;
-}
-
-function SectionAnchors({ className }: { className?: string }) {
+function TabBar({ tab, onSelect }: { tab: TabKey; onSelect: (tab: TabKey) => void }) {
   return (
-    <nav aria-label="Sections" className={className}>
-      {SECTIONS.map((s) => (
-        <a
-          key={s.id}
-          href={`#${s.id}`}
-          className="block py-1 text-sm text-muted transition-colors hover:text-ink"
+    <nav aria-label="Settings sections" className="mb-6 flex flex-wrap gap-x-6 border-b border-line">
+      {TABS.map((t) => (
+        <button
+          key={t.key}
+          type="button"
+          onClick={() => onSelect(t.key)}
+          aria-current={tab === t.key ? 'page' : undefined}
+          className={cn(
+            '-mb-px border-b-2 pb-3 text-sm transition-colors',
+            tab === t.key
+              ? 'border-brand-600 text-ink'
+              : 'border-transparent text-muted hover:text-ink',
+          )}
         >
-          {s.label}
-        </a>
+          {t.label}
+        </button>
       ))}
     </nav>
   );
 }
 
 /**
- * Admin control panel for the chatbot brain. Edits the single admin-managed
- * config that drives persona, tone, guardrails, retrieval, model, and voice;
- * changes go live within ~30 seconds and every save is audit-logged. The
- * safety floor shown at the bottom is code-level and not editable here.
+ * Admin control panel for the chatbot brain, one concern per tab. Edits the
+ * single admin-managed config that drives persona, tone, guardrails,
+ * retrieval, model, and voice; changes go live within ~30 seconds and every
+ * save is audit-logged. Hidden tabs stay mounted so the one form object and
+ * the save bar span all of them. The safety floor tab is code-level and
+ * read-only.
  */
 export default function AdminBrainPage() {
   const query = useBrainSettings();
@@ -122,6 +128,7 @@ export default function AdminBrainPage() {
   const confirm = useConfirm();
 
   const [form, setForm] = useState<BrainForm | null>(null);
+  const [tab, setTab] = useState<TabKey>('persona');
   const [topicDraft, setTopicDraft] = useState('');
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const seededAt = useRef<number>(0);
@@ -215,13 +222,11 @@ export default function AdminBrainPage() {
         </Button>
       </PageHeader>
 
-      <SectionAnchors className="mb-6 flex flex-wrap gap-x-4 gap-y-1 xl:hidden" />
+      <TabBar tab={tab} onSelect={setTab} />
 
-      <div className="flex items-start gap-10">
-        <div className="flex min-w-0 max-w-3xl flex-1 flex-col gap-6 pb-24">
+      <div className="flex max-w-4xl flex-col gap-6 pb-10">
           {/* --- Persona & tone --- */}
-          <Panel id="persona" className="scroll-mt-24">
-            <SectionHeading>Persona &amp; tone</SectionHeading>
+          <Panel className={tab === 'persona' ? undefined : 'hidden'}>
             <div className="flex flex-col gap-4">
               <div className="flex flex-wrap gap-4">
                 <Field label="Name">
@@ -324,8 +329,7 @@ export default function AdminBrainPage() {
           </Panel>
 
           {/* --- Messages & copy --- */}
-          <Panel id="copy" className="scroll-mt-24">
-            <SectionHeading>Messages &amp; copy</SectionHeading>
+          <Panel className={tab === 'copy' ? undefined : 'hidden'}>
             <div className="flex flex-col gap-4">
               <Field label="When the notes don’t cover a question" hint="Returned verbatim instead of an answer.">
                 <AdminTextarea
@@ -376,9 +380,8 @@ export default function AdminBrainPage() {
           </Panel>
 
           {/* --- Companion (pre-onboarding capture) --- */}
-          <Panel id="companion" className="scroll-mt-24">
-            <SectionHeading>Companion (pre-onboarding)</SectionHeading>
-            <p className="-mt-2 mb-4 text-sm text-muted">
+          <Panel className={tab === 'companion' ? undefined : 'hidden'}>
+            <p className="mb-4 text-sm text-muted">
               The words the capture flow says on first contact. The fields it collects and their
               validation are fixed in code; only this copy is editable.
             </p>
@@ -440,8 +443,7 @@ export default function AdminBrainPage() {
           </Panel>
 
           {/* --- Guardrails --- */}
-          <Panel id="guardrails" className="scroll-mt-24">
-            <SectionHeading>Guardrails</SectionHeading>
+          <Panel className={tab === 'guardrails' ? undefined : 'hidden'}>
             <div className="flex flex-col gap-4">
               <Field
                 label="Restricted topics"
@@ -490,15 +492,14 @@ export default function AdminBrainPage() {
                   onChange={(e) => set('customInstructions', e.target.value)}
                   rows={4}
                   maxLength={4000}
-                  className="font-mono text-xs"
+                  className="font-code text-xs"
                 />
               </Field>
             </div>
           </Panel>
 
           {/* --- Retrieval & model --- */}
-          <Panel id="retrieval" className="scroll-mt-24">
-            <SectionHeading>Retrieval &amp; model</SectionHeading>
+          <Panel className={tab === 'retrieval' ? undefined : 'hidden'}>
             <div className="flex flex-wrap gap-6">
               <Field label="Notes per answer (topK)" hint="How many note excerpts to consider. 1–20.">
                 {numberInput('topK', 1, 20)}
@@ -537,7 +538,7 @@ export default function AdminBrainPage() {
                       value={form.model}
                       onChange={(e) => set('model', e.target.value)}
                       placeholder="Bedrock model id"
-                      className="h-10 w-72 max-w-full bg-canvas font-mono text-xs"
+                      className="h-10 w-72 max-w-full bg-canvas font-code text-xs"
                     />
                   ) : null}
                 </div>
@@ -662,21 +663,21 @@ export default function AdminBrainPage() {
           </Panel>
 
           {/* --- Safety floor (read-only) --- */}
-          <Panel id="floor" className="scroll-mt-24">
-            <SectionHeading>Always enforced</SectionHeading>
-            <p className="-mt-2 mb-3 text-sm text-muted">
+          <Panel className={tab === 'floor' ? undefined : 'hidden'}>
+            <p className="mb-3 text-sm text-muted">
               These rules are built into the code and cannot be changed or removed from this page.
             </p>
-            <pre className="rounded-xl bg-canvas p-4 font-mono text-xs whitespace-pre-wrap text-ink">
+            <pre className="rounded-xl bg-canvas p-4 font-code text-xs whitespace-pre-wrap text-ink">
               {form.toolsEnabled && query.data.toolSafetyFloor
                 ? query.data.toolSafetyFloor
                 : query.data.safetyFloor}
             </pre>
           </Panel>
 
-          {/* Sticky save bar: frost floats over content, so glass is sanctioned here. */}
+          {/* Sticky save bar: frost floats over content, so glass is sanctioned here.
+              The form is one object, so it saves every tab's changes at once. */}
           <div className="glass sticky bottom-4 z-30 flex items-center justify-between gap-4 rounded-full py-3 pr-3 pl-5">
-            <span className="mono-label text-muted">
+            <span className="text-sm text-muted">
               {update.isPending
                 ? 'Saving…'
                 : dirty
@@ -689,9 +690,6 @@ export default function AdminBrainPage() {
               Save changes +
             </Button>
           </div>
-        </div>
-
-        <SectionAnchors className="sticky top-8 hidden w-44 shrink-0 self-start xl:block" />
       </div>
     </>
   );

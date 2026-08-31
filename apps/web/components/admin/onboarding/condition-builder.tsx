@@ -74,7 +74,7 @@ export function ConditionBuilder({
         <p className="mt-1 text-xs text-muted">
           This rule is nested beyond what the builder edits; it is kept as written.
         </p>
-        <pre className="mt-2 overflow-x-auto rounded-xl bg-canvas p-3 text-xs">{JSON.stringify(value, null, 2)}</pre>
+        <pre className="mt-2 overflow-x-auto rounded-xl bg-canvas p-3 font-code text-xs">{JSON.stringify(value, null, 2)}</pre>
       </div>
     );
   }

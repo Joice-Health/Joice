@@ -75,13 +75,13 @@ export default function AdminAuditPage() {
                             <div className="grid grid-cols-1 gap-4 py-2 sm:grid-cols-2">
                               <div>
                                 <p className="mono-label mb-1 text-muted">Before</p>
-                                <pre className="overflow-x-auto rounded-xl bg-ink/5 p-3 font-mono text-xs">
+                                <pre className="overflow-x-auto rounded-xl bg-ink/5 p-3 font-code text-xs">
                                   {JSON.stringify(log.before ?? null, null, 2)}
                                 </pre>
                               </div>
                               <div>
                                 <p className="mono-label mb-1 text-muted">After</p>
-                                <pre className="overflow-x-auto rounded-xl bg-ink/5 p-3 font-mono text-xs">
+                                <pre className="overflow-x-auto rounded-xl bg-ink/5 p-3 font-code text-xs">
                                   {JSON.stringify(log.after ?? null, null, 2)}
                                 </pre>
                               </div>
