@@ -69,6 +69,10 @@ web-specific detail.
   (hub, flow editor, simulator, versions, service areas, funnel, requests) over the
   `@joice/api-client` admin onboarding hooks; the editor edits drafts only and the inline help
   must keep saying what `docs/onboarding/05-admin-guide.md` says.
+  The admin shell is full width: a sticky dark `bg-ink` rail with the grouped nav
+  (`components/admin/nav.tsx`, all onboarding sub-pages included) and, below `lg`, a frosted
+  top bar opening a full-screen ink drawer (`components/admin/shell.tsx`, which also mounts
+  the toast and confirm providers). Design brief: `docs/admin/00-plan.md`.
 
 `middleware.ts` composes both gates and has a no-Clerk fallback: without
 `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` at build time, `/admin` is unreachable by design — if
@@ -125,3 +129,12 @@ root CLAUDE.md and `docs/design/01-design-system.md`. In practice:
 - The nav (`components/layout/site-nav.tsx`) is full-width, sticky and frosted with no rule
   under it; page-level CSS that is not a token (the Ask microphone, the organic image field)
   lives in `app/globals.css`.
+- **Admin** builds only from the kit in `components/admin/`: `ui.tsx` (Panel/PanelHeader,
+  PageHeader with eyebrow/breadcrumbs, Table/Th/Td, Badge, Toggle, skeletons, states),
+  `fields.tsx` (Field, AdminSelect, AdminTextarea, SearchInput: cream pills on the white
+  panels, one focus ring `ring-brand-600/50`), `toast.tsx` (`useToast`), `confirm.tsx`
+  (`useConfirm`, replaces `window.confirm`), `shell.tsx`. No weight classes (they render as
+  Light and are banned in the admin tree), no `glass` outside the shell top bar, toasts and
+  the brain save bar, no `rounded-card` on data surfaces, no Tailwind default palette
+  colours: bad news is the `danger` token. Titles are `display`, labels and table headers
+  `mono-label`. One solid button per page. Design brief: `docs/admin/00-plan.md`.

@@ -17,6 +17,7 @@ tokens; the tokens themselves are the source of truth.
 | `muted` | oklch(0.52 0.02 105) | Secondary text, 4.8:1 on cream. |
 | `brand-600` | #877C00 | The olive. 3.8:1 on cream: an accent, not a text colour. |
 | `brand-700` | oklch(0.51 0.11 103) | The smallest olive that may carry small text (5:1). |
+| `danger` | oklch(0.5 0.19 29) | The one red: errors, failed states, destructive actions. 5:1 on cream and white. |
 | `card-from/to` | gold | Membership card only. |
 
 The deck uses the olive once, as a stripe across the top of the phone. Keep it that rare:
@@ -53,9 +54,11 @@ oblique. Emphasis comes from size, case, or a bracket, never weight.
   ` +` (`LET'S BEGIN +`, `LEARN +`). Dotted means "press me"; fields use a solid hairline,
   which means "type here". One `solid` (ink) button per page at most, for the commit action.
 - **Structure** is hairlines and open lists. A section starts with a `border-t border-line`;
-  a list is `border-t` with `border-b` rows. Cards, shadows and glass are gone from the main
-  site. Frost is reserved for things that float over content: the full-width sticky nav
-  (frosted cream, no rule beneath it) and the `glass` panels in admin. The animated water
+  a list is `border-t` with `border-b` rows. Cards, shadows and glass are gone everywhere:
+  admin surfaces are solid `panel` white at `rounded-2xl` (the admin brief is
+  `docs/admin/00-plan.md`). Frost is reserved for things that float over content: the
+  full-width sticky nav (frosted cream, no rule beneath it), and in admin only the mobile
+  top bar, toasts, and the brain page's sticky save bar. The animated water
   background belongs to the public pre-launch pages, `/waitlist` and `/coming-soon`. White surfaces
   (`panel`, `Input`, `glass`) carry no frame: the white on the cream is the edge.
 - **The microphone** on Ask Joice is the button made round: a dotted circle on the paper that
