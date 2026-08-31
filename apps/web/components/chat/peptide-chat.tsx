@@ -1093,7 +1093,8 @@ export function PeptideChat() {
                   {brainUi.showToolActivity && toolsUsed && toolsUsed.length > 0 ? (
                     // What the companion did for this answer. The server only
                     // sends the trace when the admin toggle is on; the brainUi
-                    // check keeps a fresh toggle honored on already-loaded tabs.
+                    // check just mirrors the showCitations pattern (it can
+                    // only ever hide, never reveal).
                     <ul className="mt-3 flex flex-wrap gap-2">
                       {toolsUsed.map((tool) => (
                         <li

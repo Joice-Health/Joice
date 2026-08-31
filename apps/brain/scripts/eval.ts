@@ -132,9 +132,16 @@ const brainConfig = createBrainConfigService(db, noopAuditPort, {
 // measures the pipeline it says it measures, regardless of the current flags.
 // showCitations is pinned too: citation honesty is half of what this measures,
 // and an admin who turned chips off would otherwise blank every citation
-// check (finalize() strips them all when it's false).
+// check (finalize() strips them all when it's false). showToolActivity is
+// pinned for the same reason: tool events are gated by it at the source, and
+// the expectTool grading reads those events.
 const stored = await brainConfig.get();
-const config = { ...stored, toolsEnabled: FULL && TOOLS, showCitations: true };
+const config = {
+  ...stored,
+  toolsEnabled: FULL && TOOLS,
+  showCitations: true,
+  showToolActivity: true,
+};
 const service = createRecommendationService(db, {
   embeddings,
   generation,

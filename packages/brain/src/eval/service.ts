@@ -364,15 +364,21 @@ export function createEvalService(db: Database, deps: EvalServiceDeps) {
       const definedOverrides = Object.fromEntries(
         Object.entries(input.overrides).filter(([, v]) => v !== undefined),
       );
-      // showCitations is pinned below whatever the caller sent; recording it
-      // as an applied override would make the run row contradict its snapshot.
+      // Both presentation toggles are pinned below whatever the caller sent;
+      // recording them as applied overrides would make the run row contradict
+      // its snapshot.
       delete definedOverrides.showCitations;
-      // showCitations pinned last: citation honesty is half of what the eval
-      // measures, and a config with chips off would blank every citation check.
+      delete definedOverrides.showToolActivity;
+      // Pinned last: citation honesty is half of what the eval measures, and
+      // a config with chips off would blank every citation check. Tool events
+      // are gated by showToolActivity at the source (answer-service), and the
+      // executor scores expectTool from those events, so a visitor-facing
+      // "hide the status line" toggle must never blind the harness.
       const effective = {
         ...resolved,
         ...definedOverrides,
         showCitations: true,
+        showToolActivity: true,
       } as ResolvedBrainConfig;
 
       const cases = await db

@@ -329,8 +329,17 @@ export function createRecommendationService(
         // Status-line copy rides each tool's definition, mapped server-side
         // so the client stays dumb. showToolActivity gates HERE, before the
         // wire: off means tool names never leave the service at all.
+        // The trace records only successful completions: 'started' fires off
+        // the model's request before the loop decides to execute (a final
+        // nudged round discards requests), and a chip must never claim a
+        // check that did not happen.
         const label = toolLabels[event.name] ?? '';
-        if (event.status === 'started' && label && !toolsUsed.some((t) => t.name === event.name)) {
+        if (
+          event.status === 'finished' &&
+          event.ok &&
+          label &&
+          !toolsUsed.some((t) => t.name === event.name)
+        ) {
           toolsUsed.push({ name: event.name, label });
         }
         if (config.showToolActivity) yield { ...event, label };
