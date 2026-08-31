@@ -107,11 +107,15 @@ run simulated (default `subscriber`, the full belt).
 
 ## Adding a tool (the checklist)
 
-1. New file in `packages/brain/src/tools/` exporting a `ToolDefinition`:
+1. New file in `packages/brain/src/tools/` exporting a `BrainTool`:
    Bedrock JSON schema + zod input schema (kept together, they move together),
-   the visitor-facing label (empty string = deliberately silent), and the
-   executor factory over `ToolDeps`.
-2. Register it in `tools/index.ts`.
+   the visitor-facing label (empty string = deliberately silent), the
+   `settingKey` naming its access setting, and the executor factory over
+   `ToolDeps` (which carries `audience` for tier variants).
+2. Register it in `tools/index.ts`, add its key to `TOOL_ACCESS_KEYS`, its
+   field to `brainSettingsSchema`, and its default to
+   `DEFAULT_BRAIN_SETTINGS` (config/schemas.ts); the admin Toolbelt card
+   picks it up from the key list.
 3. Decide provenance: registry append (quotable) or not (never cited).
 4. Cross-domain data only through a port; wire the adapter in
    `apps/brain/src/services.ts`.

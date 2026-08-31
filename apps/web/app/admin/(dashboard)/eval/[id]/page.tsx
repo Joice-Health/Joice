@@ -67,6 +67,7 @@ export default function AdminEvalRunPage({ params }: { params: Promise<{ id: str
             {run.passedCases !== null ? `${run.passedCases}/${run.totalCases}` : progress}
           </span>
           <span className="text-muted">{modeLabel}</span>
+          <span className="text-muted">as {run.audience}</span>
           <span className="font-mono text-xs text-muted">{run.model}</span>
           {run.totalP50Ms !== null ? (
             <span className="text-muted">
@@ -159,7 +160,7 @@ export default function AdminEvalRunPage({ params }: { params: Promise<{ id: str
 
       <Card>
         <h2 className="mb-4 text-lg font-semibold text-ink">Questions</h2>
-        <RunResults results={results} previous={previous.data ?? null} />
+        <RunResults results={results} previous={previous.data ?? null} current={run} />
       </Card>
     </>
   );

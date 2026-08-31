@@ -118,6 +118,8 @@ export type {
   SettingsActor,
 } from './ports';
 
+export { TOOL_ACCESS_KEYS, type ToolAccess, type ToolAccessKey } from './config/schemas';
+
 // The universal lifecycle vocabulary, canonical in @joice/utils; re-exported
 // here so consumers keep one import path (the CARE_AREAS precedent).
 export { AUDIENCE_TIERS, AUDIENCE_TIER_LABELS, tierAtLeast, type AudienceTier } from '@joice/utils';

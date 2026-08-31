@@ -15,6 +15,8 @@
  *   bun scripts/eval.ts --full              full answers via the CLASSIC pipeline.
  *   bun scripts/eval.ts --full --tools      full answers via the TOOL loop.
  *   --limit N     run the first N cases only
+ *   --audience T  lifecycle stage to simulate (visitor|lead|user|subscriber;
+ *                 default subscriber, the full belt)
  *   --assert      exit 1 if any case fails (for gating scripts)
  *
  * Needs DATABASE_URL + AWS credentials (same as the ingest task). Run locally
@@ -24,6 +26,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
+import { AUDIENCE_TIERS, type AudienceTier } from '@joice/utils';
 import { asc, createDatabase, evalCases } from '@joice/db';
 import {
   createBrainConfigService,
@@ -51,6 +54,15 @@ const args = process.argv.slice(2);
 const FULL = args.includes('--full');
 const TOOLS = args.includes('--tools');
 const ASSERT = args.includes('--assert');
+let AUDIENCE: AudienceTier = 'subscriber';
+if (args.includes('--audience')) {
+  const value = args[args.indexOf('--audience') + 1] ?? '';
+  if (!(AUDIENCE_TIERS as readonly string[]).includes(value)) {
+    console.error(`--audience must be one of ${AUDIENCE_TIERS.join(' | ')}`);
+    process.exit(2);
+  }
+  AUDIENCE = value as AudienceTier;
+}
 let LIMIT = Infinity;
 if (args.includes('--limit')) {
   LIMIT = Number(args[args.indexOf('--limit') + 1]);
@@ -170,7 +182,9 @@ async function runFullCase(c: GoldenCase): Promise<CaseResult> {
   const toolsCalled = new Set<string>();
   let complete: Extract<RecommendationStreamEvent, { type: 'complete' }> | undefined;
 
-  for await (const event of service.recommendStream([{ role: 'user', content: c.q }])) {
+  for await (const event of service.recommendStream([{ role: 'user', content: c.q }], {
+    audience: AUDIENCE,
+  })) {
     if (event.type === 'delta' && firstTokenMs === undefined) {
       firstTokenMs = performance.now() - started;
     } else if (event.type === 'tool' && event.status === 'started') {

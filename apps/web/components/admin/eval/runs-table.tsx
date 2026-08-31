@@ -49,6 +49,7 @@ export function RunsTable({
             <tr>
               <Th>Score</Th>
               <Th>Mode</Th>
+              <Th>As</Th>
               <Th>Model</Th>
               <Th>Latency p50</Th>
               <Th>Tokens</Th>
@@ -81,6 +82,7 @@ export function RunsTable({
                   <Td>
                     {run.mode === 'full' ? (run.toolsEnabled ? 'full + tools' : 'full') : 'retrieval'}
                   </Td>
+                  <Td>{run.audience}</Td>
                   <Td className="font-mono text-xs">{run.model}</Td>
                   <Td>{run.totalP50Ms !== null ? `${run.totalP50Ms}ms` : '—'}</Td>
                   <Td>

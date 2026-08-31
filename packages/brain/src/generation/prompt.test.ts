@@ -59,9 +59,11 @@ describe('buildSystemPrompt', () => {
   });
 });
 
+const FULL_BELT = new Set(['search_notes', 'search_catalogue', 'request_clinician_handoff']);
+
 describe('buildSystemPrompt in tools mode', () => {
   test('uses the tool floor: prescriptive search_notes rule + the About section', () => {
-    const prompt = buildSystemPrompt(config(), { tools: true });
+    const prompt = buildSystemPrompt(config(), { tools: true, toolNames: FULL_BELT });
     expect(prompt).toContain(TOOL_SAFETY_FLOOR);
     expect(prompt).toContain('MUST call the search_notes tool');
     expect(prompt).toContain('About Joice');
@@ -86,7 +88,7 @@ describe('buildSystemPrompt in tools mode', () => {
         showCitations: false,
         attributionStyle: 'natural',
       }),
-      { tools: true },
+      { tools: true, toolNames: FULL_BELT },
     );
     expect(prompt).toContain(TOOL_SAFETY_FLOOR);
     expect(prompt.indexOf(TOOL_SAFETY_FLOOR)).toBeLessThan(

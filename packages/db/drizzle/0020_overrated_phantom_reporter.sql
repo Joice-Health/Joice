@@ -1,0 +1,1 @@
+ALTER TABLE "eval_runs" ADD COLUMN "audience" text DEFAULT 'subscriber' NOT NULL;

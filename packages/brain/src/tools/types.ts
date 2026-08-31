@@ -54,10 +54,10 @@ export interface ToolDeps {
   config: { topK: number; similarityFloor: number } & Partial<Record<ToolAccessKey, ToolAccess>>;
   /**
    * The requester's lifecycle tier, gating the belt and steering variants.
-   * Production always passes it (answer-service resolves it per request);
-   * absent means 'subscriber' (the full belt) purely as a test convenience.
+   * Required on purpose: a forgotten audience must be a compile error, never
+   * a silent full belt (review finding, epic 244).
    */
-  audience?: AudienceTier;
+  audience: AudienceTier;
   /**
    * The request's provenance registry. search_notes appends every chunk it
    * returns, and numbers its results against the registry's global index —

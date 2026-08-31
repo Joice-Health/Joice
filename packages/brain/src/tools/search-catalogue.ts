@@ -39,11 +39,13 @@ export const searchCatalogueTool: BrainTool = {
       }
       // The tier variant: ordering is only mentioned to signed-in users and
       // up. Leads and visitors get facts and availability; the interface, not
-      // the model, is where they get invited to create an account.
-      const canOrder = tierAtLeast(deps.audience ?? 'subscriber', 'user');
+      // the model, is where they get invited to create an account. Both
+      // footers are phrased as facts, not prohibitions: toolResult text can
+      // leak into an answer, and a leaked fact reads as an answer.
+      const canOrder = tierAtLeast(deps.audience, 'user');
       const footer = canOrder
-        ? '\n\nThese can be ordered from the shop; offer to point the member there if they want to start.'
-        : '\n\nShare product facts and availability only. Do not mention ordering, carts, or purchasing; ordering opens once they have an account.';
+        ? '\n\nThese can be ordered from the shop; offer to point them there if they want to start.'
+        : '\n\nOrdering opens once they have an account; share product facts and availability only.';
       return {
         resultText: `Products:\n${items
           .map((item) => `- ${item.name} (${item.available ? 'available' : 'not currently available'})`)

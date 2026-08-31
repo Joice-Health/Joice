@@ -26,6 +26,7 @@ function depsOf(over: Partial<ToolDeps> = {}): ToolDeps & { retrieveCalls: strin
     },
     catalog: catalogOf([]),
     config: { topK: 8, similarityFloor: 0.4 },
+    audience: 'subscriber',
     registry: [],
     ...over,
   };

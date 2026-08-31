@@ -54,7 +54,7 @@ export function toolAccessAllows(setting: ToolAccess | undefined, audience: Audi
  * speculative prefetch) — nothing is shared between requests.
  */
 export function buildToolExecutors(deps: ToolDeps): Map<string, ToolExecutor> {
-  const audience = deps.audience ?? 'subscriber';
+  const audience = deps.audience;
   return new Map(
     TOOLS.filter((tool) => toolAccessAllows(deps.config[tool.settingKey], audience)).map(
       (tool) => [tool.spec.name, { spec: tool.spec, execute: tool.create(deps) }],

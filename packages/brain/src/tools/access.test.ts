@@ -20,6 +20,7 @@ function depsOf(over: Partial<ToolDeps> = {}): ToolDeps {
     retrieve: async (): Promise<RetrievedChunk[]> => [],
     catalog: catalogOf([]),
     config: { topK: 8, similarityFloor: 0.4 },
+    audience: 'subscriber',
     registry: [],
     ...over,
   };
@@ -94,12 +95,12 @@ describe('search_catalogue tier variant', () => {
     expect(result.resultText).toContain('Glutathione');
   });
 
-  test('leads get facts only, with ordering explicitly off the table', async () => {
+  test('leads get facts only, phrased as fact rather than prohibition', async () => {
     const search = buildToolExecutors(depsOf({ audience: 'lead', catalog: catalogOf(items) })).get(
       'search_catalogue',
     )!;
     const result = await search.execute({ query: 'glutathione' });
-    expect(result.resultText).toContain('Do not mention ordering');
+    expect(result.resultText).toContain('Ordering opens once they have an account');
     expect(result.resultText).not.toContain('can be ordered from the shop;');
   });
 });

@@ -14,6 +14,7 @@ import {
   type EvalResult,
   type EvalRun,
 } from '@joice/db';
+import type { AudienceTier } from '@joice/utils';
 import type { ResolvedBrainConfig } from '../config/schemas';
 import type { RecommendationService, RecommendationStreamEvent } from '../generation/answer-service';
 import type { ChatMessage } from '../conversation/schemas';
@@ -167,6 +168,7 @@ export function createEvalService(db: Database, deps: EvalServiceDeps) {
   async function runFullCase(
     service: Pick<RecommendationService, 'recommendStream'>,
     config: ResolvedBrainConfig,
+    audience: AudienceTier,
     c: EvalCase,
     timeout: Promise<never>,
   ): Promise<CaseOutcome> {
@@ -176,7 +178,9 @@ export function createEvalService(db: Database, deps: EvalServiceDeps) {
     let complete: Extract<RecommendationStreamEvent, { type: 'complete' }> | undefined;
 
     const messages: ChatMessage[] = [{ role: 'user', content: c.question }];
-    const iterator = service.recommendStream(messages)[Symbol.asyncIterator]();
+    // The simulated stage rides as the trusted override: eval has no real
+    // requester to resolve, and the run must measure the belt it says it does.
+    const iterator = service.recommendStream(messages, { audience })[Symbol.asyncIterator]();
     try {
       for (;;) {
         const step = await Promise.race([iterator.next(), timeout]);
@@ -223,6 +227,7 @@ export function createEvalService(db: Database, deps: EvalServiceDeps) {
     service: Pick<RecommendationService, 'retrieve' | 'recommendStream'>,
     config: ResolvedBrainConfig,
     mode: EvalRunMode,
+    audience: AudienceTier,
     c: EvalCase,
   ): Promise<CaseOutcome> {
     const timeout = caseTimeout(caseTimeoutMs);
@@ -230,7 +235,7 @@ export function createEvalService(db: Database, deps: EvalServiceDeps) {
       if (mode === 'retrieval') {
         return await Promise.race([runRetrievalCase(service, config, c), timeout.promise]);
       }
-      return await runFullCase(service, config, c, timeout.promise);
+      return await runFullCase(service, config, audience, c, timeout.promise);
     } catch (err) {
       const message =
         err instanceof CaseTimeoutError
@@ -249,7 +254,13 @@ export function createEvalService(db: Database, deps: EvalServiceDeps) {
       const service = deps.buildService(config);
       const outcomes: CaseOutcome[] = [];
       for (const c of cases) {
-        const outcome = await runOneCase(service, config, run.mode as EvalRunMode, c);
+        const outcome = await runOneCase(
+          service,
+          config,
+          run.mode as EvalRunMode,
+          run.audience as AudienceTier,
+          c,
+        );
         outcomes.push(outcome);
         await db.insert(evalResults).values({
           runId: run.id,
@@ -354,6 +365,7 @@ export function createEvalService(db: Database, deps: EvalServiceDeps) {
      */
     async startRun(input: {
       mode: EvalRunMode;
+      audience: AudienceTier;
       overrides: Record<string, unknown>;
       triggeredBy: string;
       triggeredByEmail?: string;
@@ -395,6 +407,7 @@ export function createEvalService(db: Database, deps: EvalServiceDeps) {
           .insert(evalRuns)
           .values({
             mode: input.mode,
+            audience: input.audience,
             configSnapshot: effective as unknown as Record<string, unknown>,
             overridesApplied: definedOverrides,
             model: effective.model,

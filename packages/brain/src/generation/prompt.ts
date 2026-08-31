@@ -61,6 +61,13 @@ function buildToolAbout(toolNames: ReadonlySet<string>): string {
   return `About Joice: a peptide and supplement membership platform, currently pre-launch. Members get protocols guided by a licensed clinical team, grounded in the team's research library. You are the companion on the website: you can ${spoken}.`;
 }
 
+// Tool mode must say which tools are advertised; the overloads make a
+// forgotten belt a compile error rather than a silent full-belt prompt.
+export function buildSystemPrompt(config: ResolvedBrainConfig, opts?: { tools?: false }): string;
+export function buildSystemPrompt(
+  config: ResolvedBrainConfig,
+  opts: { tools: true; toolNames: ReadonlySet<string> },
+): string;
 export function buildSystemPrompt(
   config: ResolvedBrainConfig,
   opts: { tools?: boolean; toolNames?: ReadonlySet<string> } = {},
@@ -68,19 +75,19 @@ export function buildSystemPrompt(
   const sections: string[] = [];
   // The advertised belt: with audience tiers, a request may carry fewer tools
   // than the full set, and the prompt must never demand a tool that is not
-  // there. Callers that don't pass toolNames get the full-belt prompt.
+  // there.
   const belt =
     opts.toolNames ?? new Set(['search_notes', 'search_catalogue', 'request_clinician_handoff']);
-  const handoffAvailable = !opts.tools || belt.has('request_clinician_handoff');
 
   sections.push(`You are ${config.personaName}, ${config.personaDescription}.`);
   sections.push(opts.tools ? buildToolSafetyFloor(belt) : SAFETY_FLOOR);
   if (opts.tools) sections.push(buildToolAbout(belt));
-  if (handoffAvailable) {
-    sections.push(
-      `When a question calls for individual medical judgment: ${config.clinicianHandoffMessage}`,
-    );
-  }
+  // Always present, whatever the belt: this is the admin's copy about WHERE
+  // individual judgment lives, not a tool demand, and the tiers that cannot
+  // be shown the handoff card need the pointer most.
+  sections.push(
+    `When a question calls for individual medical judgment: ${config.clinicianHandoffMessage}`,
+  );
   // Counters over-refusal (seen on Nova): summarizing published research is the
   // product, and it is not prescribing.
   sections.push(
