@@ -259,7 +259,7 @@ export default function AdminBrainPage() {
                 <AdminTextarea
                   value={form.personaDescription}
                   onChange={(e) => set('personaDescription', e.target.value)}
-                  rows={4}
+                  rows={8}
                   maxLength={1000}
                 />
               </Field>
@@ -270,7 +270,7 @@ export default function AdminBrainPage() {
                 <AdminTextarea
                   value={form.toneInstructions}
                   onChange={(e) => set('toneInstructions', e.target.value)}
-                  rows={4}
+                  rows={8}
                   maxLength={2000}
                 />
               </Field>
