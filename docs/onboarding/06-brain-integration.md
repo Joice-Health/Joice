@@ -57,6 +57,12 @@ flowchart LR
 - The internal profile read returns first name, goal, segment and
   **marketing and personal tier traits only**, the same rule the member
   themselves gets; health-tier traits stay out until both PHI keys are on.
+- It also carries `subscribed`, the platform's answer to "active
+  subscription?" (CarePortals via the api's `SubscriptionPort`,
+  `apps/api/src/commerce/careportals-subscriptions.ts`). It exists solely to
+  lift a user to the subscriber audience tier in the brain, and it is
+  fail-closed: no credentials, no user row, no email, or an unreachable
+  commerce API all read as `false`.
 - The adapter filters further before the prompt: identity fields, derived
   internals and the raw date of birth never reach the model; `Age: 43` does.
 - The suffix (`buildMemberSuffix`) opens with "personalisation only, not

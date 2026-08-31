@@ -23,3 +23,4 @@ export * from './onboarding/service-area-service';
 export * from './onboarding/service-area-request-service';
 export * from './onboarding/events-service';
 export * from './protocols/protocol-rules-service';
+export * from './commerce/subscription-port';

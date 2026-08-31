@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { env } from '../env';
 import { requireInternalToken } from '../middleware/internal-token';
 import { rateLimit } from '../middleware/rate-limit';
-import { onboarding, phiStatus, profiles } from '../services';
+import { onboarding, phiStatus, profiles, subscriptions, userService } from '../services';
 
 /**
  * Service-to-service routes, today for the brain. Registered on the app
@@ -41,12 +41,16 @@ export const internalRoutes = new Hono()
   /** What the brain may know about a member when answering them. */
   .get('/profile/:memberId', zValidator('param', memberParamSchema), async (c) => {
     const { memberId } = c.req.valid('param');
-    const [profile, intake, phi] = await Promise.all([
+    const [profile, intake, phi, user] = await Promise.all([
       profiles.getForMember(memberId),
       onboarding.stateForMember(memberId),
       phiStatus(),
+      userService.getById(memberId),
     ]);
     if (!profile && !intake) return c.json({ error: 'Unknown member' }, 404);
+    // Subscriber status for the brain's audience tier; false on any doubt
+    // (no user row, no email, commerce unreachable or unconfigured).
+    const subscribed = user?.email ? await subscriptions.isSubscribed(user.email) : false;
     const view = memberProfileView({
       memberId,
       email: null,
@@ -65,6 +69,7 @@ export const internalRoutes = new Hono()
       segment: view.segment,
       traits: view.traits.map(({ key, label, value }) => ({ key, label, value })),
       intakeStatus: intake?.status ?? null,
+      subscribed,
     });
   })
 

@@ -164,6 +164,27 @@ variable "klaviyo_list_id" {
   default     = ""
 }
 
+# ---- CarePortals (subscriber detection) ----
+
+variable "careportals_org" {
+  description = "CarePortals organization id (joicehealth_com; not a secret). Empty disables subscription lookups: members never resolve to the subscriber audience tier."
+  type        = string
+  default     = ""
+}
+
+variable "careportals_crm_username" {
+  description = "CarePortals CRM service-user email for subscription lookups (CarePortals issues no static admin key; the org credential is a CRM login). Set in terraform.tfvars."
+  type        = string
+  default     = ""
+}
+
+variable "careportals_crm_password" {
+  description = "CarePortals CRM service-user password. Set in terraform.tfvars (gitignored); stored in Secrets Manager for the api task."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 # ---- RAG ----
 
 variable "rag_model" {
