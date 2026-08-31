@@ -69,7 +69,10 @@ Rules that keep this working:
 - **The brain never imports another domain's tables.** It declares interfaces in
   `packages/brain/src/ports` and gets adapters injected. Adding orders/catalogue/cart later
   should touch one adapter file, not the domain.
-- A service writes only the tables in its own `packages/db/src/schema/*.ts` file.
+- A service writes only the tables in its own `packages/db/src/schema/*.ts` file. Enforced:
+  each consuming package has a `db-boundary.test.ts` (lists from `@joice/db/ownership`) that
+  fails the build on a cross-domain table import; the two documented read exceptions are the
+  allowlists.
 - DB schema changes: edit the right file under `packages/db/src/schema/` → `bun run db:generate`
   → commit the migration. **Migrations do NOT run at boot** — compose runs a one-shot `migrate`
   service, and CI runs the `joice-migrate` ECS task to completion before deploying either

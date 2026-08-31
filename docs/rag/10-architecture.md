@@ -132,10 +132,31 @@ One Postgres, one migration stream. `packages/db/src/schema/` is split by owner:
 | `platform.ts` | `@joice/core` | `feature_flags`, `app_settings`, `audit_logs` |
 | `brain.ts` | `@joice/brain` | `note_chunks`, `conversations`, `messages`, `brain_profiles` |
 
-The rule: a service writes only the tables in its own file. This is enforced by
-convention and review, not by separate credentials — both services connect with
-the same role. Worth revisiting if the brain ever handles data the api service
-must not see.
+The rule: a service writes only the tables in its own file.
+
+**Why the brain writes its own tables directly** (decided 2026-08-27, when the
+question "should this be API-driven?" was put): proxying the brain's own
+persistence through the api would double write latency on every exchange,
+couple brain deploys to the api service, and hand the api access to data it
+has no business with, reversing the least-privilege reason the services were
+split. "API-driven" is the rule for **cross-domain** data, and it is already
+the law: everything the brain needs from the platform crosses over
+`/api/internal/*` through ports, never a table import.
+
+**Enforcement is a failing build, not a convention.** Each consuming package
+carries a `db-boundary.test.ts` that scans its own sources against the table
+lists derived at runtime in `packages/db/src/ownership.ts` (a new table is
+covered the moment its schema file exports it). A cross-domain table import,
+or any namespace/dynamic import of `@joice/db` that could smuggle one, fails
+`bun run check` naming the offending file. The tests live per-package rather
+than centrally because turbo caches a task by its own package's inputs. The
+allowlists contain exactly the two exceptions documented on this page.
+
+Both services still connect with the same Postgres role. Per-service roles
+whose GRANTs mirror this table (NOLOGIN roles created by migration,
+terraform-held passwords synced by the migrate task) are designed and parked
+on the pre-PHI hardening list: worth the hour once the brain handles data the
+api service must not see, unnecessary machinery before then.
 
 **One documented read exception.** The admin console's leads view
 (`GET /api/admin/leads`) is served by the **api** service reading

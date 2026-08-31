@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./schema": "./src/schema.ts",
-    "./client": "./src/client.ts"
+    "./client": "./src/client.ts",
+    "./ownership": "./src/ownership.ts"
   },
   "scripts": {
     "db:generate": "drizzle-kit generate",
