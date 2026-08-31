@@ -130,7 +130,13 @@ One Postgres, one migration stream. `packages/db/src/schema/` is split by owner:
 | `waitlist.ts` | `@joice/core` | `waitlist_entries` |
 | `identity.ts` | `@joice/core` | `users` |
 | `platform.ts` | `@joice/core` | `feature_flags`, `app_settings`, `audit_logs` |
-| `brain.ts` | `@joice/brain` | `note_chunks`, `conversations`, `messages`, `brain_profiles` |
+| `onboarding.ts` | `@joice/core` | `onboarding_flows`, `onboarding_flow_versions`, `onboarding_sessions`, `onboarding_events`, `service_areas`, `service_area_requests`, `profile_observations`, `profiles`, `lab_uploads` |
+| `brain.ts` | `@joice/brain` | `note_chunks`, `knowledge_documents`, `conversations`, `messages`, `brain_profiles`, `eval_cases`, `eval_runs`, `eval_results` |
+
+The boundary tests derive their lists from the schema modules at runtime, so
+the code never trusts this table; it is the human-readable mirror, and the
+per-service GRANTs on the pre-PHI list would be written from the schema files,
+not from here.
 
 The rule: a service writes only the tables in its own file.
 
@@ -158,13 +164,21 @@ terraform-held passwords synced by the migrate task) are designed and parked
 on the pre-PHI hardening list: worth the hour once the brain handles data the
 api service must not see, unnecessary machinery before then.
 
-**One documented read exception.** The admin console's leads view
-(`GET /api/admin/leads`) is served by the **api** service reading
-`brain_profiles` directly. Leads are marketing-grade data (name/email/goal), the
-api already owns every other admin surface and has Clerk, and serving the read
-there avoids standing up Clerk on the brain for one list. When the brain grows
-its own admin surface (conversation review, per-stage config), it moves. This is
-the only place the api reaches into a brain-owned table, and it is read-only.
+**The two documented read exceptions** (each pinned to one file in the
+boundary tests' allowlists):
+
+1. The admin console's leads view (`GET /api/admin/leads`) is served by the
+   **api** service reading `brain_profiles` directly
+   (`packages/core/src/admin/leads-service.ts`). Leads are marketing-grade
+   data (name/email/goal), the api already owns every other admin surface and
+   has Clerk, and serving the read there avoids standing up Clerk on the brain
+   for one list. When the brain's own admin surface grows a conversation or
+   leads view, it moves. Read-only.
+2. The **brain** reads its settings from `app_settings`
+   (`packages/brain/src/config/service.ts`, key `brain`). The service class
+   also holds the write and reset methods, but only the api process ever calls
+   them: the admin console owns writes because they need the Clerk actor and
+   the audit trail. In the brain process the row is read-only.
 
 ## Conversation persistence
 
