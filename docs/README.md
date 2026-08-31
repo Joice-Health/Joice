@@ -23,6 +23,7 @@ want the shape of the system before the detail.
 | [10 — The Brain as Its Own Service](rag/10-architecture.md) | Why it's a separate deployable, the URL namespace, ports, schema ownership, migrations, how to deploy it |
 | [11 — The Brain Audit](rag/11-brain-audit.md) | What the audit found and what the `brain-v2` branch changed: tool mode, source types, the corpus inventory, retention/erasure — and what is deliberately still open |
 | [12 — The Eval Console](rag/12-eval-console.md) | `/admin/eval`: run the golden set from the admin, run history and comparison, one-click promote of winning settings, golden-set CRUD, the one-active-run guard |
+| [13 — The Toolbelt](rag/13-toolbelt.md) | How the companion's abilities are built and grown: the tool registry, provenance and ports rules, the db-boundary tests, the tool-visibility setting, and the adding-a-tool checklist |
 
 **New here? Read 01 and 10, then 05 to get it running.**
 
