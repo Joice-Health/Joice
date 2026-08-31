@@ -86,9 +86,6 @@ export function OrderingSteps() {
           </li>
         ))}
       </ol>
-      <p className="mt-14 border-t border-line pt-8 text-center text-sm text-muted">
-        More protocols join the shelf as they clear clinical review.
-      </p>
     </section>
   );
 }

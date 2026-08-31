@@ -71,12 +71,12 @@ export default async function GlutathionePage() {
             Prescription · Compounded · United States
           </Eyebrow>
           <h1 className="mt-6 text-balance text-3xl leading-[1.15] text-ink sm:text-5xl">
-            Glutathione, reviewed and prescribed by a physician.
+            Glutathione
           </h1>
           <p className="mt-6 max-w-lg text-pretty text-lg leading-relaxed text-muted">
             An injectable antioxidant compounded by a licensed 503A pharmacy. Available only
             with a prescription, after an independent licensed physician reviews your health
-            history.
+            history. Reviewed and prescribed by a physician.
           </p>
           {product ? (
             <p className="mt-8 font-mono text-2xl text-ink">
