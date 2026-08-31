@@ -1,9 +1,10 @@
 <!--
   Approved 2026-08-27. Epic: "Brain: toolbelt and boundaries"
-  https://app.shortcut.com/joice-health/epic/237 (stories sc-238 to sc-240).
+  https://app.shortcut.com/joice-health/epic/237 (stories sc-238 to sc-240, shipped).
+  Extended 2026-08-31 by "Brain: audience tiers"
+  https://app.shortcut.com/joice-health/epic/244 (stories sc-245 to sc-249):
+  the access model section below is that epic's design brief until it lands.
   Keep the decisions log at the bottom current as decisions are made.
-  This file is the design brief until phase 2 lands, then the as-built
-  reference for the toolbelt.
 -->
 
 # 13 — The toolbelt
@@ -70,6 +71,39 @@ Two rules keep this safe as it grows:
    in the recommendation payload, rendered as chips beside the citation
    chips on `/ask`. The public config slice exposes the toggle so an
    already-open tab honors a flip within its next answer.
+
+## The access model (audience tiers)
+
+Everyone talking to the companion is at one of four lifecycle stages, the
+universal vocabulary defined once in `packages/utils/src/audience.ts`:
+
+| Tier | Meaning | Resolved from |
+|---|---|---|
+| `visitor` | anonymous, nothing known | neither of the below |
+| `lead` | shared an email | `brain_profiles.email` for the session (pure `peek`, no insert) |
+| `user` | signed-in account | verified `memberId` on the request |
+| `subscriber` | active subscription | `subscribed` on the member context, sourced from CarePortals via the api's SubscriptionPort over `/api/internal/profile` |
+
+Tiers are ordered; `tierAtLeast(a, b)` is the one comparison helper. Resolution
+happens per chat request in the answer service and degrades gracefully: a
+failed lookup lowers the tier, never the answer.
+
+Each tool carries a `settingKey` mapping to one flat brain setting whose value
+is `'off'` or the minimum tier (`toolSearchNotes`, `toolSearchCatalogue`,
+`toolClinicianHandoff`, `toolFlagIntent`; flat because the settings row merges
+shallowly). `buildToolExecutors` filters the belt by setting and audience
+before the model ever sees it: an out-of-tier tool is invisible, not refused.
+Two special rules:
+
+- If `search_notes` itself does not clear the gate, the request runs the
+  classic pipeline; tool mode without retrieval has no grounding.
+- The tools-mode system prompt reflects the advertised belt, so it never
+  demands a tool that is not there.
+
+Variants live in each tool's code keyed on `deps.audience` (admin controls
+availability, code controls behavior): the first is `search_catalogue`, which
+mentions ordering only from `user` up. The eval console records which tier a
+run simulated (default `subscriber`, the full belt).
 
 ## Adding a tool (the checklist)
 
