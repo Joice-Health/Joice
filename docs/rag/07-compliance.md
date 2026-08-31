@@ -72,6 +72,13 @@ flowchart LR
 4. **Chat copy is legal-gated.** The system prompt's not-medical-advice stance
    and the UI disclaimer line follow the same counsel-review gate as the
    referral copy (root CLAUDE.md).
+5. **Member emails cross to CarePortals for subscriber detection** (epic 244):
+   on a cache miss the api asks the commerce platform whether a chatting
+   member's email holds an active subscription
+   (`apps/api/src/commerce/careportals-subscriptions.ts`). CarePortals is the
+   commerce backend and the data is an email plus a yes/no, not PHI, but the
+   set disclosed is "members who chat", which includes members who never
+   purchased. Nothing else crosses: no questions, no traits, no answers.
 
 ## Voice
 

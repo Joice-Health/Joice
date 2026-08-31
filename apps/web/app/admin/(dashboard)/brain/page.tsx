@@ -8,6 +8,11 @@ import {
   useUpdateBrainSettings,
   type AdminBrain,
 } from '@joice/api-client';
+import {
+  AUDIENCE_TIERS,
+  type ToolAccess,
+  type ToolAccessKey,
+} from '@joice/brain/schemas';
 import { Card, ErrorState, PageHeader, Toggle } from '@/components/admin/ui';
 import { MODEL_PRESETS } from '@/components/admin/model-presets';
 import { LastEvalLine } from '@/components/admin/eval/last-eval-line';
@@ -41,7 +46,27 @@ const TOOL_ACCESS_ROWS = [
     name: 'Ready-to-start signal',
     what: 'invisible nudge that surfaces the join step at the right moment',
   },
-] as const satisfies ReadonlyArray<{ key: keyof BrainForm; name: string; what: string }>;
+] as const satisfies ReadonlyArray<{ key: ToolAccessKey; name: string; what: string }>;
+
+// Exhaustiveness: a tool with a settings field but no admin row must not
+// compile (the checklist in docs/rag/13-toolbelt.md leans on this).
+type RowKeys = (typeof TOOL_ACCESS_ROWS)[number]['key'];
+const _allToolKeysHaveRows: ToolAccessKey extends RowKeys ? true : never = true;
+void _allToolKeysHaveRows;
+
+/** Admin-facing labels for each access value, over the shared vocabulary. */
+const TOOL_ACCESS_OPTIONS: ReadonlyArray<{ value: ToolAccess; label: string }> = [
+  { value: 'off', label: 'Off' },
+  { value: 'visitor', label: 'Everyone' },
+  { value: 'lead', label: 'Leads and up' },
+  { value: 'user', label: 'Users and up' },
+  { value: 'subscriber', label: 'Subscribers only' },
+];
+const _allTiersHaveOptions: (typeof TOOL_ACCESS_OPTIONS)[number]['value'][] = [
+  'off',
+  ...AUDIENCE_TIERS,
+];
+void _allTiersHaveOptions;
 
 const REWRITE_MODEL_PRESETS = [
   { value: 'us.amazon.nova-lite-v1:0', label: 'Amazon Nova Lite (fast)' },
@@ -566,14 +591,15 @@ export default function AdminBrainPage() {
                   <div key={key} className="flex flex-wrap items-center gap-3">
                     <select
                       value={form[key]}
+                      aria-label={`${name} access`}
                       onChange={(e) => set(key, e.target.value as BrainForm[typeof key])}
                       className="h-9 rounded-full border border-line bg-surface px-3 text-sm"
                     >
-                      <option value="off">Off</option>
-                      <option value="visitor">Everyone</option>
-                      <option value="lead">Leads and up</option>
-                      <option value="user">Users and up</option>
-                      <option value="subscriber">Subscribers only</option>
+                      {TOOL_ACCESS_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
                     </select>
                     <span className="text-sm text-ink">
                       {name} <span className="text-xs text-muted">({what})</span>

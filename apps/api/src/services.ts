@@ -57,6 +57,11 @@ export const subscriptions =
         password: env.CAREPORTALS_CRM_PASSWORD,
       })
     : noopSubscriptionPort;
+console.log(
+  env.CAREPORTALS_CRM_PASSWORD
+    ? 'careportals subscriber detection: enabled'
+    : 'careportals subscriber detection: disabled (credentials unset); nobody resolves to the subscriber tier',
+);
 export const featureFlags = createFeatureFlagService(db, audit);
 export const settings = createSettingsService(db, audit);
 

@@ -140,6 +140,7 @@ export function NewRunPanel({ hasActiveRun }: { hasActiveRun: boolean }) {
           </select>
         </Field>
 
+        {mode === 'full' ? (
         <Field
           label="Run as"
           hint="Which lifecycle stage the benchmark simulates; subscriber sees every tool."
@@ -156,6 +157,7 @@ export function NewRunPanel({ hasActiveRun }: { hasActiveRun: boolean }) {
             ))}
           </select>
         </Field>
+        ) : null}
 
         <Field label="Model" hint="For this run only; live settings stay untouched.">
           <div className="flex gap-2">

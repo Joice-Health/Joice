@@ -35,9 +35,15 @@ export interface CareportalsSubscriptionsConfig {
 
 const ACTIVE_STATUSES = new Set(['active', 'trialing', 'trial']);
 
+/** The port plus a test-only handle to await background revalidation. */
+export interface CareportalsSubscriptions extends SubscriptionPort {
+  /** Resolves when every in-flight background refresh has settled (tests). */
+  flush(): Promise<void>;
+}
+
 export function createCareportalsSubscriptions(
   config: CareportalsSubscriptionsConfig,
-): SubscriptionPort {
+): CareportalsSubscriptions {
   const {
     organization,
     username,
@@ -51,9 +57,22 @@ export function createCareportalsSubscriptions(
   } = config;
 
   let jwt: string | null = null;
+  let loginInFlight: Promise<string | null> | null = null;
   const cache = new Map<string, { value: boolean; expiresAt: number }>();
+  const refreshing = new Map<string, Promise<void>>();
+  /** Transient failures get a short TTL so a blip never demotes for 5 minutes. */
+  const unknownTtlMs = Math.min(cacheTtlMs, 30_000);
 
-  async function login(): Promise<string | null> {
+  function login(): Promise<string | null> {
+    // Single-flight: N concurrent cold calls must not stampede a third party
+    // that issues no static key.
+    loginInFlight ??= loginOnce().finally(() => {
+      loginInFlight = null;
+    });
+    return loginInFlight;
+  }
+
+  async function loginOnce(): Promise<string | null> {
     try {
       const res = await fetchImpl(`${crmBase}/auth`, {
         method: 'POST',
@@ -73,10 +92,14 @@ export function createCareportalsSubscriptions(
     }
   }
 
-  /** GET with the bearer + organization headers, one re-login on a 401. */
-  async function get(path: string, retried = false): Promise<unknown | null> {
+  /**
+   * GET with the bearer + organization headers, one re-login on a 401.
+   * The UNKNOWN sentinel keeps "the call failed" distinct from an empty
+   * result: a transient failure must never be cached as a definitive no.
+   */
+  async function get(path: string, retried = false): Promise<unknown | typeof UNKNOWN> {
     jwt ??= await login();
-    if (!jwt) return null;
+    if (!jwt) return UNKNOWN;
     try {
       const res = await fetchImpl(`${emrBase}${path}`, {
         headers: { authorization: `Bearer ${jwt}`, organization },
@@ -88,12 +111,12 @@ export function createCareportalsSubscriptions(
       }
       if (!res.ok) {
         console.warn(`careportals ${path} failed (${res.status})`);
-        return null;
+        return UNKNOWN;
       }
       return await res.json();
     } catch (error) {
       console.warn(`careportals ${path} failed (${(error as Error).message?.slice(0, 120)})`);
-      return null;
+      return UNKNOWN;
     }
   }
 
@@ -106,8 +129,9 @@ export function createCareportalsSubscriptions(
     return [];
   }
 
-  async function lookupCustomerId(email: string): Promise<string | null> {
+  async function lookupCustomerId(email: string): Promise<string | null | typeof UNKNOWN> {
     const result = await get(`/customers/lookups?keyword=${encodeURIComponent(email)}`);
+    if (result === UNKNOWN) return UNKNOWN;
     const match = asArray(result).find(
       (c) => typeof c.email === 'string' && c.email.toLowerCase() === email.toLowerCase(),
     );
@@ -115,30 +139,68 @@ export function createCareportalsSubscriptions(
     return typeof id === 'string' && id ? id : null;
   }
 
-  async function hasActiveSubscription(customerId: string): Promise<boolean> {
+  async function hasActiveSubscription(customerId: string): Promise<boolean | typeof UNKNOWN> {
     // The documented filter params are thin; ask filtered, verify locally.
     const result = await get(`/subscriptions?customer=${encodeURIComponent(customerId)}`);
+    if (result === UNKNOWN) return UNKNOWN;
     return asArray(result).some((sub) => {
+      // Ownership requires a POSITIVE match: a subscription whose customer
+      // reference is missing or an unrecognized shape proves nothing, and
+      // "proves nothing" must never read as "is a subscriber". Tolerate the
+      // same _id/id spelling pair the lookup does.
+      const ref = sub.customer as string | { _id?: unknown; id?: unknown } | null | undefined;
       const customer =
-        typeof sub.customer === 'string'
-          ? sub.customer
-          : ((sub.customer as { _id?: unknown } | null)?._id ?? null);
-      const belongs = customer === null || customer === customerId;
+        typeof ref === 'string' ? ref : typeof ref?._id === 'string' ? ref._id : ref?.id;
       const status = typeof sub.status === 'string' ? sub.status.toLowerCase() : '';
-      return belongs && ACTIVE_STATUSES.has(status);
+      return customer === customerId && ACTIVE_STATUSES.has(status);
     });
   }
 
+  /** One full resolution; coalesced per email so concurrent turns share it. */
+  function refresh(key: string, email: string): Promise<void> {
+    const existing = refreshing.get(key);
+    if (existing) return existing;
+    const task = (async () => {
+      const customerId = await lookupCustomerId(email);
+      const value = customerId === UNKNOWN ? UNKNOWN : customerId === null ? false : await hasActiveSubscription(customerId);
+      if (value === UNKNOWN) {
+        // Keep whatever we knew; if we knew nothing, a short-lived false so
+        // the next window retries soon rather than in five minutes.
+        if (!cache.has(key)) cache.set(key, { value: false, expiresAt: now() + unknownTtlMs });
+        return;
+      }
+      cache.set(key, { value, expiresAt: now() + cacheTtlMs });
+    })()
+      .catch(() => {})
+      .finally(() => {
+        refreshing.delete(key);
+      });
+    refreshing.set(key, task);
+    return task;
+  }
+
   return {
+    /**
+     * Never waits on CarePortals: answers from cache (stale allowed) and
+     * revalidates in the background. This call sits inside the internal
+     * profile read the brain aborts at 1500ms, so a cold third-party chain
+     * on the request path would make the subscriber tier unreachable and
+     * take the whole member context down with it. The cost: the very first
+     * chat turn in a cache window reads false; the tier lights up on the
+     * next turn.
+     */
     async isSubscribed(email: string): Promise<boolean> {
       const key = email.toLowerCase();
       const cached = cache.get(key);
-      if (cached && cached.expiresAt > now()) return cached.value;
+      if (!cached || cached.expiresAt <= now()) void refresh(key, email);
+      return cached?.value ?? false;
+    },
 
-      const customerId = await lookupCustomerId(email);
-      const value = customerId ? await hasActiveSubscription(customerId) : false;
-      cache.set(key, { value, expiresAt: now() + cacheTtlMs });
-      return value;
+    async flush(): Promise<void> {
+      while (refreshing.size > 0) await Promise.all([...refreshing.values()]);
     },
   };
 }
+
+/** Sentinel for "the platform could not say", distinct from a definitive no. */
+const UNKNOWN = Symbol('careportals-unknown');

@@ -48,7 +48,10 @@ export function createBrainConfigService(
       const salvaged: Record<string, unknown> = {};
       for (const [key, value] of Object.entries(stored)) {
         const field = brainSettingsSchema.shape[key as keyof BrainSettings];
-        if (field && field.safeParse(value).success) salvaged[key] = value;
+        const attempt = field?.safeParse(value);
+        // The parsed value, not the raw one, so trims and coercions apply
+        // exactly as on the normal path.
+        if (attempt?.success) salvaged[key] = attempt.data;
       }
       console.warn(
         `brain settings row partially invalid; salvaged ${Object.keys(salvaged).length}/${Object.keys(stored).length} fields, rest fall back to defaults`,

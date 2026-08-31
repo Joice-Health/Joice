@@ -258,7 +258,7 @@ export function createEvalService(db: Database, deps: EvalServiceDeps) {
           service,
           config,
           run.mode as EvalRunMode,
-          run.audience as AudienceTier,
+          run.audience,
           c,
         );
         outcomes.push(outcome);

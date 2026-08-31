@@ -87,6 +87,15 @@ const envSchema = z.object({
 });
 
 export const env = envSchema
+  .refine(
+    (e) =>
+      !e.CAREPORTALS_ORG === !e.CAREPORTALS_CRM_USERNAME &&
+      !e.CAREPORTALS_CRM_USERNAME === !e.CAREPORTALS_CRM_PASSWORD,
+    {
+      message:
+        'CAREPORTALS_ORG, CAREPORTALS_CRM_USERNAME and CAREPORTALS_CRM_PASSWORD must be set together (or all left empty to disable subscriber detection) — half-configured would silently make nobody a subscriber.',
+    },
+  )
   .refine((e) => !e.KLAVIYO_API_KEY === !e.KLAVIYO_LIST_ID, {
     message:
       'KLAVIYO_API_KEY and KLAVIYO_LIST_ID must be set together (or both left empty to disable the sync) — half-configured would silently sync nothing.',

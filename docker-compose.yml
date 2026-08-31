@@ -53,6 +53,9 @@ services:
       # Klaviyo waitlist sync — both empty disables it (signups just don't sync).
       KLAVIYO_API_KEY: ${KLAVIYO_API_KEY:-}
       KLAVIYO_LIST_ID: ${KLAVIYO_LIST_ID:-}
+      CAREPORTALS_ORG: ${CAREPORTALS_ORG:-}
+      CAREPORTALS_CRM_USERNAME: ${CAREPORTALS_CRM_USERNAME:-}
+      CAREPORTALS_CRM_PASSWORD: ${CAREPORTALS_CRM_PASSWORD:-}
       # Bearer for /api/internal/* (the brain's profile reads). Shared with the brain below.
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-joice-dev-internal-token}
       # The admin console edits the brain's settings, so it needs the same
