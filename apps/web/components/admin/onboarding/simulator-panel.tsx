@@ -9,7 +9,8 @@ import {
 import { GOAL_VALUES } from '@joice/core/schemas';
 import { US_STATES } from '@joice/utils';
 import { Button, Input, cn } from '@joice/ui';
-import { Badge, Panel, ErrorState, Table, Td, Th } from '@/components/admin/ui';
+import { Badge, ErrorState, Panel, PanelHeader, Table, Td, Th } from '@/components/admin/ui';
+import { AdminSelect, AdminTextarea } from '@/components/admin/fields';
 
 /**
  * "What will this person see, in what order, and why." A persona (state, date
@@ -62,65 +63,53 @@ export function SimulatorPanel() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <label className="flex flex-col gap-1">
             <span className="mono-label text-muted">Version</span>
-            <select
-              value={effectiveVersion}
-              onChange={(e) => setVersionId(e.target.value)}
-              className="h-10 rounded-full bg-canvas px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-brand-600/50"
-            >
+            <AdminSelect value={effectiveVersion} onChange={(e) => setVersionId(e.target.value)}>
               {items.map((v) => (
                 <option key={v.id} value={v.id}>
                   v{v.version} ({v.status})
                 </option>
               ))}
-            </select>
+            </AdminSelect>
           </label>
           <label className="flex flex-col gap-1">
             <span className="mono-label text-muted">State</span>
-            <select
-              value={state}
-              onChange={(e) => setState(e.target.value)}
-              className="h-10 rounded-full bg-canvas px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-brand-600/50"
-            >
+            <AdminSelect value={state} onChange={(e) => setState(e.target.value)}>
               {US_STATES.map((s) => (
                 <option key={s.code} value={s.code}>
                   {s.name}
                 </option>
               ))}
-            </select>
+            </AdminSelect>
           </label>
           <label className="flex flex-col gap-1">
             <span className="mono-label text-muted">Date of birth</span>
-            <Input type="date" value={dob} onChange={(e) => setDob(e.target.value)} className="h-10 px-3 text-sm" />
+            <Input type="date" value={dob} onChange={(e) => setDob(e.target.value)} className="h-10 bg-canvas px-3 text-sm" />
           </label>
           <label className="flex flex-col gap-1">
             <span className="mono-label text-muted">Goal</span>
-            <select
-              value={goal}
-              onChange={(e) => setGoal(e.target.value)}
-              className="h-10 rounded-full bg-canvas px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-brand-600/50"
-            >
+            <AdminSelect value={goal} onChange={(e) => setGoal(e.target.value)}>
               {GOAL_VALUES.map((g) => (
                 <option key={g} value={g}>
                   {g}
                 </option>
               ))}
-            </select>
+            </AdminSelect>
           </label>
         </div>
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
           <label className="flex flex-col gap-1">
             <span className="mono-label text-muted">More answers, by question key (JSON)</span>
-            <textarea
+            <AdminTextarea
               value={extra}
               onChange={(e) => setExtra(e.target.value)}
               rows={6}
-              className="rounded-2xl bg-canvas p-3 font-mono text-xs text-ink outline-none focus-visible:ring-2 focus-visible:ring-brand-600/50"
+              className="font-mono text-xs"
             />
           </label>
           <div className="flex flex-col gap-3">
             <label className="flex flex-col gap-1">
               <span className="mono-label text-muted">Minimum age override</span>
-              <Input value={minimumAge} placeholder="live setting" inputMode="numeric" onChange={(e) => setMinimumAge(e.target.value)} className="h-10 max-w-32 px-3 text-sm" />
+              <Input value={minimumAge} placeholder="live setting" inputMode="numeric" onChange={(e) => setMinimumAge(e.target.value)} className="h-10 max-w-32 bg-canvas px-3 text-sm" />
             </label>
             <Button variant="solid" onClick={run} disabled={simulate.isPending || !effectiveVersion} className="self-start">
               {simulate.isPending ? 'Running…' : 'Run the engine +'}
@@ -128,7 +117,7 @@ export function SimulatorPanel() {
           </div>
         </div>
         {error ? (
-          <p className="mt-3 text-sm text-red-700" role="alert">
+          <p className="mt-3 text-sm text-danger" role="alert">
             {error}
           </p>
         ) : null}
@@ -162,7 +151,7 @@ function ResultView({ result }: { result: SimulateResult }) {
             {result.path.map((step, i) => (
               <tr key={i}>
                 <Td>
-                  <span className={cn('mono-label', step.kind === 'gate' ? 'text-red-700' : 'text-muted')}>
+                  <span className={cn('mono-label', step.kind === 'gate' ? 'text-danger' : 'text-muted')}>
                     {step.kind}
                     {step.error ? ' (refused)' : step.skipped ? ' (skipped)' : ''}
                   </span>
@@ -177,8 +166,8 @@ function ResultView({ result }: { result: SimulateResult }) {
       </Panel>
 
       <Panel>
-        <p className="mono-label text-muted">Why: every rule the engine evaluated, in order</p>
-        <ul className="mt-3 flex flex-col gap-2">
+        <PanelHeader>Why: every rule the engine evaluated, in order</PanelHeader>
+        <ul className="flex flex-col gap-2">
           {result.trace.map((entry, i) => (
             <li key={i}>
               <details>
@@ -194,8 +183,8 @@ function ResultView({ result }: { result: SimulateResult }) {
       </Panel>
 
       <Panel>
-        <p className="mono-label text-muted">Protocols this persona matches</p>
-        <p className="mt-1 text-xs text-muted">
+        <PanelHeader className="mb-1">Protocols this persona matches</PanelHeader>
+        <p className="text-xs text-muted">
           A recommendation preview from the stored protocol rules: ranked, clinician review
           always required, never shown to a member.
         </p>
@@ -220,8 +209,8 @@ function ResultView({ result }: { result: SimulateResult }) {
       </Panel>
 
       <Panel>
-        <p className="mono-label text-muted">Derived traits at the end</p>
-        <pre className="mt-2 overflow-x-auto rounded-xl bg-canvas p-3 text-xs">{JSON.stringify(result.traits, null, 2)}</pre>
+        <PanelHeader className="mb-2">Derived traits at the end</PanelHeader>
+        <pre className="overflow-x-auto rounded-xl bg-canvas p-3 text-xs">{JSON.stringify(result.traits, null, 2)}</pre>
       </Panel>
     </>
   );

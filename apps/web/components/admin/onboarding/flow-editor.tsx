@@ -20,7 +20,9 @@ import {
   type FlowQuestion,
 } from '@joice/core/schemas';
 import { Button, Input, cn } from '@joice/ui';
-import { Badge, Panel, EmptyState, ErrorState } from '@/components/admin/ui';
+import { Badge, EmptyState, ErrorState, Panel, PanelSkeleton } from '@/components/admin/ui';
+import { useConfirm } from '@/components/admin/confirm';
+import { useToast } from '@/components/admin/toast';
 import { ConditionBuilder } from './condition-builder';
 import { QuestionEditor } from './question-editor';
 import { ValidationReportPanel } from './validation-report';
@@ -44,7 +46,7 @@ export function FlowEditor() {
   const publishedRow = versions.data?.items.find((v) => v.status === 'published');
   const phi = flowList.data?.phi;
 
-  if (versions.isPending) return <p className="mono-label text-muted">Loading…</p>;
+  if (versions.isPending) return <PanelSkeleton />;
   if (versions.error) return <ErrorState error={versions.error} />;
 
   if (!draftRow) {
@@ -82,6 +84,7 @@ function DraftEditor({
   const [selected, setSelected] = useState<string | null>(null);
   const [report, setReport] = useState<ValidationReportView | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const toast = useToast();
 
   // The stored definition parses through the same schema the server uses.
   const stored = useMemo(() => {
@@ -91,7 +94,7 @@ function DraftEditor({
   }, [version.data]);
   const definition = draft ?? stored;
 
-  if (version.isPending) return <p className="mono-label text-muted">Loading the draft…</p>;
+  if (version.isPending) return <PanelSkeleton />;
   if (version.error || !definition) return <ErrorState error={version.error ?? new Error("The draft definition does not parse on this build.")} />;
 
   const dirty = draft !== null;
@@ -105,7 +108,7 @@ function DraftEditor({
       const result = await save.mutateAsync({ id: draftId, definition: definition! });
       setReport(result.report);
       setDraft(null);
-      setMessage('Saved.');
+      toast('Draft saved.');
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Save failed.');
     }
@@ -118,7 +121,7 @@ function DraftEditor({
       await publish.mutateAsync({ id: draftId });
       setDraft(null);
       setReport(null);
-      setMessage(`Published v${draftVersion}. Live sessions keep their logic unless only copy changed.`);
+      toast(`Published v${draftVersion}. Live sessions keep their logic unless only copy changed.`);
     } catch (err) {
       if (err instanceof PublishRefusedError) {
         setReport(err.report);
@@ -190,6 +193,7 @@ function SectionList({
 }) {
   const [adding, setAdding] = useState(false);
   const [newTitle, setNewTitle] = useState('');
+  const confirm = useConfirm();
 
   const moveSection = (index: number, delta: number) => {
     const sections = [...definition.sections];
@@ -235,9 +239,15 @@ function SectionList({
   // eligibility and consent core) has no remove control, and neither does a
   // locked section; anything else goes, and the report catches what a removal
   // breaks (a rule referencing a trait nobody asks any more, for instance).
-  const removeQuestion = (sectionIndex: number, qKey: string) => {
+  const removeQuestion = async (sectionIndex: number, qKey: string) => {
     const label = definition.questions[qKey]?.copy.label ?? qKey;
-    if (!window.confirm(`Remove "${label}" from the draft? Sessions on published versions keep it.`)) return;
+    const ok = await confirm({
+      title: `Remove "${label}" from the draft?`,
+      body: 'Sessions on published versions keep it.',
+      confirmLabel: 'Remove +',
+      danger: true,
+    });
+    if (!ok) return;
     const sections = definition.sections.map((s, i) =>
       i === sectionIndex ? { ...s, questions: s.questions.filter((k) => k !== qKey) } : s,
     );
@@ -246,12 +256,18 @@ function SectionList({
     onChange({ ...definition, sections, questions });
     if (selected === qKey) onSelect(null);
   };
-  const removeSection = (index: number) => {
+  const removeSection = async (index: number) => {
     const section = definition.sections[index];
     if (!section) return;
     const count = section.questions.length;
     const suffix = count === 0 ? '' : count === 1 ? ' and its question' : ` and its ${count} questions`;
-    if (!window.confirm(`Remove the section "${section.title}"${suffix} from the draft?`)) return;
+    const ok = await confirm({
+      title: `Remove the section "${section.title}"?`,
+      body: `It leaves the draft${suffix ? `,${suffix},` : ''} the moment you save.`,
+      confirmLabel: 'Remove +',
+      danger: true,
+    });
+    if (!ok) return;
     const sections = definition.sections.filter((_, i) => i !== index);
     const questions = { ...definition.questions };
     for (const qKey of section.questions) {
@@ -284,7 +300,7 @@ function SectionList({
               ↓
             </button>
             {!isProtectedSection(section.key) ? (
-              <button type="button" aria-label={`Remove ${section.title}`} className="text-muted hover:text-ink" onClick={() => removeSection(si)}>
+              <button type="button" aria-label={`Remove ${section.title}`} className="text-muted hover:text-ink" onClick={() => void removeSection(si)}>
                 ×
               </button>
             ) : null}
@@ -318,7 +334,7 @@ function SectionList({
                   ↓
                 </button>
                 {!isProtectedQuestion(section.key, definition.questions[qKey]?.trait ?? '') ? (
-                  <button type="button" aria-label={`Remove ${qKey}`} className="text-muted hover:text-ink" onClick={() => removeQuestion(si, qKey)}>
+                  <button type="button" aria-label={`Remove ${qKey}`} className="text-muted hover:text-ink" onClick={() => void removeQuestion(si, qKey)}>
                     ×
                   </button>
                 ) : null}
@@ -333,7 +349,7 @@ function SectionList({
 
       {adding ? (
         <div className="flex items-center gap-2">
-          <Input value={newTitle} placeholder="Section title" onChange={(e) => setNewTitle(e.target.value)} className="h-9 px-3 text-sm" />
+          <Input value={newTitle} placeholder="Section title" onChange={(e) => setNewTitle(e.target.value)} className="h-9 bg-canvas px-3 text-sm" />
           <Button type="button" size="sm" onClick={addSection}>
             Add
           </Button>

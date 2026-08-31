@@ -2,7 +2,20 @@
 
 import { useState } from 'react';
 import { useAdminFlowVersions, useOnboardingFunnel } from '@joice/api-client';
-import { Panel, EmptyState, ErrorState, PageHeader, Table, Td, Th } from '@/components/admin/ui';
+import {
+  EmptyState,
+  ErrorState,
+  PageHeader,
+  Panel,
+  PanelHeader,
+  PanelSkeleton,
+  Table,
+  Td,
+  Th,
+} from '@/components/admin/ui';
+import { AdminSelect } from '@/components/admin/fields';
+
+const CRUMBS = [{ href: '/admin/onboarding', label: 'Onboarding' }];
 
 /**
  * Per version: starts, per-question reach and drop, gate outcomes,
@@ -19,22 +32,22 @@ export default function AdminOnboardingFunnelPage() {
 
   return (
     <div>
-      <PageHeader title="Intake funnel">
-        <select
+      <PageHeader breadcrumbs={CRUMBS} title="Intake funnel">
+        <AdminSelect
+          size="sm"
           aria-label="Version"
           value={effective}
           onChange={(e) => setVersionId(e.target.value)}
-          className="h-9 rounded-full bg-canvas px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-brand-600/50"
         >
           {(versions.data?.items ?? []).map((v) => (
             <option key={v.id} value={v.id}>
               v{v.version} ({v.status})
             </option>
           ))}
-        </select>
+        </AdminSelect>
       </PageHeader>
 
-      {funnel.isPending ? <p className="mono-label text-muted">Loading…</p> : null}
+      {funnel.isPending ? <PanelSkeleton /> : null}
       {funnel.error ? <ErrorState error={funnel.error} /> : null}
       {funnel.data ? (
         <>
@@ -49,15 +62,15 @@ export default function AdminOnboardingFunnelPage() {
             ).map(([label, value]) => (
               <Panel key={label}>
                 <p className="mono-label text-muted">{label}</p>
-                <p className="mt-1 text-3xl text-ink">{value}</p>
+                <p className="display mt-2 text-4xl text-ink tabular-nums">{value}</p>
               </Panel>
             ))}
           </div>
 
           {Object.keys(funnel.data.gates).length > 0 ? (
             <Panel className="mb-6">
-              <p className="mono-label text-muted">Gate outcomes</p>
-              <ul className="mt-2 flex flex-wrap gap-4">
+              <PanelHeader>Gate outcomes</PanelHeader>
+              <ul className="flex flex-wrap gap-4">
                 {Object.entries(funnel.data.gates).map(([outcome, count]) => (
                   <li key={outcome} className="text-sm text-ink">
                     <span className="mono-label mr-2 text-muted">{outcome}</span>

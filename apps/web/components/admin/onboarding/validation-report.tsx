@@ -17,7 +17,7 @@ export function ValidationReportPanel({ report }: { report: ValidationReportView
     <ul className="flex flex-col gap-1" aria-label="Validation report">
       {rows.map((row, i) => (
         <li key={i} className="flex items-baseline gap-2 text-sm">
-          <span className={cn('mono-label shrink-0', row.level === 'error' ? 'text-red-700' : 'text-muted')}>
+          <span className={cn('mono-label shrink-0', row.level === 'error' ? 'text-danger' : 'text-muted')}>
             {row.level === 'error' ? 'blocks' : 'note'}
           </span>
           <span className="text-ink">{row.message}</span>
