@@ -46,7 +46,7 @@ export function RunResults({
             : ''}
         </p>
       ) : null}
-      <ul className="divide-y divide-ink/5">
+      <ul className="divide-y divide-line/60">
         {results.map((result, i) => {
           const mark = marks[i];
           return (
@@ -59,7 +59,7 @@ export function RunResults({
                   {mark ? (
                     <span
                       className={
-                        mark === 'fixed' ? 'text-xs font-medium text-emerald-700' : 'text-xs font-medium text-red-600'
+                        mark === 'fixed' ? 'mono-label text-brand-700' : 'mono-label text-danger'
                       }
                     >
                       {mark}
@@ -73,7 +73,7 @@ export function RunResults({
                 <div className="mt-2 space-y-2 pl-1 text-sm">
                   <p className="text-muted">{result.detail}</p>
                   {result.answer ? (
-                    <p className="whitespace-pre-wrap rounded-card bg-canvas/70 p-3 text-ink">
+                    <p className="whitespace-pre-wrap rounded-xl bg-canvas/70 p-3 text-ink">
                       {result.answer}
                     </p>
                   ) : null}
@@ -82,7 +82,7 @@ export function RunResults({
                       {(result.citations as { sourcePath?: string }[]).map((c, j) => (
                         <span
                           key={j}
-                          className="rounded-full bg-brand-400/12 px-2.5 py-0.5 font-mono text-[10px] text-brand-800"
+                          className="rounded-full bg-brand-100 px-2.5 py-0.5 font-mono text-[10px] text-brand-800"
                         >
                           {c.sourcePath ?? 'source'}
                         </span>

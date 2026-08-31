@@ -2,7 +2,17 @@
 
 import Link from 'next/link';
 import type { EvalRunSummary, EvalRunsPage } from '@joice/api-client';
-import { Badge, Panel, EmptyState, Pagination, Table, Td, Th } from '@/components/admin/ui';
+import {
+  Badge,
+  EmptyState,
+  Pagination,
+  Panel,
+  PanelHeader,
+  Table,
+  TableSkeleton,
+  Td,
+  Th,
+} from '@/components/admin/ui';
 import { relativeTime } from './form';
 
 /**
@@ -40,8 +50,8 @@ export function RunsTable({
 
   return (
     <Panel className="mb-6">
-      <h2 className="mb-4 text-lg font-semibold text-ink">Runs</h2>
-      {items.length === 0 ? (
+      <PanelHeader>Runs</PanelHeader>
+      {data && items.length === 0 ? (
         <EmptyState>No runs yet. Start one above.</EmptyState>
       ) : (
         <Table>
@@ -59,12 +69,13 @@ export function RunsTable({
             </tr>
           </thead>
           <tbody>
+            {!data ? <TableSkeleton cols={9} /> : null}
             {items.map((run) => {
               const delta = deltaFor(run);
               return (
-                <tr key={run.id} className="hover:bg-white/40">
+                <tr key={run.id} className="hover:bg-canvas/60">
                   <Td>
-                    <Link href={`/admin/eval/${run.id}`} className="font-medium hover:underline">
+                    <Link href={`/admin/eval/${run.id}`} className="text-ink hover:underline">
                       {run.passedCases !== null
                         ? `${run.passedCases}/${run.totalCases}`
                         : `…/${run.totalCases}`}
@@ -72,7 +83,7 @@ export function RunsTable({
                     {delta ? (
                       <span
                         className={
-                          delta.startsWith('+') ? 'ml-2 text-xs text-emerald-700' : 'ml-2 text-xs text-red-600'
+                          delta.startsWith('+') ? 'ml-2 text-xs text-brand-700' : 'ml-2 text-xs text-danger'
                         }
                       >
                         {delta}
@@ -84,11 +95,11 @@ export function RunsTable({
                   </Td>
                   <Td>{run.audience}</Td>
                   <Td className="font-mono text-xs">{run.model}</Td>
-                  <Td>{run.totalP50Ms !== null ? `${run.totalP50Ms}ms` : '—'}</Td>
+                  <Td>{run.totalP50Ms !== null ? `${run.totalP50Ms}ms` : '·'}</Td>
                   <Td>
                     {run.inputTokens !== null
                       ? `${run.inputTokens} in / ${run.outputTokens ?? 0} out`
-                      : '—'}
+                      : '·'}
                   </Td>
                   <Td className="text-muted">{run.triggeredByEmail ?? run.triggeredBy}</Td>
                   <Td className="text-muted">{relativeTime(run.startedAt)}</Td>

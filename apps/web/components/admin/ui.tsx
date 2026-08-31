@@ -54,8 +54,20 @@ export function PageHeader({
 }
 
 /** Solid white surface; the white on the cream is the edge, so no frame or shadow. */
-export function Panel({ className, children }: { className?: string; children: ReactNode }) {
-  return <div className={cn('panel rounded-2xl p-6', className)}>{children}</div>;
+export function Panel({
+  id,
+  className,
+  children,
+}: {
+  id?: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div id={id} className={cn('panel rounded-2xl p-6', className)}>
+      {children}
+    </div>
+  );
 }
 
 export function PanelHeader({ className, children }: { className?: string; children: ReactNode }) {
