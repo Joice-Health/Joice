@@ -12,11 +12,15 @@ How the companion's abilities are built, organized, surfaced, and grown. This
 doc exists because the toolset will grow (member context, orders, protocols,
 cart) and adding ability number five should be a routine afternoon.
 
-## Where tools live today
+## Where tools live
 
-Everything is in `packages/brain/src/tools/` (currently one module,
-`index.ts`), consumed by the generic loop in
-`packages/brain/src/generation/agent-loop.ts` which knows nothing about any
+One file per tool in `packages/brain/src/tools/` (`search-notes.ts`,
+`search-catalogue.ts`, `clinician-handoff.ts`, `flag-intent.ts`), each
+exporting a `BrainTool` (`types.ts`): the Bedrock spec, the zod input schema
+kept beside it, the visitor-facing label, and the per-request executor
+factory. `index.ts` is the registry: the `TOOLS` list, the derived
+`toolLabels` map, and `buildToolExecutors(deps)`. The generic loop in
+`packages/brain/src/generation/agent-loop.ts` knows nothing about any
 specific tool:
 
 ```mermaid
@@ -62,7 +66,7 @@ Two rules keep this safe as it grows:
    on), gated server-side so tool names never reach the wire when off; the
    finished answer carries a deduped `toolsUsed` trace rendered as chips.
 
-## Adding a tool (checklist, completed as-built in phase 2)
+## Adding a tool (the checklist)
 
 1. New file in `packages/brain/src/tools/` exporting a `ToolDefinition`:
    Bedrock JSON schema + zod input schema (kept together, they move together),

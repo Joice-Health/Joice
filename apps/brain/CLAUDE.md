@@ -24,7 +24,7 @@ client, and an upgrade handler has no place in `BrainAppType`.
 ## What this service is allowed to touch
 
 - **Tables**: only those in `packages/db/src/schema/brain.ts`. Everything else belongs to the
-  platform. If the brain needs identity, orders, protocols or a catalogue, that goes through a
+  platform (enforced by `db-boundary.test.ts` here and in `packages/brain`). If the brain needs identity, orders, protocols or a catalogue, that goes through a
   port (`packages/brain/src/ports`) whose implementation is injected in `src/services.ts` —
   today they are stubs returning empty.
 - **AWS**: Bedrock, Transcribe and Polly, via the `joice-brain-task` role. The api service has

@@ -13,7 +13,7 @@ import {
   stripThinking,
   stripTrailingCitationClump,
 } from './sanitize';
-import { buildToolExecutors, type NotesPrefetch } from '../tools';
+import { buildToolExecutors, toolLabels, type NotesPrefetch } from '../tools';
 import { citedIndexes, stripCitationMarkers } from '../conversation/citations';
 import { stubPorts, type BrainPorts } from '../ports';
 import type {
@@ -60,14 +60,6 @@ export type RecommendationStreamEvent =
   | { type: 'tool'; name: string; status: 'started' | 'finished'; ok: boolean; label: string }
   | { type: 'action'; action: ChatAction }
   | { type: 'complete'; recommendation: PeptideRecommendation; usage?: Usage };
-
-/** Status-line copy per tool, mapped server-side so the client stays dumb. */
-const TOOL_LABELS: Record<string, string> = {
-  search_notes: 'Checking the research library…',
-  search_catalogue: 'Checking the catalogue…',
-  request_clinician_handoff: 'Looping in the clinical team…',
-  flag_intent: '',
-};
 
 const CONDENSE_PROMPT =
   "Rewrite the user's last message as a single standalone search query about peptides, " +
@@ -328,7 +320,9 @@ export function createRecommendationService(
         const visible = thinkingFilter.push(event.text);
         if (visible) yield { type: 'delta', text: visible };
       } else if (event.type === 'tool') {
-        yield { ...event, label: TOOL_LABELS[event.name] ?? '' };
+        // Status-line copy rides each tool's definition, mapped server-side
+        // so the client stays dumb.
+        yield { ...event, label: toolLabels[event.name] ?? '' };
       } else if (event.type === 'action') {
         yield event;
       } else {
