@@ -40,8 +40,10 @@ export interface CareportalsProduct {
 /**
  * A cart line. `id` is a short opaque string (not a Mongo id). Quantity is
  * pinned to 1 server-side for subscription products (verified live: a PUT
- * echoes the new quantity but the stored cart reverts), which is every product
- * we sell, so the UI offers Remove, never a quantity stepper.
+ * echoes the new quantity but the stored cart reverts), so subscription lines
+ * offer Remove, never a stepper. Non-subscription products DO persist a
+ * quantity (verified live 2026-09-01, and the update body must carry BOTH
+ * productId and quantity); see docs/shop/01-commerce.md section 10.
  */
 export interface CareportalsLineItem {
   id: string;
@@ -61,6 +63,66 @@ export interface CareportalsCart {
   subTotalAmount: number;
   discountAmount: number;
   totalAmount: number;
+}
+
+/**
+ * CarePortals Patient API: the authenticated side of the custom checkout
+ * (docs/shop/01-commerce.md sections 6 and 10, all shapes verified live
+ * 2026-09-01). Same organization header; patient calls add a Bearer JWT that
+ * only POST /auth/login returns. CORS is open with credentials, so the
+ * browser calls it directly and checkout PII never transits our servers.
+ */
+export const CAREPORTALS_PATIENT_BASE_URL = 'https://patient-api.portals.care';
+
+/** The payments call's shippingAddress, field names verbatim from the guide. */
+export interface ShippingAddress {
+  address1: string;
+  address2?: string;
+  city: string;
+  provinceCode: string;
+  postalCode: string;
+  countryCode: string; // 'US'
+}
+
+/**
+ * An order as the checkout endpoints return it. Statuses arrive in the
+ * catalogue's snake_case (awaiting_requirements, awaiting_script, ...) or,
+ * in some payloads, prose ("Awaiting Fulfillment"); treat as opaque text and
+ * compare case-insensitively where it matters.
+ */
+export interface CareportalsOrder {
+  _id: string;
+  /** The human order number, when present. */
+  id?: number;
+  status: string;
+  lineItems?: { name: string; price: number; quantity: number }[];
+  totalAmount?: number;
+}
+
+/**
+ * GET /v2/checkout/{cartId}/start. The embedded cart is the public cart shape
+ * plus totals context; paymentMethods lists the patient's saved cards (empty
+ * for a fresh account). couponError and error surface inline, never as HTTP
+ * failures.
+ */
+export interface CheckoutStart {
+  cart: CareportalsCart;
+  paymentMethods: { id: string; type: string; last4?: string; exp?: string }[];
+  totalAmountAfterCredit?: number;
+  currency?: string;
+  error?: string | null;
+  couponError?: string | null;
+}
+
+/** POST /v2/checkout/{cartId}/payments, discriminated on the HTTP status. */
+export type PaymentSubmitResult =
+  | { kind: 'succeeded'; orders: CareportalsOrder[] }
+  | { kind: 'requires_action'; clientSecret: string };
+
+/** GET /v2/checkout/{cartId}/payments: the read-only poll. */
+export interface PaymentPollResult {
+  paymentStatus: 'pending' | 'succeeded' | 'failed';
+  orders: CareportalsOrder[];
 }
 
 /** '$88' (whole dollars stay whole, '$88.50' keeps its cents). Prices arrive in dollars. */
