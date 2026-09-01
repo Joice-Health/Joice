@@ -29,7 +29,9 @@ export const dynamic = 'force-dynamic';
  * /coming-soon when the waitlist flag is off). The old /home URL 308s here via
  * next.config.ts. The team's preview of the future main-site landing lives at
  * /preview. Hero, the three steps (HowItWorks is link-free, so it is shared,
- * not copied) and the closing statement; every action leads to /shop.
+ * not copied) and the closing statement; every action leads to /store, where
+ * the certification shelf moved when the real shop took the /shop routes
+ * (docs/shop/01-commerce.md section 2).
  */
 export default async function ShopHomePage() {
   await requireShopEnabled();

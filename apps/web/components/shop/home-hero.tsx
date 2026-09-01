@@ -1,5 +1,6 @@
 import { CtaLink } from '@/components/ui/cta-link';
 import { ImageSlot } from '@/components/ui/image-slot';
+import { CERT_SHOP } from '@/lib/cert-routes';
 
 /**
  * The storefront hero: the main-site hero trimmed to its thesis. Same photo,
@@ -26,7 +27,7 @@ export function HomeHero() {
           proof, priced near cost, on purpose.
         </p>
         <div className="mt-9">
-          <CtaLink href="/shop" size="lg">
+          <CtaLink href={CERT_SHOP} size="lg">
             Get started +
           </CtaLink>
         </div>

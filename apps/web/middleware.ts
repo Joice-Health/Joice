@@ -29,25 +29,38 @@ const isMemberRoute = createRouteMatcher(['/welcome(.*)']);
 
 // /health is the ALB liveness check (app/health/route.ts): it must answer 200
 // with no cookie, so it sits outside the gate.
-// / through /checkout are the public storefront (docs/shop/00-plan.md): the
-// root is the storefront landing (sc-251; /home 308s to it in next.config.ts)
-// and the pages themselves check the `shop` flag, which outranks every other
-// flag, redirecting to /waitlist when it is off. '/' matches only exactly
-// (nothing starts with '//'), so every other path stays gated. /terms,
-// /privacy and /faq are permanent legal pages, flag-free. Note /shop covers
-// /shop/[id] via the prefix match; /products and /preview stay gated.
+// / and /store/* are the public certification storefront (docs/shop/00-plan.md,
+// moved off /shop by docs/shop/01-commerce.md section 2): the root is the
+// storefront landing (sc-251; /home 308s to it in next.config.ts) and the
+// pages themselves check the `shop` flag, which outranks every other flag,
+// redirecting to /waitlist when it is off. '/' matches only exactly (nothing
+// starts with '//'), so every other path stays gated. /terms, /privacy and
+// /faq are permanent legal pages, flag-free. /store covers /store/[id] and
+// /store/checkout via the prefix match; /shop, /checkout, /cart, /products
+// and /preview are the real shop and stay gated until launch.
 const PUBLIC_PATHS = [
   '/',
   '/waitlist',
   '/coming-soon',
   '/team',
   '/health',
-  '/shop',
-  '/checkout',
+  '/store',
   '/terms',
   '/privacy',
   '/faq',
 ];
+
+// Auditors hold pre-migration URLs to the certification storefront. Anonymous
+// visitors pre-launch are forwarded to the moved copies; team members fall
+// through to the gate and get the real shop on these paths. Exact paths only:
+// the deep legacy shapes (/shop/glutathione, /shop/[24-hex]) are unconditional
+// next.config.ts redirects and never reach here, and other /shop/* shapes were
+// never public, so they take the normal gate. siteLaunched() disables the
+// forward at launch with no further change.
+const LEGACY_CERT_REDIRECTS: Record<string, string> = {
+  '/shop': '/store',
+  '/checkout': '/store/checkout',
+};
 
 const clerkConfigured = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
@@ -63,6 +76,20 @@ async function teamGate(request: NextRequest) {
   if (siteLaunched()) return NextResponse.next();
 
   const { pathname } = request.nextUrl;
+
+  const legacy = LEGACY_CERT_REDIRECTS[pathname];
+  if (legacy) {
+    const legacyCookie = request.cookies.get(TEAM_COOKIE)?.value;
+    if (!(await isValidTeamCookie(legacyCookie, process.env.TEAM_PASSWORD))) {
+      // 307; url.search is kept so auditor query strings survive the forward.
+      const url = request.nextUrl.clone();
+      url.pathname = legacy;
+      return NextResponse.redirect(url);
+    }
+    // A valid team cookie falls through: the gate below admits them to the
+    // real shop on this same path.
+  }
+
   if (PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
     return NextResponse.next();
   }
