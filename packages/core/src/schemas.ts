@@ -93,6 +93,15 @@ export const FLAG_KEYS = {
    * /admin/flags is the post-audit kill switch.
    */
   shop: 'shop',
+  /**
+   * The production shop: /shop, /shop/[category], /products/[slug], /cart,
+   * /checkout (docs/shop/01-commerce.md). Off: those pages redirect to
+   * /waitlist. Deliberately independent of `shop` (the certification
+   * storefront's kill switch) so either surface can be retired without
+   * touching the other. Seeded ON: pre-launch the middleware team gate is the
+   * privacy layer and this flag is the emergency kill switch.
+   */
+  commerce: 'commerce',
 } as const;
 
 export type FlagKey = (typeof FLAG_KEYS)[keyof typeof FLAG_KEYS];
