@@ -30,7 +30,9 @@ web-specific detail.
   localStorage); the curated shelf is the `SHOP_PRODUCT_IDS` const in `lib/shop-products.ts`
   (Glutathione only for the certification). A shelf of exactly one product renders the
   featured spread (`components/shop/featured-protocol.tsx`) instead of the row list; the
-  list idiom returns with the second product. Glutathione has a bespoke page at
+  list idiom returns with the second product. Product photos resolve through
+  `productImage()` (`PRODUCT_IMAGES` in `lib/shop-products.ts`, falling back to
+  `products/<id>.jpg`); a missing file still renders ImageSlot's designed field. Glutathione has a bespoke page at
   `/shop/glutathione` (static segment beats `[id]`; copy is the approved spec of record,
   its Add to cart button puts the product in the cart and lands on /checkout, and the hero price
   is live from CarePortals). Checkout hands off to the hosted portal

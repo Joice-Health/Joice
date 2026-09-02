@@ -3,6 +3,7 @@ import { CtaLink } from '@/components/ui/cta-link';
 import { Eyebrow } from '@/components/ui/eyebrow';
 import { ImageSlot } from '@/components/ui/image-slot';
 import { formatPrice, type CareportalsProduct } from '@/lib/careportals/types';
+import { productImage } from '@/lib/shop-products';
 
 /**
  * The one-protocol shelf. A list row is the wrong idiom for a shelf of one:
@@ -24,7 +25,7 @@ export function FeaturedProtocol({
     <section className="border-t border-line py-10 animate-fade-up sm:py-14">
       <div className="grid gap-8 lg:grid-cols-[1fr_1.05fr] lg:gap-14">
         <ImageSlot
-          src={`products/${product._id}.jpg`}
+          src={productImage(product._id)}
           alt=""
           sizes="(min-width: 1024px) 48vw, 100vw"
           hue={128}
