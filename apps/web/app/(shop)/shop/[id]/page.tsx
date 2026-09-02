@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { requireShopEnabled } from '@/lib/shop-gate';
 import { getProduct } from '@/lib/careportals/products.server';
 import { formatPrice, type CareportalsProduct } from '@/lib/careportals/types';
+import { productImage } from '@/lib/shop-products';
 import { ImageSlot } from '@/components/ui/image-slot';
 import { AddToCartButton } from '@/components/shop/add-to-cart-button';
 import { ShopUnavailable } from '@/components/shop/shop-unavailable';
@@ -67,7 +68,7 @@ export default async function ShopProductPage({
           </div>
         </div>
         <ImageSlot
-          src={`products/${product._id}.jpg`}
+          src={productImage(product._id)}
           alt=""
           sizes="(min-width: 1024px) 480px, 100vw"
           className="aspect-[4/3] rounded-card"

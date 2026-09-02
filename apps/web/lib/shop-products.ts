@@ -21,3 +21,17 @@ export const SHOP_PRODUCT_IDS: readonly string[] = [GLUTATHIONE_ID];
 export const PRODUCT_PAGES: Record<string, string> = {
   [GLUTATHIONE_ID]: '/shop/glutathione',
 };
+
+/**
+ * Product photography, as paths under public/. Products without an entry fall
+ * back to the per-id convention, and ImageSlot renders the designed organic
+ * field when the file is missing either way, so a wrong path degrades to the
+ * placeholder, never a broken image.
+ */
+export const PRODUCT_IMAGES: Record<string, string> = {
+  [GLUTATHIONE_ID]: 'shop/product/peptide_product.png',
+};
+
+export function productImage(id: string): string {
+  return PRODUCT_IMAGES[id] ?? `products/${id}.jpg`;
+}
