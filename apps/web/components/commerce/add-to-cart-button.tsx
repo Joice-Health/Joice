@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@joice/ui';
 import { useAddToCart } from '@/lib/careportals/use-cart';
+import { track } from '@/lib/analytics';
 
 /**
  * The production PDP's one solid action: put the product in the CarePortals
@@ -26,6 +27,7 @@ export function AddToCartButton({
   async function handleAdd() {
     try {
       await add.mutateAsync({ productId });
+      track({ event: 'cart_item_added' });
       setNavigating(true);
       router.push('/shop/cart');
     } catch {

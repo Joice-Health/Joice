@@ -209,6 +209,17 @@ Connect smoke test shows tokenization must target the connected account, the fix
 
 Tracks A (2.x) and B (3.x) run in parallel after 1.2. Branches `shop/<phase>-<story>-<slug>`.
 
+**As built (2026-09-02).** Every slice landed on the `shop/commerce` integration branch
+(PRs 66 to 77; the epic PR #72 is where the whole experience is tested before main).
+Still open before the epic merges: the Stripe publishable key (repo Variable
+`STRIPE_PUBLISHABLE_KEY`, then a scope=all deploy), CarePortals support's answers
+(sandbox org, Connect tokenization direction, rate limits, cart reuse after a decline),
+the end-to-end payment verification those unlock (everything up to the Pay click is
+walked and screenshot-verified; without a baked key the payment step renders its
+unavailable notice), the variant-id curation checkpoint (provisional picks flagged in
+`lib/shop-catalog.ts`), and deleting the spike patient from the CRM. Analytics ships as
+`cart_*`/`checkout_*` events, steps and outcomes only.
+
 ## 9. Decisions log
 
 | Date | Decision | Why |

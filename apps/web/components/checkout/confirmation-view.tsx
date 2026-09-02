@@ -9,6 +9,7 @@ import { buttonClasses } from '@joice/ui';
 import { getPaymentStatus } from '@/lib/careportals/checkout.client';
 import { patientSession } from '@/lib/careportals/patient.client';
 import { useClearCartAfterOrder } from '@/lib/careportals/use-cart';
+import { track } from '@/lib/analytics';
 import type { CareportalsOrder } from '@/lib/careportals/types';
 import { checkExistingPayment } from './checkout-machine';
 
@@ -54,6 +55,7 @@ export function ConfirmationView() {
         setState({ kind: 'confirmed', orders: result.orders });
         if (!cleaned.current) {
           cleaned.current = true;
+          track({ event: 'checkout_completed' });
           clearCart();
           patientSession.clear();
         }
