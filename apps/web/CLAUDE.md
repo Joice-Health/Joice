@@ -37,9 +37,12 @@ web-specific detail.
   (care.joicehealth.com); no payment code here.
   Line quantities are pinned to 1 by CarePortals for subscription products, so the cart UI
   offers Remove, never a stepper. `/products` (gated site PDP) is deliberately not reused.
-- `/terms`, `/privacy`, `/faq` — public, permanent, flag-free (`app/(legal)/`, wearing the
-  storefront's ShopNav/ShopFooter); they move under the main-site shell at launch. `/faq`
-  carries the approved
+- `/terms`, `/privacy`, `/faq`, `/states` — public, permanent, flag-free (`app/(legal)/`,
+  wearing the storefront's ShopNav/ShopFooter); they move under the main-site shell at
+  launch. `/states` is the LegitScript jurisdiction disclosure (sc-275): it must load cold
+  with no credentials, its page metadata overrides the group's noindex, `app/sitemap.ts`
+  lists it, and its availability facts live in a constants block at the top of the page.
+  `/faq` carries the approved
   answers (edits come from an approved doc, and the insurance answer deliberately tracks
   Terms section 5); `/privacy` and `/terms` carry their approved copy verbatim (the copy
   of record, its own punctuation kept); no legal placeholder remains.

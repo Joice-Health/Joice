@@ -5,9 +5,10 @@ const FOOTER_LINKS = [
   { label: 'Terms of Service', href: '/terms' },
   { label: 'Privacy Policy', href: '/privacy' },
   { label: 'FAQ', href: '/faq' },
+  { label: 'States We Serve', href: '/states' },
 ];
 
-/** The storefront footer: the three permanent legal links the audit checks. */
+/** The storefront footer: the permanent legal links the audit checks. */
 export function ShopFooter() {
   return (
     <footer className="mt-8 border-t border-line py-8">

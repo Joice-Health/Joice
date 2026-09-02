@@ -34,8 +34,10 @@ const isMemberRoute = createRouteMatcher(['/welcome(.*)']);
 // and the pages themselves check the `shop` flag, which outranks every other
 // flag, redirecting to /waitlist when it is off. '/' matches only exactly
 // (nothing starts with '//'), so every other path stays gated. /terms,
-// /privacy and /faq are permanent legal pages, flag-free. Note /shop covers
-// /shop/[id] via the prefix match; /products and /preview stay gated.
+// /privacy, /faq and /states are permanent flag-free pages; /states is the
+// LegitScript jurisdiction disclosure and must load cold with no credentials
+// (sc-275). Note /shop covers /shop/[id] via the prefix match; /products and
+// /preview stay gated.
 const PUBLIC_PATHS = [
   '/',
   '/waitlist',
@@ -47,6 +49,7 @@ const PUBLIC_PATHS = [
   '/terms',
   '/privacy',
   '/faq',
+  '/states',
 ];
 
 const clerkConfigured = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
