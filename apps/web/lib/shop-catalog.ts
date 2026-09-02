@@ -26,7 +26,11 @@
 import type { CareAreaSlug } from '@joice/utils';
 
 export interface CatalogEntry {
-  /** URL segment for /products/[slug]. Unique; never a Mongo id. */
+  /**
+   * URL segment for /shop/[slug]. Unique; never a Mongo id, never a care-area
+   * slug, never `cart` or `checkout` (the segment is shared with category
+   * pages and the cart/checkout routes; the tests enforce all three).
+   */
   slug: string;
   /** The CarePortals `_id` of the exact sellable variant this PDP sells. */
   careportalsId: string;
@@ -152,7 +156,7 @@ export const SHOP_CATALOG: readonly CatalogEntry[] = [
   },
 ];
 
-/** The entry a /products/[slug] URL names, or undefined. */
+/** The entry a /shop/[slug] URL names, or undefined. */
 export function catalogEntryBySlug(slug: string): CatalogEntry | undefined {
   return SHOP_CATALOG.find((e) => e.slug === slug);
 }

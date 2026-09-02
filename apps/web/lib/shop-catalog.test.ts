@@ -34,9 +34,16 @@ describe('SHOP_CATALOG', () => {
     }
   });
 
-  test('no slug collides with a care area (they share the /shop namespace idiom)', () => {
+  test('no slug collides with a care area (categories share the /shop/[slug] segment)', () => {
     for (const entry of SHOP_CATALOG) {
       expect(CARE_AREA_SLUGS).not.toContain(entry.slug);
+    }
+  });
+
+  test('the cart and checkout routes are reserved words in the segment', () => {
+    const reserved = ['cart', 'checkout'];
+    for (const entry of SHOP_CATALOG) {
+      expect(reserved).not.toContain(entry.slug);
     }
   });
 
