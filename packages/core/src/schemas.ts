@@ -94,9 +94,10 @@ export const FLAG_KEYS = {
    */
   shop: 'shop',
   /**
-   * The production shop: /shop, /shop/[category], /products/[slug], /cart,
-   * /checkout (docs/shop/01-commerce.md). Off: those pages redirect to
-   * /waitlist. Deliberately independent of `shop` (the certification
+   * The production shop, everything under /shop: the catalogue, the
+   * /shop/[slug] category and product pages, /shop/cart, /shop/checkout
+   * (docs/shop/01-commerce.md). Off: those pages redirect to /waitlist.
+   * Deliberately independent of `shop` (the certification
    * storefront's kill switch) so either surface can be retired without
    * touching the other. Seeded ON: pre-launch the middleware team gate is the
    * privacy layer and this flag is the emergency kill switch.

@@ -5,8 +5,9 @@ import { flagEnabled } from '@/lib/flags';
 
 /**
  * The production shop's kill switch (docs/shop/01-commerce.md section 3).
- * Every new-shop server page (/shop, /shop/[category], /products/[slug],
- * /cart, /checkout) opens with this: `commerce` flag off (toggled in
+ * Every new-shop server page (everything under /shop: catalogue, the
+ * /shop/[slug] pages, /shop/cart, /shop/checkout) opens with this:
+ * `commerce` flag off (toggled in
  * /admin/flags) and visitors see /waitlist within about a minute, no deploy.
  * Independent of requireShopEnabled (lib/shop-gate.ts), which guards the
  * certification storefront at /store. Per-page rather than in the layout, the
