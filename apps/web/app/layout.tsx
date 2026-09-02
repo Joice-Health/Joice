@@ -34,18 +34,13 @@ const gaisyr = localFont({
   display: 'swap',
 });
 
-// Site-wide default, matching what the site sells today (sc-275 replaced the
-// stale waitlist-era copy): prescription glutathione through the storefront.
-// Pages with their own story (the waitlist, /states, the product pages)
-// override it.
 export const metadata: Metadata = {
-  title: 'Joice · Clinician-guided peptide care',
+  title: 'Joice · The future of peptide medicine',
   description:
-    'Clinician-guided peptide care, priced near cost, on purpose. Prescription glutathione, reviewed by an independent licensed physician and compounded by a licensed 503A pharmacy.',
+    'Join the Joice waitlist. AI-guided peptides and supplements, with real clinical governance. Refer friends to move up the line.',
   openGraph: {
-    title: 'Joice · Clinician-guided peptide care',
-    description:
-      'Clinician-guided peptide care, priced near cost, on purpose. Prescription glutathione, reviewed by an independent licensed physician and compounded by a licensed 503A pharmacy.',
+    title: 'Joice · The future of peptide medicine',
+    description: 'Join the waitlist for AI-guided peptides and supplements.',
     type: 'website',
   },
 };

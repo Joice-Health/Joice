@@ -152,9 +152,8 @@ product, Notion to the whole team. Same facts, three voices. Full doc:
    that returns the public to `/waitlist`. The waitlist sits behind the `waitlist` feature
    flag (seeded on by migration, toggled in `/admin/flags`); off, `/waitlist` and the
    public `/api/waitlist*` endpoints close and visitors land on `/coming-soon` ("Something
-   special is coming"). `/terms`, `/privacy`, `/faq` and `/states` (the LegitScript
-   jurisdiction disclosure, indexable and in the sitemap while the rest of the site is
-   noindexed) live in `app/(legal)/` and are permanent, flag-free public pages. The intake flow
+   special is coming"). `/terms`, `/privacy`, `/faq`
+   (`app/(legal)/`) are permanent, flag-free public pages. The intake flow
    (`/get-started`, `/api/onboarding/*`) sits behind the `onboarding` flag (seeded off) and,
    like every other page, behind the team gate until launch.
 2. **Team preview**: everything else redirects anonymous visitors to `/waitlist` via

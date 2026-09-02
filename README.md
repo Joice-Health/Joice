@@ -6,8 +6,8 @@ and carts from the CarePortals Public API, checkout completing on the hosted car
 behind the `shop` flag, which outranks every other flag at the root; `/home`, the
 landing's original URL, redirects there), the waitlist with its referral loop at
 `/waitlist` (sign up with an email, get a shareable referral link and QR "membership
-card", and move up the line as friends join), plus the permanent `/terms`, `/privacy`,
-`/faq` and `/states` pages.
+card", and move up the line as friends join), plus the permanent `/terms`, `/privacy`
+and `/faq` pages.
 
 Behind access gates in the same repo, waiting for launch: the main site, the admin
 dashboard at `/admin`, the "Ask Joice" companion (a retrieval-grounded chatbot running as

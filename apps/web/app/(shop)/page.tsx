@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { requireShopEnabled } from '@/lib/shop-gate';
 import { HomeHero } from '@/components/shop/home-hero';
 import { HowItWorks } from '@/components/home/how-it-works';
@@ -39,19 +38,6 @@ export default async function ShopHomePage() {
       <HomeHero />
       <HowItWorks />
       <ShopCta />
-      {/* The LegitScript jurisdiction pointer (sc-275): the disclosure stays
-          one click from where the analyst starts. Sits immediately above the
-          footer, which carries the States We Serve link itself. */}
-      <p className="border-t border-line py-8 text-center text-sm text-muted">
-        Available only in the United States. See{' '}
-        <Link
-          href="/states"
-          className="text-ink underline decoration-dotted underline-offset-4 hover:text-brand-700"
-        >
-          States We Serve
-        </Link>{' '}
-        for the full list of jurisdictions.
-      </p>
     </>
   );
 }
