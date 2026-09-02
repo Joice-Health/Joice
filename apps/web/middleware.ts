@@ -35,11 +35,12 @@ const isMemberRoute = createRouteMatcher(['/welcome(.*)']);
 // (sc-251; /home 308s to it in next.config.ts) and the pages themselves check
 // the `shop` flag, which outranks every other flag, redirecting to /waitlist
 // when it is off. '/' matches only exactly (nothing starts with '//'), so
-// every other path stays gated. /terms, /privacy and /faq are permanent legal
-// pages, flag-free. /store covers /store/[id] and /store/checkout via the
-// prefix match; /shop and everything under it (the real shop: catalogue,
-// categories, product pages, /shop/cart, /shop/checkout) stays gated until
-// launch.
+// every other path stays gated. /terms, /privacy, /faq and /states are
+// permanent flag-free pages; /states is the LegitScript jurisdiction
+// disclosure and must load cold with no credentials (sc-275). /store covers
+// /store/[id] and /store/checkout via the prefix match; /shop and everything
+// under it (the real shop: catalogue, categories, product pages, /shop/cart,
+// /shop/checkout) stays gated until launch.
 const PUBLIC_PATHS = [
   '/',
   '/waitlist',
@@ -50,6 +51,7 @@ const PUBLIC_PATHS = [
   '/terms',
   '/privacy',
   '/faq',
+  '/states',
 ];
 
 const clerkConfigured = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);

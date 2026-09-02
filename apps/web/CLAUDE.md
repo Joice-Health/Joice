@@ -46,9 +46,12 @@ web-specific detail.
   reused. The real production shop (catalogue, cart, on-site checkout) builds team-gated
   entirely under `/shop` (catalogue, `/shop/[slug]` category and product pages,
   `/shop/cart`, `/shop/checkout`) per `docs/shop/01-commerce.md`.
-- `/terms`, `/privacy`, `/faq` — public, permanent, flag-free (`app/(legal)/`, wearing the
-  storefront's ShopNav/ShopFooter); they move under the main-site shell at launch. `/faq`
-  carries the approved
+- `/terms`, `/privacy`, `/faq`, `/states` — public, permanent, flag-free (`app/(legal)/`,
+  wearing the storefront's ShopNav/ShopFooter); they move under the main-site shell at
+  launch. `/states` is the LegitScript jurisdiction disclosure (sc-275): it must load cold
+  with no credentials, its page metadata overrides the group's noindex, `app/sitemap.ts`
+  lists it, and its availability facts live in a constants block at the top of the page.
+  `/faq` carries the approved
   answers (edits come from an approved doc, and the insurance answer deliberately tracks
   Terms section 5); `/privacy` and `/terms` carry their approved copy verbatim (the copy
   of record, its own punctuation kept); no legal placeholder remains.

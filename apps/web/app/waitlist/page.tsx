@@ -1,8 +1,21 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { FLAG_KEYS } from '@joice/core/schemas';
 import { flagEnabled } from '@/lib/flags';
 import { AmbientBackground } from '@/components/ui/ambient-background';
 import { WaitlistExperience } from '@/components/waitlist/waitlist-experience';
+
+// The waitlist keeps its own copy now that the site-wide default describes
+// the storefront (sc-275).
+export const metadata: Metadata = {
+  title: 'Join the waitlist · Joice',
+  description: 'Join the Joice waitlist. Refer friends to move up the line.',
+  openGraph: {
+    title: 'Join the waitlist · Joice',
+    description: 'Join the Joice waitlist. Refer friends to move up the line.',
+    type: 'website',
+  },
+};
 
 export default async function WaitlistPage({
   searchParams,
