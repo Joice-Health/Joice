@@ -9,7 +9,7 @@ import {
 } from './checkout.client';
 
 const BODY = {
-  returnUrl: 'https://joicehealth.com/checkout/complete?cart=c1',
+  returnUrl: 'https://joicehealth.com/shop/checkout/complete?cart=c1',
   shippingAddress: {
     address1: '456 Oak Avenue',
     city: 'Austin',
