@@ -55,6 +55,19 @@ web-specific detail.
   answers (edits come from an approved doc, and the insurance answer deliberately tracks
   Terms section 5); `/privacy` and `/terms` carry their approved copy verbatim (the copy
   of record, its own punctuation kept); no legal placeholder remains.
+- `/shop`, `/shop/[slug]` — team-gated, the production shop (docs:
+  `docs/shop/01-commerce.md`). The catalogue at `/shop` (care-area index + one shelf per
+  area, primary-area membership only); the single dynamic segment `/shop/[slug]` renders a
+  category shelf for a care-area slug and the live PDP for a catalogue slug (the map's
+  tests forbid collisions and reserve `cart`/`checkout`). Every page pairs
+  `requireCommerceEnabled()` (`lib/commerce-gate.ts`) with
+  `export const dynamic = 'force-dynamic'`, same incident, same rule as the cert pages.
+  Data: `lib/shop-catalog.ts` (the curated map: slugs, variant ids, areas, copy) merged
+  with live CarePortals prices in `lib/shop-catalog.server.ts`; UI in
+  `components/commerce/` (never shared with the cert `components/shop/`). The old static
+  product layer is gone: `/products/[slug]` was deleted (no redirects, pre-launch), and
+  the explore/learn pages' `ProductRow` now reads `SHOP_CATALOG` (pure import, those
+  pages stay static) and links into `/shop/[slug]`.
 - Future site pages (`/explore`, `/story`, ... and the future main-site landing, parked at
   `/preview` while the storefront owns `/`) — gated by `middleware.ts` until
   `SITE_LAUNCHED=true`; anonymous → redirected to `/waitlist` (public must never see a

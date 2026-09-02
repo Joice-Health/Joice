@@ -27,8 +27,9 @@ describe('SHOP_CATALOG', () => {
     }
   });
 
-  test('every entry carries a tagline and a what-it-is', () => {
+  test('every entry carries a name, a tagline and a what-it-is', () => {
     for (const entry of SHOP_CATALOG) {
+      expect(entry.name.trim().length).toBeGreaterThan(0);
       expect(entry.tagline.trim().length).toBeGreaterThan(0);
       expect(entry.copy.whatItIs.trim().length).toBeGreaterThan(0);
     }

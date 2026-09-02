@@ -5,7 +5,8 @@ import { PageIntro } from '@/components/ui/page-intro';
 import { Eyebrow } from '@/components/ui/eyebrow';
 import { ProductRow } from '@/components/ui/product-row';
 import { GetStartedCta } from '@/components/ui/get-started-cta';
-import { CARE_AREAS, PRODUCTS } from '@/lib/site-content';
+import { CARE_AREAS } from '@/lib/site-content';
+import { SHOP_CATALOG } from '@/lib/shop-catalog';
 
 export const metadata: Metadata = {
   title: 'Explore · Joice',
@@ -52,8 +53,8 @@ export default function ExplorePage() {
           Shop
         </Eyebrow>
         <ul className="mt-8 border-t border-line">
-          {PRODUCTS.slice(0, 4).map((product, i) => (
-            <ProductRow key={product.slug} product={product} hue={[128, 96, 60, 150][i % 4]} />
+          {SHOP_CATALOG.slice(0, 4).map((entry) => (
+            <ProductRow key={entry.slug} entry={entry} />
           ))}
         </ul>
       </section>

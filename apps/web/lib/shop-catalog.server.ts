@@ -27,9 +27,9 @@ export interface MerchandisedProduct {
   live: CareportalsProduct;
 }
 
-/** The name a shelf row or PDP shows: the local override, else the live label. */
+/** The name a shelf row or PDP shows: the catalogue's display name of record. */
 export function merchandisedName(p: MerchandisedProduct): string {
-  return p.entry.name ?? p.live.label;
+  return p.entry.name;
 }
 
 async function liveById(): Promise<Map<string, CareportalsProduct> | undefined> {
