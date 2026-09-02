@@ -9,7 +9,8 @@ import { CAREPORTALS_BASE_URL, careportalsHeaders, type CareportalsCart } from '
  */
 const CART_ID_KEY = 'joice.shop.cartId';
 
-function getStoredCartId(): string | null {
+/** Exported for the checkout, which needs the id for the Patient API calls. */
+export function getStoredCartId(): string | null {
   try {
     return window.localStorage.getItem(CART_ID_KEY);
   } catch {
@@ -25,7 +26,8 @@ function setStoredCartId(id: string): void {
   }
 }
 
-function clearStoredCartId(): void {
+/** Exported for the confirmation page's cleanup after a completed order. */
+export function clearStoredCartId(): void {
   try {
     window.localStorage.removeItem(CART_ID_KEY);
   } catch {
@@ -92,6 +94,32 @@ export async function fetchCart(): Promise<CareportalsCart | null> {
     return null;
   }
   if (!res.ok) throw new Error(`Cart read failed (${res.status})`);
+  return (await res.json()) as CareportalsCart;
+}
+
+/**
+ * Set a NON-subscription line's quantity. The body must carry BOTH productId
+ * and quantity (quantity alone answers 400) and subscription lines revert
+ * server-side, so callers gate the stepper on isSubscription; both verified
+ * live 2026-09-01 (docs/shop/01-commerce.md section 10).
+ */
+export async function updateItemQuantity(
+  itemId: string,
+  productId: string,
+  quantity: number,
+): Promise<CareportalsCart> {
+  const cartId = getStoredCartId();
+  if (!cartId) throw new Error('No cart');
+
+  const res = await fetch(
+    `${CAREPORTALS_BASE_URL}/public/v2/carts/${encodeURIComponent(cartId)}/items/${encodeURIComponent(itemId)}`,
+    {
+      method: 'PUT',
+      headers: careportalsHeaders,
+      body: JSON.stringify({ productId, quantity }),
+    },
+  );
+  if (!res.ok) throw new Error(`Quantity update failed (${res.status})`);
   return (await res.json()) as CareportalsCart;
 }
 
