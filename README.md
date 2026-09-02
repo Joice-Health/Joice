@@ -1,17 +1,20 @@
 # Joice
 
 A peptide/supplement membership platform. The public surfaces today are the storefront,
-live at the root of https://joicehealth.com: `/` → `/shop` → `/checkout` (live products
-and carts from the CarePortals Public API, checkout completing on the hosted care portal;
-behind the `shop` flag, which outranks every other flag at the root; `/home`, the
-landing's original URL, redirects there), the waitlist with its referral loop at
+live at the root of https://joicehealth.com: `/` → `/store` → `/store/checkout` (live
+products and carts from the CarePortals Public API, checkout completing on the hosted
+care portal; behind the `shop` flag, which outranks every other flag at the root;
+`/home`, the landing's original URL, redirects to `/`), the waitlist with its referral loop at
 `/waitlist` (sign up with an email, get a shareable referral link and QR "membership
 card", and move up the line as friends join), plus the permanent `/terms`, `/privacy`,
 `/faq` and `/states` pages.
 
-Behind access gates in the same repo, waiting for launch: the main site, the admin
-dashboard at `/admin`, the "Ask Joice" companion (a retrieval-grounded chatbot running as
-its own service, `apps/brain`), and the server-driven intake flow on `/get-started`.
+Behind access gates in the same repo, waiting for launch: the main site with the real
+shopping experience (everything under `/shop`: catalogue, product pages,
+`/shop/cart`, `/shop/checkout`; docs in
+`docs/shop/01-commerce.md`), the admin dashboard at `/admin`, the "Ask Joice" companion
+(a retrieval-grounded chatbot running as its own service, `apps/brain`), and the
+server-driven intake flow on `/get-started`.
 
 This page is orientation only. The working rules live in [CLAUDE.md](CLAUDE.md); the deep
 dives are indexed in [docs/README.md](docs/README.md); AWS layout and the pre-PHI
@@ -34,7 +37,7 @@ checklist are in [infra/README.md](infra/README.md).
 apps/
   api/          platform Hono server: waitlist, onboarding, member, admin (exports AppType)
   brain/        the Ask Joice service; everything under /api/brain/* (exports BrainAppType)
-  web/          Next.js app: storefront (/, /shop, /checkout), waitlist, gated main site,
+  web/          Next.js app: cert storefront (/, /store), waitlist, gated main site + shop,
                 /get-started intake, /admin dashboard
 packages/
   db/           Drizzle schema (one file per owning service), client, migrations

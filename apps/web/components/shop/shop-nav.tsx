@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Bracket } from '@joice/ui';
 import { BrandMark } from '@/components/ui/brand-mark';
+import { CERT_SHOP } from '@/lib/cert-routes';
 
 /** The hosted CarePortals customer portal; it routes visitors to its own login. */
 const PORTAL_URL = 'https://care.joicehealth.com';
@@ -28,7 +29,7 @@ export function ShopNav() {
         </Link>
 
         <Link
-          href="/shop"
+          href={CERT_SHOP}
           className="mono-label justify-self-end text-ink transition-colors hover:text-brand-700"
         >
           <Bracket>Get started</Bracket>

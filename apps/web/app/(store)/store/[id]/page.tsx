@@ -7,6 +7,7 @@ import { formatPrice, type CareportalsProduct } from '@/lib/careportals/types';
 import { ImageSlot } from '@/components/ui/image-slot';
 import { AddToCartButton } from '@/components/shop/add-to-cart-button';
 import { ShopUnavailable } from '@/components/shop/shop-unavailable';
+import { CERT_SHOP } from '@/lib/cert-routes';
 
 /**
  * Render per request, never prerender: at image build time no API exists, so a
@@ -46,7 +47,7 @@ export default async function ShopProductPage({
     <>
       <section className="grid gap-10 py-10 animate-fade-up sm:py-14 lg:grid-cols-[1.1fr_1fr] lg:gap-14">
         <div className="flex flex-col items-start">
-          <Link href="/shop" className="mono-label text-muted transition-colors hover:text-ink">
+          <Link href={CERT_SHOP} className="mono-label text-muted transition-colors hover:text-ink">
             ← Shop
           </Link>
           <h1 className="display mt-8 text-balance text-5xl text-ink sm:text-6xl">
