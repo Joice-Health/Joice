@@ -4,7 +4,8 @@ import { notFound } from 'next/navigation';
 import { Eyebrow } from '@/components/ui/eyebrow';
 import { CtaLink } from '@/components/ui/cta-link';
 import { ProductRow } from '@/components/ui/product-row';
-import { ARTICLES, PRODUCTS, getArticle } from '@/lib/site-content';
+import { ARTICLES, getArticle } from '@/lib/site-content';
+import { SHOP_CATALOG } from '@/lib/shop-catalog';
 
 export function generateStaticParams() {
   return ARTICLES.map((a) => ({ slug: a.slug }));
@@ -92,8 +93,8 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
       <section className="border-t border-line py-16 sm:py-20">
         <Eyebrow as="h2">Related protocols</Eyebrow>
         <ul className="mt-8 border-t border-line">
-          {PRODUCTS.slice(0, 3).map((product, i) => (
-            <ProductRow key={product.slug} product={product} hue={[128, 96, 60][i % 3]} />
+          {SHOP_CATALOG.slice(0, 3).map((entry) => (
+            <ProductRow key={entry.slug} entry={entry} />
           ))}
         </ul>
       </section>

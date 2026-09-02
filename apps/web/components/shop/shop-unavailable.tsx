@@ -1,5 +1,6 @@
 import { Eyebrow } from '@/components/ui/eyebrow';
 import { CtaLink } from '@/components/ui/cta-link';
+import { CERT_SHOP } from '@/lib/cert-routes';
 
 /**
  * The quiet state for "CarePortals could not be read": the page keeps its
@@ -14,7 +15,7 @@ export function ShopUnavailable({ backLink = false }: { backLink?: boolean }) {
         Products are temporarily unavailable. Please check back shortly.
       </p>
       {backLink ? (
-        <CtaLink href="/shop" className="mt-8">
+        <CtaLink href={CERT_SHOP} className="mt-8">
           Back to the shop +
         </CtaLink>
       ) : null}

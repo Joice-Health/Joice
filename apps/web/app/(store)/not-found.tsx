@@ -1,5 +1,6 @@
 import { Eyebrow } from '@/components/ui/eyebrow';
 import { CtaLink } from '@/components/ui/cta-link';
+import { CERT_SHOP } from '@/lib/cert-routes';
 
 /**
  * Scoped boundary so a product page's notFound() renders styled inside the
@@ -13,7 +14,7 @@ export default function ShopNotFound() {
       <p className="mt-6 max-w-md text-balance text-2xl text-ink sm:text-3xl">
         That product isn&apos;t available.
       </p>
-      <CtaLink href="/shop" className="mt-10">
+      <CtaLink href={CERT_SHOP} className="mt-10">
         Back to the shop +
       </CtaLink>
     </section>

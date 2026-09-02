@@ -6,6 +6,7 @@ import { Eyebrow } from '@/components/ui/eyebrow';
 import { CtaLink } from '@/components/ui/cta-link';
 import { fetchCart, getCheckoutUrl, removeItem } from '@/lib/careportals/cart.client';
 import { formatPrice, type CareportalsCart } from '@/lib/careportals/types';
+import { CERT_SHOP } from '@/lib/cert-routes';
 
 /**
  * The checkout page: the live CarePortals cart plus the hand-off. Payment,
@@ -103,7 +104,7 @@ export function CheckoutView() {
         <p className="mt-10 max-w-md text-lg leading-relaxed text-muted">
           Your cart is empty.
         </p>
-        <CtaLink href="/shop" className="mt-8">
+        <CtaLink href={CERT_SHOP} className="mt-8">
           Browse the shop +
         </CtaLink>
       </Intro>

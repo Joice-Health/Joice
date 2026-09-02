@@ -15,10 +15,16 @@ web-specific detail.
 - `/coming-soon`: public. The bare "Something special is coming." page shown while the waitlist
   flag is off; redirects back to `/waitlist` once it is on. Must stay in `PUBLIC_PATHS` or the
   preview gate bounces it to `/waitlist` and loops.
-- `/`, `/shop`, `/shop/[id]`, `/checkout` — public, the storefront (`app/(shop)/`, docs:
-  `docs/shop/00-plan.md`), live at the joicehealth.com root since sc-251. The root page is
-  the storefront landing; `/home`, its original URL, 308s to `/` via `next.config.ts`
-  because auditors hold direct links. The `shop` flag outranks every other flag at the
+- `/`, `/store`, `/store/[id]`, `/store/checkout` — public, the certification storefront
+  (`app/(store)/`, docs: `docs/shop/00-plan.md` and the move in
+  `docs/shop/01-commerce.md` section 2), live at the joicehealth.com root since sc-251
+  and moved off `/shop` by sc-263 so the real shop could own that whole prefix. The root
+  page is the storefront landing; `/home`, its original URL, 308s to `/` via
+  `next.config.ts`. There are deliberately NO redirects from the pre-move `/shop` and
+  `/checkout` paths (nobody outside the team had seen the site yet, Shaun 2026-09-01);
+  anonymous visitors there take the normal gate to `/waitlist`. Every cert link goes
+  through the constants in `lib/cert-routes.ts` so retiring the surface after the audit
+  is one grep. The `shop` flag outranks every other flag at the
   root: on, the landing renders; off, the public falls to `/waitlist` and from there to
   `/coming-soon` when the waitlist flag is off too. Every page opens with
   `requireShopEnabled()` (`lib/shop-gate.ts`) AND exports `dynamic = 'force-dynamic'`: a
@@ -31,12 +37,15 @@ web-specific detail.
   (Glutathione only for the certification). A shelf of exactly one product renders the
   featured spread (`components/shop/featured-protocol.tsx`) instead of the row list; the
   list idiom returns with the second product. Glutathione has a bespoke page at
-  `/shop/glutathione` (static segment beats `[id]`; copy is the approved spec of record,
-  its Add to cart button puts the product in the cart and lands on /checkout, and the hero price
-  is live from CarePortals). Checkout hands off to the hosted portal
-  (care.joicehealth.com); no payment code here.
-  Line quantities are pinned to 1 by CarePortals for subscription products, so the cart UI
-  offers Remove, never a stepper. `/products` (gated site PDP) is deliberately not reused.
+  `/store/glutathione` (static segment beats `[id]`; copy is the approved spec of record,
+  its Add to cart button puts the product in the cart and lands on /store/checkout, and the
+  hero price is live from CarePortals). Checkout hands off to the hosted portal
+  (care.joicehealth.com); no payment code on this surface.
+  Line quantities are pinned to 1 by CarePortals for subscription products, so the cert
+  cart UI offers Remove, never a stepper. `/products` (gated site PDP) is deliberately not
+  reused. The real production shop (catalogue, cart, on-site checkout) builds team-gated
+  entirely under `/shop` (catalogue, `/shop/[slug]` category and product pages,
+  `/shop/cart`, `/shop/checkout`) per `docs/shop/01-commerce.md`.
 - `/terms`, `/privacy`, `/faq`, `/states` — public, permanent, flag-free (`app/(legal)/`,
   wearing the storefront's ShopNav/ShopFooter); they move under the main-site shell at
   launch. `/states` is the LegitScript jurisdiction disclosure (sc-275): it must load cold
@@ -46,6 +55,19 @@ web-specific detail.
   answers (edits come from an approved doc, and the insurance answer deliberately tracks
   Terms section 5); `/privacy` and `/terms` carry their approved copy verbatim (the copy
   of record, its own punctuation kept); no legal placeholder remains.
+- `/shop`, `/shop/[slug]` — team-gated, the production shop (docs:
+  `docs/shop/01-commerce.md`). The catalogue at `/shop` (care-area index + one shelf per
+  area, primary-area membership only); the single dynamic segment `/shop/[slug]` renders a
+  category shelf for a care-area slug and the live PDP for a catalogue slug (the map's
+  tests forbid collisions and reserve `cart`/`checkout`). Every page pairs
+  `requireCommerceEnabled()` (`lib/commerce-gate.ts`) with
+  `export const dynamic = 'force-dynamic'`, same incident, same rule as the cert pages.
+  Data: `lib/shop-catalog.ts` (the curated map: slugs, variant ids, areas, copy) merged
+  with live CarePortals prices in `lib/shop-catalog.server.ts`; UI in
+  `components/commerce/` (never shared with the cert `components/shop/`). The old static
+  product layer is gone: `/products/[slug]` was deleted (no redirects, pre-launch), and
+  the explore/learn pages' `ProductRow` now reads `SHOP_CATALOG` (pure import, those
+  pages stay static) and links into `/shop/[slug]`.
 - Future site pages (`/explore`, `/story`, ... and the future main-site landing, parked at
   `/preview` while the storefront owns `/`) — gated by `middleware.ts` until
   `SITE_LAUNCHED=true`; anonymous → redirected to `/waitlist` (public must never see a

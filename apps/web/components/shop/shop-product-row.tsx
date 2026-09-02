@@ -1,6 +1,7 @@
 import { CtaLink } from '@/components/ui/cta-link';
 import { ImageSlot } from '@/components/ui/image-slot';
 import { formatPrice, type CareportalsProduct } from '@/lib/careportals/types';
+import { certProductHref } from '@/lib/cert-routes';
 
 /**
  * The shelf row: ProductRow's shape fed by CarePortals instead of
@@ -11,7 +12,7 @@ import { formatPrice, type CareportalsProduct } from '@/lib/careportals/types';
 export function ShopProductRow({
   product,
   hue = 128,
-  href = `/shop/${product._id}`,
+  href = certProductHref(product._id),
 }: {
   product: CareportalsProduct;
   hue?: number;

@@ -40,6 +40,23 @@ export async function getCuratedProducts(
 }
 
 /**
+ * Every active product, unfiltered: the production shop's merge layer
+ * (lib/shop-catalog.server.ts) joins these against the local catalogue map.
+ * Same one-read-per-window cache and the same `undefined` semantics as the
+ * curated read above.
+ */
+export async function getActiveProducts(): Promise<CareportalsProduct[] | undefined> {
+  try {
+    const res = await careportalsGet('/v2/products');
+    if (!res.ok) return undefined;
+    const all = (await res.json()) as CareportalsProduct[];
+    return all.filter((p) => p.status === 'active');
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * One product. Tri-state: the product; `null` for gone/disabled (the page
  * calls notFound()); `undefined` for CarePortals unreachable (the page renders
  * the unavailable state, distinct from a real 404).
