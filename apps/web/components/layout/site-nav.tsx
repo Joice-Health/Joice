@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Bracket } from '@joice/ui';
 import { BrandMark } from '@/components/ui/brand-mark';
+import { CartLink } from '@/components/commerce/cart-link';
 
 const NAV_LINKS = [
   { label: 'Shop', href: '/shop' },
@@ -37,12 +38,15 @@ export function SiteNav() {
           <BrandMark />
         </Link>
 
-        <Link
-          href="/get-started"
-          className="mono-label justify-self-end text-ink transition-colors hover:text-brand-700"
-        >
-          <Bracket>Get started</Bracket>
-        </Link>
+        <div className="flex items-center gap-6 justify-self-end">
+          <CartLink />
+          <Link
+            href="/get-started"
+            className="mono-label text-ink transition-colors hover:text-brand-700"
+          >
+            <Bracket>Get started</Bracket>
+          </Link>
+        </div>
       </div>
     </header>
   );
