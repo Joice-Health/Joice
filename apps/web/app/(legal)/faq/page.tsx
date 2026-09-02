@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import Link from 'next/link';
 import { Index } from '@joice/ui';
 import { PageIntro } from '@/components/ui/page-intro';
 
@@ -109,6 +110,33 @@ const FAQ_ITEMS: { question: string; answer: ReactNode }[] = [
         <p>
           We confirm during intake that we can ship to your state, before any
           prescription-related charge is finalized.
+        </p>
+      </>
+    ),
+  },
+  {
+    // The LegitScript jurisdiction disclosure entry (sc-275), verbatim from
+    // Richard's spec; positioned after the pharmacy question deliberately.
+    question: 'Where is Joice available?',
+    answer: (
+      <>
+        <p>
+          Joice is available only to patients physically located in the United States. Within
+          the U.S., availability is limited to jurisdictions where both the prescribing
+          physician and the dispensing pharmacy are licensed. The full list of states, the
+          District of Columbia, and U.S. territories is published on our{' '}
+          <Link
+            href="/states"
+            className="text-ink underline decoration-dotted underline-offset-4 hover:text-brand-700"
+          >
+            Where Joice is available
+          </Link>{' '}
+          page.
+        </p>
+        <p>
+          We confirm your location during medical intake, before any prescription-related
+          charge is finalized. If we cannot serve your jurisdiction, we will tell you at that
+          point and no order will proceed.
         </p>
       </>
     ),
