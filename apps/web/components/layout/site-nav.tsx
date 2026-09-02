@@ -3,6 +3,7 @@ import { Bracket } from '@joice/ui';
 import { BrandMark } from '@/components/ui/brand-mark';
 
 const NAV_LINKS = [
+  { label: 'Shop', href: '/shop' },
   { label: 'Explore', href: '/explore' },
   { label: 'Ask Joice', href: '/ask' },
   { label: 'How it works', href: '/how-it-works' },

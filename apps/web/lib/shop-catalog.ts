@@ -36,8 +36,12 @@ export interface CatalogEntry {
   careportalsId: string;
   /** Care areas it merchandises under; the first is primary (breadcrumb, canonical shelf). */
   areas: readonly [CareAreaSlug, ...CareAreaSlug[]];
-  /** Display-name override for mislabeled upstream rows; omit to use the live label. */
-  name?: string;
+  /**
+   * The display name of record, used on every surface (upstream labels are
+   * inconsistent: "Tirzepatide/B12", "GHK-CU Biocosmetic Cream"). The live
+   * label still travels with the merchandised product for reference.
+   */
+  name: string;
   /** One-line promise for rows and tiles. Editorial, local, no clinical claims. */
   tagline: string;
   /** PDP copy blocks. Approved copy only; no claims beyond it. */
@@ -70,6 +74,7 @@ export const SHOP_CATALOG: readonly CatalogEntry[] = [
   },
   {
     slug: 'naltrexone',
+    name: 'Naltrexone',
     careportalsId: '6a7a198c9d94da87b1d1d992',
     areas: ['weight-metabolic'],
     tagline: 'Low-dose capsules, steady appetite signals.',
@@ -82,6 +87,7 @@ export const SHOP_CATALOG: readonly CatalogEntry[] = [
   },
   {
     slug: 'lipo-b',
+    name: 'Lipo-B',
     careportalsId: '6a7a18253c411544080c25b8',
     areas: ['weight-metabolic'],
     tagline: 'B12 and lipotropics in one monthly protocol.',
@@ -96,7 +102,7 @@ export const SHOP_CATALOG: readonly CatalogEntry[] = [
     slug: 'nad-plus',
     careportalsId: '6a7a19369d94da87b1d1d983',
     areas: ['energy'],
-    name: 'NAD+ Injectable',
+    name: 'NAD+',
     tagline: 'Cellular energy support, clinician-set.',
     copy: {
       whatItIs:
@@ -107,6 +113,7 @@ export const SHOP_CATALOG: readonly CatalogEntry[] = [
   },
   {
     slug: 'sermorelin',
+    name: 'Sermorelin',
     careportalsId: '6a6cadd7b68fb8c53595be30',
     areas: ['body-comp-recovery'],
     tagline: 'Recovery support on a clinical cadence.',
@@ -119,6 +126,7 @@ export const SHOP_CATALOG: readonly CatalogEntry[] = [
   },
   {
     slug: 'tesamorelin',
+    name: 'Tesamorelin',
     careportalsId: '6a6cadd7b68fb8c53595be32',
     areas: ['body-comp-recovery'],
     tagline: 'Composition support, held to clinical guardrails.',
@@ -131,6 +139,7 @@ export const SHOP_CATALOG: readonly CatalogEntry[] = [
   },
   {
     slug: 'glutathione',
+    name: 'Glutathione',
     careportalsId: '6a7a18a99d94da87b1d1d956',
     areas: ['beauty-skin', 'energy'],
     tagline: 'The body’s master antioxidant, made simple.',
@@ -145,7 +154,7 @@ export const SHOP_CATALOG: readonly CatalogEntry[] = [
     slug: 'ghk-cu-cream',
     careportalsId: '6a7a18253c411544080c25ba',
     areas: ['beauty-skin'],
-    name: 'GHK-Cu Biocosmetic Cream',
+    name: 'GHK-Cu Cream',
     tagline: 'Copper peptide skincare, monthly.',
     copy: {
       whatItIs:
