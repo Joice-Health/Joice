@@ -4,14 +4,14 @@ A peptide/supplement membership platform. The public surfaces today are the stor
 live at the root of https://joicehealth.com: `/` → `/store` → `/store/checkout` (live
 products and carts from the CarePortals Public API, checkout completing on the hosted
 care portal; behind the `shop` flag, which outranks every other flag at the root;
-`/home`, the landing's original URL, redirects to `/`, and the old `/shop` and
-`/checkout` URLs forward to `/store`), the waitlist with its referral loop at
+`/home`, the landing's original URL, redirects to `/`), the waitlist with its referral loop at
 `/waitlist` (sign up with an email, get a shareable referral link and QR "membership
 card", and move up the line as friends join), plus the permanent `/terms`, `/privacy`
 and `/faq` pages.
 
 Behind access gates in the same repo, waiting for launch: the main site with the real
-shopping experience (`/shop`, `/products`, `/cart`, `/checkout`; docs in
+shopping experience (everything under `/shop`: catalogue, product pages,
+`/shop/cart`, `/shop/checkout`; docs in
 `docs/shop/01-commerce.md`), the admin dashboard at `/admin`, the "Ask Joice" companion
 (a retrieval-grounded chatbot running as its own service, `apps/brain`), and the
 server-driven intake flow on `/get-started`.

@@ -18,16 +18,13 @@ web-specific detail.
 - `/`, `/store`, `/store/[id]`, `/store/checkout` — public, the certification storefront
   (`app/(store)/`, docs: `docs/shop/00-plan.md` and the move in
   `docs/shop/01-commerce.md` section 2), live at the joicehealth.com root since sc-251
-  and moved off `/shop`/`/checkout` by sc-263 so the real shop could take the clean
-  routes. The root page is the storefront landing; `/home`, its original URL, 308s to `/`
-  via `next.config.ts` because auditors hold direct links, and the pre-move URLs keep
-  working: `/shop/glutathione` and `/shop/[24-hex]` 307 to `/store/*` unconditionally in
-  `next.config.ts` (deliberately not 308: a cached permanent redirect would freeze the
-  `/shop` namespace), while exact `/shop` and `/checkout` forward anonymous pre-launch
-  visitors to `/store`/`/store/checkout` inside `teamGate()` (team cookies fall through
-  to the real shop; `SITE_LAUNCHED=true` ends the forward). Every cert link goes through
-  the constants in `lib/cert-routes.ts` so retiring the surface after the audit is one
-  grep. The `shop` flag outranks every other flag at the
+  and moved off `/shop` by sc-263 so the real shop could own that whole prefix. The root
+  page is the storefront landing; `/home`, its original URL, 308s to `/` via
+  `next.config.ts`. There are deliberately NO redirects from the pre-move `/shop` and
+  `/checkout` paths (nobody outside the team had seen the site yet, Shaun 2026-09-01);
+  anonymous visitors there take the normal gate to `/waitlist`. Every cert link goes
+  through the constants in `lib/cert-routes.ts` so retiring the surface after the audit
+  is one grep. The `shop` flag outranks every other flag at the
   root: on, the landing renders; off, the public falls to `/waitlist` and from there to
   `/coming-soon` when the waitlist flag is off too. Every page opens with
   `requireShopEnabled()` (`lib/shop-gate.ts`) AND exports `dynamic = 'force-dynamic'`: a
@@ -47,7 +44,8 @@ web-specific detail.
   Line quantities are pinned to 1 by CarePortals for subscription products, so the cert
   cart UI offers Remove, never a stepper. `/products` (gated site PDP) is deliberately not
   reused. The real production shop (catalogue, cart, on-site checkout) builds team-gated
-  at `/shop`, `/products/[slug]`, `/cart`, `/checkout` per `docs/shop/01-commerce.md`.
+  entirely under `/shop` (catalogue, `/shop/[slug]` category and product pages,
+  `/shop/cart`, `/shop/checkout`) per `docs/shop/01-commerce.md`.
 - `/terms`, `/privacy`, `/faq` — public, permanent, flag-free (`app/(legal)/`, wearing the
   storefront's ShopNav/ShopFooter); they move under the main-site shell at launch. `/faq`
   carries the approved

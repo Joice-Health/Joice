@@ -21,13 +21,14 @@ integration but is deliberately disposable: one product, no cart state, and chec
 hand-off to the hosted portal. The business needs the real thing: browse by care area, an
 on-site cart, and payment that never leaves joicehealth.com.
 
-**Why the two storefronts coexist.** The audit is still running, and auditors hold direct
-URLs. So the cert surface stays public and byte-identical in behavior; only its URLs move to
-a neutral `/store/*` prefix (nothing in the URL may signal a temporary site). The clean
-routes (`/shop`, `/products/[slug]`, `/cart`, `/checkout`) go to the new experience behind
-the team gate. After the audit passes, the cert tree is deleted wholesale (flag off, then
-remove the route group); nothing in the new shop depends on it. Duplicated components
-between the two are deliberate: cert components are never refactored to share.
+**Why the two storefronts coexist.** The audit still needs a public surface to walk. So the
+cert surface stays public and byte-identical in behavior; only its URLs move to a neutral
+`/store/*` prefix (nothing in the URL may signal a temporary site). Nobody outside the team
+had seen the site at the time of the move, so no redirects exist from the old paths. The
+clean routes (everything under `/shop`) go to the new experience behind the team gate.
+After the audit passes, the cert tree is deleted wholesale (flag off, then remove the route
+group); nothing in the new shop depends on it. Duplicated components between the two are
+deliberate: cert components are never refactored to share.
 
 ## 2. The two surfaces and their routes
 
@@ -39,24 +40,26 @@ flowchart TB
         SI --> SC["/store/checkout"] --> HP["care.joicehealth.com hosted checkout"]
     end
     subgraph gated["Team-gated (the real shop, route group (site))"]
-        SH["/shop catalogue"] --> CAT["/shop/[category]"]
-        CAT --> P["/products/[slug]"]
-        P --> CRT["/cart"] --> CO["/checkout"] --> CF["/checkout/complete"]
+        SH["/shop catalogue"] --> CAT["/shop/[slug] category page"]
+        CAT --> P["/shop/[slug] product page"]
+        P --> CRT["/shop/cart"] --> CO["/shop/checkout"] --> CF["/shop/checkout/complete"]
         CF --> PORTAL["care.joicehealth.com medical intake"]
     end
-    A1["anonymous /shop or /checkout"] -- "middleware 307 pre-launch" --> ST
-    A2["anonymous /shop/glutathione, /shop/[24-hex]"] -- "next.config 307, everyone" --> SI
 ```
 
-Legacy URL handling splits by collision risk. `/shop/glutathione` and `/shop/:id([0-9a-f]{24})`
-can never collide with `/shop/[category]` (care-area slugs are neither), so they are
-unconditional 307s in `next.config.ts` for every visitor, forever. Exact `/shop` and
-`/checkout` ARE the new shop, so they get a cookie-aware 307 inside `teamGate()` in
-[middleware.ts](../../apps/web/middleware.ts): anonymous pre-launch visitors forward to
-`/store` and `/store/checkout` (query preserved); team cookies fall through the gate to the
-new experience; `siteLaunched()` disables the forward at launch with no further change.
-`PUBLIC_PATHS` swaps `/shop` and `/checkout` for `/store`. The redirects stay
-`permanent: false`: a 308 would freeze the `/shop` namespace in browser caches.
+**Everything shop related lives under `/shop`** (Shaun, 2026-09-01): catalogue at `/shop`,
+category and product pages sharing the one dynamic segment `/shop/[slug]` (a care-area slug
+renders the category shelf, a catalogue slug renders the product page; the catalogue map's
+tests forbid collisions and reserve `cart` and `checkout`), the cart at `/shop/cart`, the
+checkout at `/shop/checkout` with its confirmation at `/shop/checkout/complete`. One prefix
+is the whole commerce surface: the middleware gates it with a single absent `PUBLIC_PATHS`
+entry, launch opens it wholesale, and the flat product URLs (`/shop/glutathione`) read the
+way the cert shelf's always did.
+
+**There are no redirects from the old paths.** Nobody outside the team had seen the site
+when the cert surface moved (Shaun, 2026-09-01), so `/shop` simply became the real shop and
+the cert pages simply appear at `/store/*`; anonymous visitors on `/shop` fall to
+`/waitlist` through the normal gate like any other gated path.
 
 **Why the new pages join `(site)`.** The shop is the site at launch: it needs the real nav
 (where the cart link lives), the announcement bar, and the footer. The cert group renames
@@ -89,7 +92,7 @@ a price.
 
 ```ts
 interface CatalogEntry {
-  slug: string;                                  // /products/[slug], never a Mongo id
+  slug: string;                                  // /shop/[slug], never a Mongo id
   careportalsId: string;                         // the exact sellable variant
   areas: readonly [CareAreaSlug, ...CareAreaSlug[]];  // first is primary
   name?: string;                                 // override for mislabeled upstream rows
@@ -121,7 +124,7 @@ latest response the source of truth and every mutation returns the full cart, so
 (`setQueryData`, no optimistic updates). The cart id stays in localStorage
 (`joice.shop.cartId`); the query never runs during SSR, which keeps the nav's `Cart (n)`
 link hydration-safe (it renders plain `Cart` until loaded). Adding to cart navigates to
-`/cart` (Shaun's call: no drawer). Subscription lines render Remove only, never a stepper:
+`/shop/cart` (Shaun's call: no drawer). Subscription lines render Remove only, never a stepper:
 CarePortals pins their quantity to 1 server-side (00-plan.md section 3).
 
 ## 6. Checkout
@@ -145,7 +148,7 @@ sequenceDiagram
         B->>S: handleNextAction (3DS)
         B->>P: GET /v2/checkout/{cartId}/payments (poll to succeeded/failed)
     end
-    B->>B: /checkout/complete: orders + medical intake CTA to the portal
+    B->>B: /shop/checkout/complete: orders + medical intake CTA to the portal
 ```
 
 - **Steps**: contact (the six required patient fields plus a password, since login is the
@@ -191,17 +194,17 @@ Connect smoke test shows tokenization must target the connected account, the fix
 | # | Story | Slice | Surface |
 |---|---|---|---|
 | 0.1 | sc-262 | Spikes: CORS, path prefix, /users shape, checkout start, quantity, support email | section 10 log |
-| 1.1 | sc-263 | Cert URL move to /store + middleware forwards | behavior-preserving |
+| 1.1 | sc-263 | Cert URL move to /store, no redirects | behavior-preserving |
 | 1.2 | sc-264 | `commerce` flag, seed migration, gate helper | kill switch |
 | 2.1 | sc-265 | shop-catalog map + server merge + curation checkpoint | merchandising |
-| 2.2 | sc-266 | /shop + /shop/[category] + nav link | browse |
-| 2.3 | sc-267 | /products/[slug] live PDP, static layer retired | product pages |
+| 2.2 | sc-266 | /shop catalogue + category pages + nav link | browse |
+| 2.3 | sc-267 | /shop/[slug] live PDP, static layer retired | product pages |
 | 2.4 | sc-268 | "no cart" copy reconciliation | positioning |
-| 3.1 | sc-269 | use-cart hooks, Cart (n) nav link, /cart | cart |
+| 3.1 | sc-269 | use-cart hooks, Cart (n) nav link, /shop/cart | cart |
 | 3.2 | sc-270 | Field/Select/Checkbox primitives + checkout schemas | form kit |
 | 3.3 | sc-271 | patient + checkout clients, checkout machine, tests | logic first |
 | 3.4 | sc-272 | Stripe wiring + key plumbing | card entry |
-| 3.5 | sc-273 | Checkout assembly + /checkout/complete | end to end |
+| 3.5 | sc-273 | Checkout assembly + /shop/checkout/complete | end to end |
 | 3.6 | sc-274 | Hardening, analytics, as-built docs | polish |
 
 Tracks A (2.x) and B (3.x) run in parallel after 1.2. Branches `shop/<phase>-<story>-<slug>`.
@@ -215,7 +218,7 @@ Tracks A (2.x) and B (3.x) run in parallel after 1.2. Branches `shop/<phase>-<st
 | 2026-09-01 | Separate `commerce` flag instead of sharing `shop` | the cert retirement switch and the production kill switch must move independently |
 | 2026-09-01 | Local catalogue map owns categories | `GET /v2/products/categories` is broken upstream (400, verified live) and products carry no usable category data |
 | 2026-09-01 | Map 7 families, park PT-141, stress-sleep shows a coming state | Shaun's call: no sexual-health care area exists yet and adding one ripples into the intake taxonomy |
-| 2026-09-01 | Add to cart navigates to /cart; no drawer | Shaun's call: matches the linear flow; the design system has no sheet primitive and the nav count covers keep-browsing |
+| 2026-09-01 | Add to cart navigates to /shop/cart; no drawer | Shaun's call: matches the linear flow; the design system has no sheet primitive and the nav count covers keep-browsing |
 | 2026-09-01 | Rx intake hands off to the hosted portal after payment | Shaun's call: bounded scope; the consultation flow stays with CarePortals where auth, forms and prescriptions already live |
 | 2026-09-01 | Stripe split card elements, not the Payment Element | CarePortals owns the intent lifecycle and wants a client-created payment method token |
 | 2026-09-01 | Patient JWT in sessionStorage, not memory-only | a redirect-mode 3DS hop or a refresh mid-payment must not lose the session at the moment money moved |
@@ -223,6 +226,8 @@ Tracks A (2.x) and B (3.x) run in parallel after 1.2. Branches `shop/<phase>-<st
 | 2026-09-01 | Cart state is TanStack Query over the existing client | mutations already return the authoritative cart; Query shares the cache between badge, cart and checkout and is SSR-safe by construction |
 | 2026-09-01 | The contact step collects a password; checkout is create-then-login | verified live: `POST /users` returns no token for this org, so a password is the only path to the JWT, and the buyer leaves checkout holding working portal credentials for the medical-intake handoff |
 | 2026-09-01 | Non-subscription lines get a quantity stepper; subscription lines stay Remove-only | verified live: quantity persists for non-subscription products (the Tirzepatide tiers among them), and the update body needs productId alongside quantity |
+| 2026-09-01 | Everything shop related lives under /shop: catalogue, /shop/[slug] for categories and products, /shop/cart, /shop/checkout | Shaun's call: one prefix is the whole commerce surface, one gate covers it, launch opens it wholesale, and product URLs stay flat and shareable |
+| 2026-09-01 | No redirects from the pre-move /shop and /checkout paths | Shaun's call: nobody outside the team had seen the site yet, so the forward machinery was complexity with no beneficiary; anonymous visitors take the normal gate to /waitlist |
 
 ## 10. Verified live (spike log)
 

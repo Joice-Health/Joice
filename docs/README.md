@@ -54,8 +54,9 @@ Page 10 (protocol readiness) arrives with Phase 5; see section 7 of the brief. *
 Two storefronts on one commerce backend. The certification storefront (public, for the
 audit, handing off to CarePortals' hosted checkout) lives at `/` and `/store/*` behind the
 `shop` flag. The production shopping experience (catalogue by care area, live product
-pages, persistent cart, on-site Stripe checkout) lives at `/shop`, `/products/[slug]`,
-`/cart` and `/checkout` behind the team gate and the `commerce` flag. The permanent
+pages, persistent cart, on-site Stripe checkout) lives entirely under `/shop` (catalogue,
+`/shop/[slug]` pages, `/shop/cart`, `/shop/checkout`) behind the team gate and the
+`commerce` flag. The permanent
 `/terms` `/privacy` `/faq` pages ship alongside.
 
 | Doc | What it covers |

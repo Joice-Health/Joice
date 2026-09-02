@@ -145,12 +145,11 @@ product, Notion to the whole team. Same facts, three voices. Full doc:
 1. **Public**: the storefront at the site root, `/waitlist` (+ `?ref=` referral links), and
    the legal pages. The **certification storefront** (`/`, `/store`, `/store/[id]`,
    `/store/checkout` — `apps/web/app/(store)/`, docs in `docs/shop/00-plan.md`; the
-   landing's original `/home` URL 308s to `/`, and the pre-move `/shop` and `/checkout`
-   URLs forward anonymous visitors to `/store` via middleware while `/shop/glutathione`
-   and `/shop/[24-hex]` 307 unconditionally in `next.config.ts`) is live at
-   joicehealth.com since sc-251, moved off the clean routes by sc-263 so the real shop
-   (team-gated, `docs/shop/01-commerce.md`) could take `/shop`, `/products`, `/cart` and
-   `/checkout`. It pulls products and carts live from the CarePortals Public API
+   landing's original `/home` URL 308s to `/`; no redirects exist from the pre-move
+   `/shop` paths, nobody held links yet) is live at joicehealth.com since sc-251, moved
+   off `/shop` by sc-263 so the real shop (team-gated, `docs/shop/01-commerce.md`) could
+   own everything under `/shop`: catalogue, `/shop/[slug]` category and product pages,
+   `/shop/cart`, `/shop/checkout`. It pulls products and carts live from the CarePortals Public API
    (`lib/careportals/`) and hands checkout off to the hosted portal at
    care.joicehealth.com. It sits behind the `shop` flag, which **outranks every other
    flag at the root**: toggling it off in `/admin/flags` is the kill switch
