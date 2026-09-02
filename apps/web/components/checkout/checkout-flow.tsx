@@ -17,6 +17,7 @@ import {
 import { getPaymentStatus, startCheckout } from '@/lib/careportals/checkout.client';
 import { contactSchema, signInSchema, shippingSchema } from '@/lib/careportals/checkout.schemas';
 import type { CheckoutStart, ShippingAddress } from '@/lib/careportals/types';
+import { track } from '@/lib/analytics';
 import { checkExistingPayment, type CheckoutStep, type PaymentOutcome } from './checkout-machine';
 import { StepContact, type ContactDraft, type FieldErrors } from './step-contact';
 import { StepShipping, type ShippingDraft } from './step-shipping';
@@ -81,12 +82,18 @@ export function CheckoutFlow() {
       setToken(stored);
       setStep((current) => (current === 'contact' ? 'shipping' : current));
     }
+    track({ event: 'checkout_started' });
   }, []);
+
+  useEffect(() => {
+    track({ event: 'checkout_step_viewed', step });
+  }, [step]);
 
   const cartId = typeof window === 'undefined' ? null : getStoredCartId();
   const summaryCart = start?.cart ?? cartQuery.data ?? null;
 
-  async function afterLogin(jwt: string) {
+  async function afterLogin(jwt: string, accountMode: 'new' | 'returning') {
+    track({ event: 'checkout_account_created', mode: accountMode });
     patientSession.set(jwt);
     setToken(jwt);
     if (cartId) {
@@ -119,6 +126,7 @@ export function CheckoutFlow() {
         try {
           await afterLogin(
             await loginPatient({ username: parsed.data.email, password: parsed.data.password }),
+            'returning',
           );
         } catch (err) {
           if (err instanceof PatientAuthError) {
@@ -154,6 +162,7 @@ export function CheckoutFlow() {
       try {
         await afterLogin(
           await loginPatient({ username: parsed.data.email, password: parsed.data.password }),
+          'new',
         );
       } catch {
         // The account exists but the immediate login failed: the sign-in mode recovers.
@@ -178,6 +187,7 @@ export function CheckoutFlow() {
   }
 
   function handleOutcome(outcome: PaymentOutcome) {
+    track({ event: 'checkout_payment_result', outcome: outcome.kind });
     switch (outcome.kind) {
       case 'succeeded':
         setNotice(null);

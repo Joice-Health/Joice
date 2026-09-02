@@ -9,6 +9,7 @@ import {
   useUpdateCartQuantity,
 } from '@/lib/careportals/use-cart';
 import { formatPrice, type CareportalsLineItem } from '@/lib/careportals/types';
+import { track } from '@/lib/analytics';
 
 /**
  * The cart page (docs/shop/01-commerce.md section 5): live lines from the
@@ -90,7 +91,12 @@ export function CartView() {
                 type="button"
                 className="mono-label text-muted transition-colors hover:text-ink disabled:opacity-50"
                 disabled={busy}
-                onClick={() => remove.mutate({ itemId: item.id })}
+                onClick={() =>
+                  remove.mutate(
+                    { itemId: item.id },
+                    { onSuccess: () => track({ event: 'cart_item_removed' }) },
+                  )
+                }
               >
                 {remove.isPending && remove.variables?.itemId === item.id
                   ? 'Removing…'
