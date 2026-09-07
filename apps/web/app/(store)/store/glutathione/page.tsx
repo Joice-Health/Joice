@@ -3,7 +3,7 @@ import { Index } from '@joice/ui';
 import { requireShopEnabled } from '@/lib/shop-gate';
 import { getProduct } from '@/lib/careportals/products.server';
 import { formatPrice } from '@/lib/careportals/types';
-import { GLUTATHIONE_ID } from '@/lib/shop-products';
+import { GLUTATHIONE_ID, productImage } from '@/lib/shop-products';
 import { Eyebrow } from '@/components/ui/eyebrow';
 import { ImageSlot } from '@/components/ui/image-slot';
 import { AddToCartButton } from '@/components/shop/add-to-cart-button';
@@ -105,7 +105,7 @@ export default async function GlutathionePage() {
           </ul>
         </div>
         <ImageSlot
-          src="products/glutathione.jpg"
+          src={productImage(GLUTATHIONE_ID)}
           alt=""
           sizes="(min-width: 1024px) 480px, 100vw"
           className="aspect-[4/5] rounded-card sm:aspect-[4/3] lg:aspect-auto"

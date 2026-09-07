@@ -2,6 +2,7 @@ import { CtaLink } from '@/components/ui/cta-link';
 import { ImageSlot } from '@/components/ui/image-slot';
 import { formatPrice, type CareportalsProduct } from '@/lib/careportals/types';
 import { certProductHref } from '@/lib/cert-routes';
+import { productImage } from '@/lib/shop-products';
 
 /**
  * The shelf row: ProductRow's shape fed by CarePortals instead of
@@ -24,7 +25,7 @@ export function ShopProductRow({
     <li className="border-b border-line">
       <div className="grid grid-cols-[1fr_1.4fr] gap-6 py-6 sm:gap-10 sm:py-8">
         <ImageSlot
-          src={`products/${product._id}.jpg`}
+          src={productImage(product._id)}
           alt=""
           sizes="(min-width: 640px) 160px, 112px"
           hue={hue}
