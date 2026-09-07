@@ -283,11 +283,11 @@ describe('lead sync', () => {
       suppressed,
       port: {
         async upsertLead(lead: SyncedLead) {
-          if (fail) throw new Error('klaviyo down');
+          if (fail) throw new Error('attentive down');
           calls.push(lead);
         },
         async suppressLead(email: string) {
-          if (fail) throw new Error('klaviyo down');
+          if (fail) throw new Error('attentive down');
           suppressed.push(email);
         },
       },
@@ -370,7 +370,7 @@ describe('erasure', () => {
       leadSync: {
         async upsertLead() {},
         async suppressLead() {
-          throw new Error('klaviyo down');
+          throw new Error('attentive down');
         },
       },
     });
@@ -379,7 +379,7 @@ describe('erasure', () => {
     // Give it one first:
     rows[0]!.email = 'shaun@example.com';
 
-    await expect(svc.deleteForRequester(anon)).rejects.toThrow('klaviyo down');
+    await expect(svc.deleteForRequester(anon)).rejects.toThrow('attentive down');
     expect(rows).toHaveLength(1); // the local row survives for the retry
   });
 

@@ -166,8 +166,8 @@ resource "aws_ecs_task_definition" "api" {
         { name = "RAG_MODEL", value = var.rag_model },
         { name = "BEDROCK_REGION", value = var.region },
         { name = "POLLY_VOICE_ID", value = var.polly_voice_id },
-        # Klaviyo waitlist sync — the list id is visible in the list URL, not a secret.
-        { name = "KLAVIYO_LIST_ID", value = var.klaviyo_list_id },
+        # Attentive marketing sync: the sign-up unit id shows in the dashboard, not a secret.
+        { name = "ATTENTIVE_SIGN_UP_SOURCE_ID", value = var.attentive_sign_up_source_id },
         # PHI key 1 of 2 (with the onboarding_health flag): set by Terraform
         # only, never an admin toggle. Stays false until the Before-PHI
         # checklist above it in the README is complete.
@@ -183,7 +183,9 @@ resource "aws_ecs_task_definition" "api" {
         { name = "CLERK_SECRET_KEY", valueFrom = aws_secretsmanager_secret.clerk_secret_key.arn },
         # The brain presents this on /api/internal/*; the api verifies it.
         { name = "INTERNAL_API_TOKEN", valueFrom = aws_secretsmanager_secret.internal_api_token.arn },
-        { name = "KLAVIYO_API_KEY", valueFrom = aws_secretsmanager_secret.klaviyo_api_key.arn },
+        { name = "ATTENTIVE_API_KEY", valueFrom = aws_secretsmanager_secret.attentive_api_key.arn },
+        # Verifies the consent webhook's HMAC (POST /api/webhooks/attentive).
+        { name = "ATTENTIVE_WEBHOOK_SECRET", valueFrom = aws_secretsmanager_secret.attentive_webhook_secret.arn },
         { name = "CAREPORTALS_CRM_PASSWORD", valueFrom = aws_secretsmanager_secret.careportals_crm_password.arn },
       ]
       logConfiguration = {

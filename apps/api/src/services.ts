@@ -6,13 +6,13 @@ import {
   createDbSessionStore,
   createFeatureFlagService,
   createFlowService,
-  createKlaviyoMarketingAdapter,
+  createAttentiveMarketingAdapter,
   createLeadsService,
   createOnboardingConfigService,
   createLabUploadsService,
   createProtocolRulesService,
   createOnboardingEventsService,
-  createOnboardingKlaviyoAdapter,
+  createOnboardingAttentiveAdapter,
   createOnboardingService,
   createProfileService,
   createServiceAreaRequestService,
@@ -23,7 +23,7 @@ import {
   noopSubscriptionPort,
   type PhiStatus,
 } from '@joice/core';
-import { createKlaviyoClient } from '@joice/marketing';
+import { createAttentiveClient } from '@joice/marketing';
 import { createBrainConfigService } from '@joice/brain';
 import { env } from './env';
 import { createCareportalsSubscriptions } from './commerce/careportals-subscriptions';
@@ -34,11 +34,16 @@ const db = getDatabase();
 
 /**
  * Unconfigured (local default) → undefined: signups work, nothing syncs.
- * env.ts guarantees both vars are set together, so checking one is enough.
+ * env.ts guarantees the key and the sign-up source id are set together, so
+ * checking one is enough.
  */
-const klaviyo = env.KLAVIYO_API_KEY ? createKlaviyoClient({ apiKey: env.KLAVIYO_API_KEY }) : undefined;
-const marketing = klaviyo ? createKlaviyoMarketingAdapter(klaviyo, { listId: env.KLAVIYO_LIST_ID }) : undefined;
-console.log(`[api] Klaviyo waitlist sync: ${marketing ? 'enabled' : 'disabled (no keys set)'}`);
+const attentive = env.ATTENTIVE_API_KEY
+  ? createAttentiveClient({ apiKey: env.ATTENTIVE_API_KEY })
+  : undefined;
+const marketing = attentive
+  ? createAttentiveMarketingAdapter(attentive, { signUpSourceId: env.ATTENTIVE_SIGN_UP_SOURCE_ID })
+  : undefined;
+console.log(`[api] Attentive marketing sync: ${marketing ? 'enabled' : 'disabled (no keys set)'}`);
 
 export const waitlist = createWaitlistService(db, { marketing });
 export const audit = createAuditService(db);
@@ -88,9 +93,9 @@ export const brainConfig = createBrainConfigService(db, audit, {
  * over HTTP. See docs/onboarding/00-plan.md.
  * ------------------------------------------------------------------------- */
 
-/** Onboarding's own Klaviyo port: `onboarding_*` properties, list only on opt-in. */
-const onboardingMarketing = klaviyo
-  ? createOnboardingKlaviyoAdapter(klaviyo, { listId: env.KLAVIYO_LIST_ID })
+/** Onboarding's own Attentive port: `onboarding_*` properties, subscription only on opt-in. */
+const onboardingMarketing = attentive
+  ? createOnboardingAttentiveAdapter(attentive, { signUpSourceId: env.ATTENTIVE_SIGN_UP_SOURCE_ID })
   : undefined;
 
 export const onboardingConfig = createOnboardingConfigService(db, audit);

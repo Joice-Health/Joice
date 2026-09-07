@@ -263,10 +263,10 @@ export const brainProfiles = pgTable(
     status: text('status').notNull().default('capturing'),
 
     /**
-     * When the lead was last synced to the marketing platform (Klaviyo).
+     * When the lead was last synced to the marketing platform (Attentive).
      * NULL = never synced, which keeps unsynced rows findable — the same
      * bookkeeping discipline as `waitlist_entries.marketing_synced_at`.
-     * The two funnels stay separate; Klaviyo deduping by email is the only
+     * The two funnels stay separate; Attentive deduping by email is the only
      * place they ever meet.
      */
     marketingSyncedAt: timestamp('marketing_synced_at', { withTimezone: true }),

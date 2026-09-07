@@ -1,8 +1,16 @@
 export {
-  createKlaviyoClient,
-  KlaviyoRequestError,
-  type KlaviyoClient,
-  type KlaviyoClientOptions,
-  type ImportProfileInput,
-} from './klaviyo';
-export { METRICS, type MetricName } from './metrics';
+  createAttentiveClient,
+  AttentiveRequestError,
+  type AttentiveClient,
+  type AttentiveClientOptions,
+  type AttentiveUser,
+  type AttentiveAccount,
+  type AttributeValue,
+  type UpsertProfileInput,
+} from './attentive';
+export { EVENTS, type EventName } from './events';
+export {
+  ATTENTIVE_SIGNATURE_HEADER,
+  signAttentiveWebhook,
+  verifyAttentiveWebhook,
+} from './webhook';

@@ -141,7 +141,7 @@ describe('waitlist marketing sync', () => {
     const { db, updates } = stubDb([[]]);
     const port: WaitlistMarketingPort = {
       async subscribeToWaitlist() {
-        throw new Error('klaviyo is down');
+        throw new Error('attentive is down');
       },
       async updateProfile() {},
       async statusChanged() {},

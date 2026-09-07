@@ -494,7 +494,7 @@ const routes = app
   /**
    * Erase the requester's own lead (and threads): the intake flow calls this
    * when the age gate stops a minor, and a visitor can call it to start clean.
-   * Suppresses the email in Klaviyo first, then deletes, so erasure is
+   * Tells Attentive first (unsubscribe, delete request), then deletes, so erasure is
    * retryable end to end (see profileService.deleteForRequester). Scoped by the
    * session cookie, so it can only ever reach the requester's own rows.
    */

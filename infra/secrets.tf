@@ -29,15 +29,26 @@ resource "aws_secretsmanager_secret_version" "internal_api_token" {
   secret_string = random_password.internal_api_token.result
 }
 
-# Klaviyo private API key for the api task's waitlist marketing sync.
-resource "aws_secretsmanager_secret" "klaviyo_api_key" {
-  name                    = "${var.project}/klaviyo-api-key"
+# Attentive private-app API key: the api's marketing sync and the brain's lead sync.
+resource "aws_secretsmanager_secret" "attentive_api_key" {
+  name                    = "${var.project}/attentive-api-key"
   recovery_window_in_days = 0 # allow clean re-creates during Phase 0
 }
 
-resource "aws_secretsmanager_secret_version" "klaviyo_api_key" {
-  secret_id     = aws_secretsmanager_secret.klaviyo_api_key.id
-  secret_string = var.klaviyo_api_key
+resource "aws_secretsmanager_secret_version" "attentive_api_key" {
+  secret_id     = aws_secretsmanager_secret.attentive_api_key.id
+  secret_string = var.attentive_api_key
+}
+
+# Signing key of the Attentive consent webhook, verified by the api task.
+resource "aws_secretsmanager_secret" "attentive_webhook_secret" {
+  name                    = "${var.project}/attentive-webhook-secret"
+  recovery_window_in_days = 0
+}
+
+resource "aws_secretsmanager_secret_version" "attentive_webhook_secret" {
+  secret_id     = aws_secretsmanager_secret.attentive_webhook_secret.id
+  secret_string = var.attentive_webhook_secret
 }
 
 # CarePortals CRM service-user password for the api task's subscriber lookups.

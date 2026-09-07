@@ -94,7 +94,7 @@ describe('admin updateStatus marketing sync', () => {
       async subscribeToWaitlist() {},
       async updateProfile() {},
       async statusChanged() {
-        throw new Error('klaviyo is down');
+        throw new Error('attentive is down');
       },
     };
     const svc = createAdminWaitlistService(db, audit, { marketing: port });

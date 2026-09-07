@@ -71,7 +71,7 @@ Rules (all in `onboarding-service.claim` and tested): verified email only
 (/welcome then offers "Start your intake +"). The claim stamps the member on
 the session and its observations, re-projects the profile under the member
 key (a member may already carry observations from another device), marks the
-session `registered`, and fires the Klaviyo completion with the consent flag:
+session `registered`, and fires the Attentive completion with the consent flag:
 a list subscription only when `consent_marketing` was ticked.
 
 ## The brain's side

@@ -176,7 +176,7 @@ export const stubPorts: BrainPorts = {
  * Syncing a captured lead to the marketing platform. Fire-and-forget by
  * contract: implementations must never throw into a request path, and callers
  * must never await one inside a response. The brain knows nothing about
- * Klaviyo — the adapter at the edge does.
+ * Attentive; the adapter at the edge (apps/brain/src/ports) does.
  *
  * Deliberately NOT the waitlist. The waitlist and the brain are separate
  * funnels that never touch; the marketing platform deduping profiles by email
@@ -185,6 +185,8 @@ export const stubPorts: BrainPorts = {
 export interface LeadSyncPort {
   upsertLead(lead: {
     email: string;
+    /** E.164, once a surface collects one (none does yet). */
+    phone?: string | null;
     name?: string | null;
     /** Care-area slug, when given. */
     goal?: string | null;
@@ -192,9 +194,10 @@ export interface LeadSyncPort {
     status: string;
   }): Promise<void>;
   /**
-   * The erasure half: suppress this address from all marketing. Called by the
-   * profile erasure path — deleting a lead locally while Klaviyo keeps
-   * emailing them is not erasure.
+   * The erasure half: unsubscribe this address from every channel and ask the
+   * platform to delete the person. Called by the profile erasure path:
+   * deleting a lead locally while the marketing platform keeps messaging them
+   * is not erasure.
    */
   suppressLead(email: string): Promise<void>;
 }

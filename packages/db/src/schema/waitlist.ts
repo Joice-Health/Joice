@@ -63,7 +63,7 @@ export const waitlistEntries = pgTable(
     ipHash: text('ip_hash'),
 
     /**
-     * Last successful push to the marketing platform (Klaviyo). Null means the
+     * Last successful push to the marketing platform (Attentive). Null means the
      * fire-and-forget sync never succeeded — the only visibility we have into
      * that path, since a marketing outage must never fail a signup.
      */

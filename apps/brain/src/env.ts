@@ -41,11 +41,13 @@ const envSchema = z.object({
     .default('false')
     .transform((v) => v === 'true'),
   /**
-   * Klaviyo, for syncing companion leads (name/email/goal — marketing-grade,
-   * same class as the waitlist's data, but a completely separate funnel).
-   * Optional: absent locally, capture still works and simply doesn't sync.
+   * Attentive, for syncing companion leads (email, status, goal: marketing
+   * grade, same class as the waitlist's data, but a completely separate
+   * funnel). Optional: absent locally, capture still works and simply doesn't
+   * sync. The same private-app key the api uses; no sign-up source id here
+   * because the brain never subscribes anyone.
    */
-  KLAVIYO_API_KEY: z.string().optional(),
+  ATTENTIVE_API_KEY: z.string().optional(),
   /**
    * Recognise a signed-in member when the browser sends a Clerk bearer token
    * (the companion claim on sign-up; member context later). Verification is

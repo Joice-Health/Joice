@@ -22,12 +22,15 @@ const envSchema = z.object({
   CLERK_SECRET_KEY: z.string().default('sk_test_placeholder'),
   CLERK_PUBLISHABLE_KEY: z.string().default('pk_test_placeholder'),
   /**
-   * Klaviyo waitlist marketing sync. Both empty (the default) disables the
-   * sync entirely — signups still work, they just don't reach Klaviyo.
-   * The list ID is the 6-char code in the Klaviyo list URL; not a secret.
+   * Attentive marketing sync. Key and sign-up source id both empty (the
+   * default) disables the sync entirely: signups still work, they just don't
+   * reach Attentive. The source id is the API sign-up unit's id (Sign-up
+   * Units tab); not a secret. The webhook signing key stands alone: empty
+   * makes POST /api/webhooks/attentive answer 503. docs/marketing/01-attentive.md.
    */
-  KLAVIYO_API_KEY: z.string().default(''),
-  KLAVIYO_LIST_ID: z.string().default(''),
+  ATTENTIVE_API_KEY: z.string().default(''),
+  ATTENTIVE_SIGN_UP_SOURCE_ID: z.string().default(''),
+  ATTENTIVE_WEBHOOK_SECRET: z.string().default(''),
   /**
    * CarePortals commerce: a dedicated CRM service-user (CarePortals issues
    * no static admin key; the org credential IS a CRM login) plus the org id
@@ -96,9 +99,9 @@ export const env = envSchema
         'CAREPORTALS_ORG, CAREPORTALS_CRM_USERNAME and CAREPORTALS_CRM_PASSWORD must be set together (or all left empty to disable subscriber detection) — half-configured would silently make nobody a subscriber.',
     },
   )
-  .refine((e) => !e.KLAVIYO_API_KEY === !e.KLAVIYO_LIST_ID, {
+  .refine((e) => !e.ATTENTIVE_API_KEY === !e.ATTENTIVE_SIGN_UP_SOURCE_ID, {
     message:
-      'KLAVIYO_API_KEY and KLAVIYO_LIST_ID must be set together (or both left empty to disable the sync) — half-configured would silently sync nothing.',
+      'ATTENTIVE_API_KEY and ATTENTIVE_SIGN_UP_SOURCE_ID must be set together (or both left empty to disable the sync): half-configured would silently sync nothing.',
   })
   .parse(process.env);
 

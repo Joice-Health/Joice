@@ -51,7 +51,7 @@ range 13 to 21) is evaluated against the age gate **before it is written**. It
 is never written. The session becomes `gated_age`, its answers and
 observations are purged (`onboarding-service.ts`), and the runner asks the
 brain to erase the companion lead and threads (`DELETE /api/brain/profile`,
-Klaviyo suppression first). The stop screen says so once and offers no
+Attentive erasure first). The stop screen says so once and offers no
 notify-me. Tested in `engine.test.ts` (rows 4, 5, 14) and
 `onboarding-service.test.ts`.
 
@@ -79,7 +79,7 @@ notify-me. Tested in `engine.test.ts` (rows 4, 5, 14) and
   which version" is a query. The section is not structurally required
   (decision 2026-08-26): a flow without it must present the Terms and Privacy
   agreement on the Clerk sign-up screen instead (legal consent in the Clerk
-  Dashboard), and completion then subscribes nobody to Klaviyo, since that
+  Dashboard), and completion then subscribes nobody to Attentive, since that
   requires an explicit `consent_marketing` true.
 - Carried-over companion data is shown and confirmed by the visitor, never
   applied silently; confirming a companion-captured email is still not
@@ -95,7 +95,7 @@ notify-me. Tested in `engine.test.ts` (rows 4, 5, 14) and
 - Claim (Phase 2) links a session to a member only on a Clerk-verified email;
   a different member is refused; a gated session cannot be claimed.
 - Notify-me lives in `service_area_requests`: not `waitlist_entries`, no join to
-  `brain_profiles`. Klaviyo, deduping by email, is the only place the funnels
+  `brain_profiles`. Attentive, deduping by email, is the only place the funnels
   meet (memory rule: the waitlist never sees the brain).
 
 ## Retention

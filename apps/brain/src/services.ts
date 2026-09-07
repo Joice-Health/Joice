@@ -14,9 +14,10 @@ import {
   stubPorts,
   type LeadSyncPort,
 } from '@joice/brain';
-import { createKlaviyoClient } from '@joice/marketing';
+import { createAttentiveClient } from '@joice/marketing';
 import { env } from './env';
 import { createPlatformPorts } from './ports/platform-client';
+import { createAttentiveLeadSync } from './ports/attentive-lead-sync';
 
 /** Single service graph over the shared DB client, reused across routes. */
 const db = getDatabase();
@@ -101,38 +102,14 @@ export const conversationService = createConversationService(db);
 export const persistConversations = env.BRAIN_PERSIST_CONVERSATIONS;
 
 /**
- * Companion → Klaviyo, and nothing else. Profile import only — never a list
- * subscription: the visitor gave an email to personalize the conversation,
- * not marketing consent. The waitlist is a separate funnel this port must
- * never touch; Klaviyo deduping profiles by email is the only place the two
- * ever meet.
+ * Companion → Attentive, and nothing else: attributes, never a subscription.
+ * The rules live with the adapter (ports/attentive-lead-sync.ts). Absent key
+ * (local default) → the noop: capture still works, nothing syncs.
  */
-const leadSync: LeadSyncPort = env.KLAVIYO_API_KEY
-  ? (() => {
-      const klaviyo = createKlaviyoClient({ apiKey: env.KLAVIYO_API_KEY });
-      return {
-        async upsertLead(lead) {
-          await klaviyo.importProfile({
-            email: lead.email,
-            // Deliberately no first_name: Klaviyo's top-level fields are
-            // last-writer-wins, and a chat-collected name must never clobber a
-            // form-collected one (docs/marketing/01-klaviyo.md namespace
-            // policy). The name lives on the lead row and in /admin/leads.
-            properties: {
-              // lead_* is the brain's property prefix under the same policy.
-              lead_source: 'companion',
-              lead_status: lead.status,
-              ...(lead.goal ? { lead_goal: lead.goal } : {}),
-            },
-          });
-        },
-        async suppressLead(email) {
-          await klaviyo.suppressProfile(email);
-        },
-      } satisfies LeadSyncPort;
-    })()
+const leadSync: LeadSyncPort = env.ATTENTIVE_API_KEY
+  ? createAttentiveLeadSync(createAttentiveClient({ apiKey: env.ATTENTIVE_API_KEY }))
   : noopLeadSyncPort;
-console.log(`[brain] Klaviyo lead sync: ${env.KLAVIYO_API_KEY ? 'enabled' : 'disabled (no key set)'}`);
+console.log(`[brain] Attentive lead sync: ${env.ATTENTIVE_API_KEY ? 'enabled' : 'disabled (no key set)'}`);
 
 /**
  * The pre-onboarding companion's lead capture. Always on: a name + email + goal

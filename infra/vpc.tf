@@ -87,7 +87,7 @@ resource "aws_eip" "nat" {
 # Single NAT in AZ-a (~$32/mo + data, pre-approved on the checklist). Known
 # trade-off: an AZ-a outage takes egress down for AZ-b tasks too; add a second
 # NAT + per-AZ route tables when uptime demands it. External SaaS calls (Clerk,
-# Klaviyo) need a NAT regardless, so endpoints alone could never replace it.
+# Attentive) need a NAT regardless, so endpoints alone could never replace it.
 resource "aws_nat_gateway" "main" {
   allocation_id = aws_eip.nat.id
   subnet_id     = aws_subnet.public[0].id
