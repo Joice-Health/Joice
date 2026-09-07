@@ -4,5 +4,5 @@ export {
   type WaitlistMarketingProfile,
 } from './port';
 export { toWaitlistMarketingProfile } from './profile';
-export { createKlaviyoMarketingAdapter } from './klaviyo-adapter';
-export { createOnboardingKlaviyoAdapter } from './onboarding-klaviyo-adapter';
+export { createAttentiveMarketingAdapter } from './attentive-adapter';
+export { createOnboardingAttentiveAdapter } from './onboarding-attentive-adapter';

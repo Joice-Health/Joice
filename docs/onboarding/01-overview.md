@@ -53,7 +53,7 @@ asking health-tier questions be published.
 |---|---|
 | Trait registry with sensitivity tiers, the condition language, the engine, the flow definition + validator, the default intake flow (seeded) | Health-tier traits and the PHI unlock (Phase 5) |
 | Sessions, observations, the profile fold, service areas, notify-me, events, the flow service (publish/rollback) | Admin editor, simulator, versions page, service-areas page, funnel (Phase 3) |
-| `/api/onboarding/*` and the runner on `/get-started`, gates, completion, resume, carry-over | Accounts: Clerk sign-up, claim, `/welcome`, Klaviyo completion on opt-in (Phase 2) |
+| `/api/onboarding/*` and the runner on `/get-started`, gates, completion, resume, carry-over | Accounts: Clerk sign-up, claim, `/welcome`, Attentive completion on opt-in (Phase 2) |
 | The brain erases the companion lead on a minor stop | The brain reads the profile over `/api/internal/*`, member context in chat (Phase 4); protocol rules (Phase 5) |
 
 ## File by file
@@ -70,7 +70,7 @@ asking health-tier questions be published.
 | Flows, service areas, notify-me, settings, events | `packages/core/src/onboarding/*-service.ts` |
 | The registry, derivation, the fold | `packages/core/src/profile/` (see 03) |
 | Tables and migrations | `packages/db/src/schema/onboarding.ts`, `packages/db/drizzle/0012..0015` (see 03) |
-| Klaviyo | `packages/core/src/onboarding/marketing-port.ts`, `packages/core/src/marketing/onboarding-klaviyo-adapter.ts`, `docs/marketing/01-klaviyo.md` |
+| Attentive | `packages/core/src/onboarding/marketing-port.ts`, `packages/core/src/marketing/onboarding-attentive-adapter.ts`, `docs/marketing/01-attentive.md` |
 | Analytics | `apps/web/lib/analytics.ts` (`onboarding_*`), `onboarding_events` table |
 | The brain's one route for intake | `DELETE /api/brain/profile` in `apps/brain/src/app.ts` |
 

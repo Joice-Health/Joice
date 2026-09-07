@@ -146,14 +146,15 @@ id. Storing it makes this a system that holds PHI, with everything that follows.
 | Question | Why it blocks |
 |---|---|
 | Retention period, and what deletes the data | The **mechanism is built**: `apps/brain/scripts/retention.ts` deletes threads idle past the window, run nightly by a scheduled ECS task (`infra/retention.tf` — always enabled; a sweep of an empty table is free, and expiry must not stop when storage does). What's missing is the **number** — counsel must set the retention period; indefinite retention of health questions is not defensible |
-| Member deletion / right-to-erasure path | The **mechanism is built**: `deleteForRequester` on both services erases the requester's threads (messages cascade) and their lead profile, suppressing the email in Klaviyo first. What's missing is the **authenticated endpoint** that exposes it — that arrives with member auth |
+| Member deletion / right-to-erasure path | The **mechanism is built**: `deleteForRequester` on both services erases the requester's threads (messages cascade) and their lead profile, unsubscribing the email in Attentive and filing its delete request first. What's missing is the **authenticated endpoint** that exposes it — that arrives with member auth |
 | AWS AI-services opt-out policy applied at the org | Keeps prompts out of AWS service-improvement pipelines |
 | The Before-PHI checklist items below | The infrastructure items (private subnets, CloudTrail, encrypted last hop, Multi-AZ) shipped 2026-08-27; the app-level items (member auth, chat audit logging) remain |
 | Member auth on the chat routes | An anonymous session cookie is not an accountability boundary |
 
-One deliberate property of the erasure path: **Klaviyo suppression is
-profile-global by design** — suppressing the email stops *all* marketing to
-that person, not just the companion's, so erasure over-suppresses. Intended.
+One deliberate property of the erasure path: **Attentive erasure is
+person-global by design**: the unsubscribe covers every channel and the delete
+request removes the whole subscriber, not just the companion's attributes, so
+erasure over-suppresses. Intended.
 
 **What is safe about it as built:** reads are always scoped to the requester
 (a conversation id alone returns 404 to anyone else), question and answer are

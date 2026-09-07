@@ -149,18 +149,25 @@ variable "phi_ready" {
   default     = false
 }
 
-# ---- Klaviyo (waitlist marketing sync) ----
+# ---- Attentive (marketing sync) ----
 
-variable "klaviyo_api_key" {
-  description = "Klaviyo private API key (pk_...). Set in terraform.tfvars (gitignored); stored in Secrets Manager for the api task. Empty disables the sync."
+variable "attentive_api_key" {
+  description = "Attentive private-app API key. Set in terraform.tfvars (gitignored); stored in Secrets Manager for the api and brain tasks. Empty disables the sync. See docs/marketing/01-attentive.md."
   type        = string
   sensitive   = true
   default     = ""
 }
 
-variable "klaviyo_list_id" {
-  description = "Klaviyo List ID of the master email-consent list (6-char code in the list URL; not a secret). Every consent-capturing surface subscribes to this one list — see docs/marketing/01-klaviyo.md. Empty disables the sync."
+variable "attentive_sign_up_source_id" {
+  description = "Id of the Attentive API sign-up unit (Sign-up Units tab; not a secret) that every consent-capturing surface subscribes through. Empty disables the sync."
   type        = string
+  default     = ""
+}
+
+variable "attentive_webhook_secret" {
+  description = "Signing key Attentive issued for the consent webhook (POST /api/webhooks/attentive). Set in terraform.tfvars (gitignored); stored in Secrets Manager for the api task. Empty makes the route answer 503."
+  type        = string
+  sensitive   = true
   default     = ""
 }
 

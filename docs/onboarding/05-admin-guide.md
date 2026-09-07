@@ -58,7 +58,7 @@ If you remove the terms consent, the Terms and Privacy agreement must be
 presented somewhere else before the account exists: turn on legal consent on
 the Clerk sign-up screen (Clerk Dashboard, under sign-up settings). And
 without the marketing opt-in question, completion never subscribes anyone to
-Klaviyo; that is the designed fail-safe, not a bug.
+Attentive; that is the designed fail-safe, not a bug.
 
 ## What the badges and locks mean
 

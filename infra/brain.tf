@@ -158,9 +158,9 @@ resource "aws_ecs_task_definition" "brain" {
         { name = "DATABASE_URL", valueFrom = aws_secretsmanager_secret.database_url.arn },
         # Presented to the api on /api/internal/* for member profile reads.
         { name = "INTERNAL_API_TOKEN", valueFrom = aws_secretsmanager_secret.internal_api_token.arn },
-        # Companion lead sync (profile import only — no list subscription; the
+        # Companion lead sync (attributes only, never a subscription: the
         # visitor gave an email to personalize the chat, not marketing consent).
-        { name = "KLAVIYO_API_KEY", valueFrom = aws_secretsmanager_secret.klaviyo_api_key.arn },
+        { name = "ATTENTIVE_API_KEY", valueFrom = aws_secretsmanager_secret.attentive_api_key.arn },
       ]
       logConfiguration = {
         logDriver = "awslogs"

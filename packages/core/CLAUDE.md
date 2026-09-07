@@ -12,7 +12,7 @@ src/schemas.ts        the browser-safe subpath (@joice/core/schemas): zod + pure
 src/index.ts          the server barrel: everything, including services (pulls in the Postgres driver)
 src/waitlist-service.ts
 src/admin/            audit, feature flags, settings, users, leads, admin waitlist + their zod contracts
-src/marketing/        the Klaviyo ports/adapters for each domain (waitlist, onboarding)
+src/marketing/        the Attentive ports/adapters for each domain (waitlist, onboarding)
 src/profile/          traits.ts (the registry + tiers), derive.ts, projector.ts, profile-service.ts
 src/rules/            the condition language: conditions.ts, evaluate.ts, validate.ts
 src/protocols/        the protocol_rules sketch: rule schema, ranked evaluator, defaults (browser-safe)

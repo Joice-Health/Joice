@@ -4,7 +4,7 @@ import type { WaitlistMarketingProfile } from './port';
 /**
  * The single row→profile mapping, shared by every service that syncs (public
  * join, admin status changes). Field drift between two copies of this mapping
- * would silently diverge Klaviyo from the database — never duplicate it.
+ * would silently diverge Attentive from the database; never duplicate it.
  *
  * Deliberately excludes `ipHash` (never leaves the database), `referredByCode`
  * (raw unresolved codes are noise), and `metadata`.

@@ -46,7 +46,7 @@ packages/
   api-client/   typed Hono RPC clients for both services + TanStack Query hooks
   ui/           Tailwind v4 theme tokens + primitives (the design system)
   utils/        dependency-free helpers usable anywhere (US states, ...)
-  marketing/    Klaviyo sync: shared client + per-domain ports
+  marketing/    Attentive sync: shared client + per-domain ports
   config/       shared tsconfig + eslint
 docs/           deep-dive engineering docs, indexed in docs/README.md
 infra/          Terraform for all of AWS

@@ -5,6 +5,9 @@
 
 # Joice onboarding: the intake logic tree
 
+> Since 2026-09 the marketing platform is Attentive ([docs/marketing/01-attentive.md](../marketing/01-attentive.md)).
+> Klaviyo names in the body below are historical; the port and namespace rules are unchanged.
+
 Design brief (approved 2026-08-19) for turning `/get-started` from a placeholder into an admin-configurable, server-driven
 intake flow that builds a member profile, ends in registration, and leaves the data in the
 shape protocols will need. Written as the product + engineering brief for a Shortcut epic.
@@ -32,7 +35,7 @@ repo call the intake decision tree "a separate downstream workstream". Nothing d
 | Typed RPC: `AppType` chain → `hc<AppType>` hooks | `apps/api/src/app.ts`, `packages/api-client` | No hand-written DTOs |
 | Brain ports (`MemberContextPort` stub) and the `claim(sessionId, memberId)` seam | `packages/brain/src/ports/index.ts`, `profile/service.ts:250` | Profile → brain, anonymous → member |
 | Care-area vocabulary | `packages/brain/src/profile/schemas.ts:24-37` (+ `apps/web/lib/site-content.ts`) | The `primary_goal` trait values |
-| Klaviyo namespace policy: onboarding owns `onboarding_*` | `docs/marketing/01-klaviyo.md:133-139` | Notify-me and completion events |
+| Marketing namespace policy: onboarding owns `onboarding_*` | `docs/marketing/01-attentive.md`, identifier and attribute namespace policy | Notify-me and completion events |
 | Compliance posture + Before-PHI checklist | root `CLAUDE.md`, `infra/README.md:122-136`, `docs/rag/07-compliance.md` | Sensitivity tiers and the publish lock |
 | Design system (hairlines, dotted pills, brackets, `display`/`mono-label`) | `packages/ui`, `docs/design/01-design-system.md` | The step UI |
 
@@ -706,7 +709,7 @@ packages/core/src/onboarding/onboarding-config-service.ts NEW  app_settings row 
 packages/core/src/onboarding/events-service.ts  NEW  recordEvent (no values), funnel aggregation
 packages/core/src/onboarding/admin-schemas.ts   NEW  versions, publish, rollback, simulate, service areas, settings, funnel, requests
 packages/core/src/onboarding/marketing-port.ts  NEW  OnboardingMarketingPort (+ noop)
-packages/core/src/marketing/onboarding-klaviyo-adapter.ts NEW  onboarding_* props, importProfile + trackEvent only
+packages/core/src/marketing/onboarding-attentive-adapter.ts NEW  onboarding_* props, upsertProfile + trackEvent only
 packages/core/src/schemas.ts                    MOD  FLAG_KEYS.onboarding / .onboardingHealth; re-export traits, conditions, onboarding schemas
 packages/core/src/index.ts, src/admin/index.ts  MOD  export services + admin schemas
 packages/core/src/admin/user-service.ts         MOD  markDeletedFromClerk(clerkUserId)

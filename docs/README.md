@@ -87,11 +87,12 @@ admin page is built from.
 |---|---|
 | [01 — Design system](design/01-design-system.md) | The palette, the three Dinamo faces and their roles, the bracket and dotted-pill devices, what is still placeholder |
 
-## Marketing (Klaviyo)
+## Marketing (Attentive)
 
 | Doc | What it covers |
 |---|---|
-| [01 — Klaviyo Waitlist Sync](marketing/01-klaviyo.md) | Architecture (shared client → per-domain ports), the fire-and-forget sync, what data leaves the DB, config/secrets, the checkpoint extension recipe, troubleshooting |
+| [00 Design brief (Attentive migration)](marketing/00-plan.md) | Why Attentive, the sync flows (flowchart), the Klaviyo-to-Attentive call mapping, attribute typing and namespaces, the file-level plan, phases and stories, the switch-over runbook, decisions log |
+| [01 Attentive sync](marketing/01-attentive.md) | As-built reference: architecture (shared client, per-domain ports), the fire-and-forget sync, what data leaves the DB, the inbound consent webhook, config/secrets and the dashboard setup, the checkpoint extension recipe, troubleshooting |
 
 ## Workflow
 

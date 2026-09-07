@@ -1,8 +1,8 @@
 /**
  * Marketing port for the waitlist domain. A port describes the question asked
- * ("subscribe this person to waitlist marketing"), not the provider behind it —
- * core stays env-free and provider-free; the Klaviyo adapter is constructed at
- * the app edge (apps/api/src/services.ts) and injected. Tests inject a fake.
+ * ("subscribe this person to waitlist marketing"), not the provider behind it:
+ * core stays env-free and provider-free; the Attentive adapter is constructed
+ * at the app edge (apps/api/src/services.ts) and injected. Tests inject a fake.
  *
  * Deliberately waitlist-shaped and waitlist-named: other domains (the brain's
  * lead capture, future orders) declare their own narrow ports over the same
@@ -11,12 +11,14 @@
 
 export interface WaitlistMarketingProfile {
   /**
-   * Waitlist entry id — becomes the marketing platform's external_id. The
-   * waitlist OWNS the external_id slot until a platform-wide person id exists;
-   * other domains upsert by email only and must never send an external_id.
+   * Waitlist entry id, sent as the marketing platform's client user id. The
+   * waitlist OWNS that slot until a platform-wide person id exists; other
+   * domains upsert by email only and must never send one.
    */
   id: string;
   email: string;
+  /** E.164, once a surface collects one (none does yet; the adapters pass it through). */
+  phone?: string | null;
   firstName: string | null;
   lastName: string | null;
   referralCode: string;

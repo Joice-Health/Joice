@@ -5,6 +5,10 @@ each independently reviewed by two fresh-context reviewers before merge). This
 doc is the plain-English record: what was found, what changed, and what is
 deliberately still open — with owners.*
 
+> Since 2026-09 the marketing platform is Attentive ([docs/marketing/01-attentive.md](../marketing/01-attentive.md));
+> the Klaviyo names below are the audit's historical record. The rules it set (error names
+> only in logs, suppress before delete, no name from the chat) hold unchanged.
+
 ---
 
 ## How the brain answered a question before this branch

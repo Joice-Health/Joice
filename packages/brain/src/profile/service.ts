@@ -252,7 +252,7 @@ export function createProfileService(db: Database, deps: { leadSync?: LeadSyncPo
      * Deliberately all-or-nothing — if suppression fails the transaction
      * rolls back and the row survives (with the email still on it), so the
      * erasure can be retried end-to-end; deleting first would orphan a
-     * suppressed-nowhere Klaviyo profile with no key left to find it by.
+     * never-unsubscribed Attentive subscriber with no key left to find it by.
      *
      * SELECT ... FOR UPDATE closes the race where an email changes between
      * the read and the delete (the old address suppressed, the new one not).

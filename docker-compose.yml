@@ -50,9 +50,11 @@ services:
       # Clerk (admin auth) — set real dev keys in .env
       CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY:-pk_test_placeholder}
       CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-sk_test_placeholder}
-      # Klaviyo waitlist sync — both empty disables it (signups just don't sync).
-      KLAVIYO_API_KEY: ${KLAVIYO_API_KEY:-}
-      KLAVIYO_LIST_ID: ${KLAVIYO_LIST_ID:-}
+      # Attentive marketing sync: key and source id both empty disables it (signups just don't sync).
+      ATTENTIVE_API_KEY: ${ATTENTIVE_API_KEY:-}
+      ATTENTIVE_SIGN_UP_SOURCE_ID: ${ATTENTIVE_SIGN_UP_SOURCE_ID:-}
+      # Signing key of the Attentive webhook; empty makes /api/webhooks/attentive answer 503.
+      ATTENTIVE_WEBHOOK_SECRET: ${ATTENTIVE_WEBHOOK_SECRET:-}
       CAREPORTALS_ORG: ${CAREPORTALS_ORG:-}
       CAREPORTALS_CRM_USERNAME: ${CAREPORTALS_CRM_USERNAME:-}
       CAREPORTALS_CRM_PASSWORD: ${CAREPORTALS_CRM_PASSWORD:-}
@@ -98,6 +100,8 @@ services:
       # Reach the api for member profiles; same token as the api's INTERNAL_API_TOKEN.
       API_URL_INTERNAL: http://api:4000
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-joice-dev-internal-token}
+      # Companion lead sync (attributes only, never a subscription); empty disables it.
+      ATTENTIVE_API_KEY: ${ATTENTIVE_API_KEY:-}
       # Bedrock/Transcribe/Polly — needs AWS creds to answer for real; without
       # them these endpoints fail and the rest of the site still works.
       RAG_MODEL: ${RAG_MODEL:-us.anthropic.claude-sonnet-4-5-20250929-v1:0}

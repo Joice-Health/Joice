@@ -19,7 +19,7 @@ export interface ServiceAreaRequestServiceDeps {
  * "Tell me when my state opens." One row per email and state, its own table:
  * not the referral waitlist (no referral code, no position), not the brain's
  * lead (no brain lineage), no join to either. The marketing sync is
- * fire-and-forget like the waitlist's: a Klaviyo outage never fails the
+ * fire-and-forget like the waitlist's: an Attentive outage never fails the
  * request, success stamps `marketing_synced_at`, and errors log ids only.
  */
 export function createServiceAreaRequestService(

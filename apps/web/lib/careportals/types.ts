@@ -3,7 +3,7 @@
  * the `organization` header selects the tenant and CORS is open by design (it
  * is a storefront API), so both server components and the browser call it
  * directly. Interfaces are hand-written against live responses (2026-08-28),
- * the house pattern for third-party APIs (packages/marketing/src/klaviyo.ts);
+ * the house pattern for third-party APIs (packages/marketing/src/attentive.ts);
  * the internal no-hand-written-DTOs rule is about the Hono RPC chain only.
  * Full endpoint map and rationale: docs/shop/00-plan.md.
  */

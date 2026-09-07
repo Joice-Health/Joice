@@ -65,7 +65,7 @@ the pages and cart mutations go browser-direct; no proxy, no new service, no new
 
 **Why hand-written types.** The repo's "no hand-written DTOs" rule is about the internal
 Hono RPC chain. For third-party APIs the house precedent is a typed client with hand-written
-interfaces ([klaviyo.ts](../../packages/marketing/src/klaviyo.ts)); the CarePortals client
+interfaces ([attentive.ts](../../packages/marketing/src/attentive.ts)); the CarePortals client
 follows it, scoped to `apps/web/lib/careportals/` since nothing outside the web app calls it
 yet. When the real commerce build starts, the brain's `CartPort`/`CatalogPort` seam
 ([ports/index.ts](../../packages/brain/src/ports/index.ts)) is where CarePortals adapters

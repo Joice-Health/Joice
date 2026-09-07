@@ -97,7 +97,7 @@ The intake flow on `/get-started` (design brief: `docs/onboarding/00-plan.md`; m
 - `onboarding_events` and GTM carry **keys and outcomes only**, never answer values, names or
   emails.
 - **Notify-me** (`service_area_requests`) is its own table: not the referral waitlist, no brain
-  lineage. Klaviyo under `onboarding_*` is the only place the funnels meet.
+  lineage. Attentive under `onboarding_*` is the only place the funnels meet.
 - The intake cookie (`joice_onboarding_session`, api) is separate from the brain cookie; the
   api client sends `credentials: 'include'` and the api's CORS allows it (dev is cross-origin).
 - The brain reaches the profile **only over HTTP** (`/api/internal/*`, Phase 4); it never
@@ -182,7 +182,8 @@ Variables: `CLOUDFRONT_URL`, `CLERK_PUBLISHABLE_KEY`). Changing them requires a 
 a redeploy or task-env change: run the Deploy workflow manually with `scope=all`, because no
 file in git changed and change detection would otherwise skip the web image. Everything else
 (`TEAM_PASSWORD`, `SITE_LAUNCHED`, `CLERK_SECRET_KEY`, `DATABASE_URL`, the onboarding knobs
-`PHI_READY`, `ONBOARDING_SESSION_IDLE_DAYS`, `ONBOARDING_SESSION_TTL_DAYS`) is runtime env on
+`PHI_READY`, `ONBOARDING_SESSION_IDLE_DAYS`, `ONBOARDING_SESSION_TTL_DAYS`, the `ATTENTIVE_*` keys)
+is runtime env on
 the ECS tasks, changed via `terraform apply`, no rebuild.
 
 In production the web app is built with `NEXT_PUBLIC_API_URL=""` — CloudFront serves web and

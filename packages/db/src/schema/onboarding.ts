@@ -192,7 +192,7 @@ export type ServiceArea = typeof serviceAreas.$inferSelect;
 
 /**
  * "Tell me when my state opens." Its own table on purpose: not the referral
- * waitlist, not the brain's lead, no join to either. Synced to Klaviyo under
+ * waitlist, not the brain's lead, no join to either. Synced to Attentive under
  * the `onboarding_*` namespace without a list subscription (no marketing
  * consent is implied). One row per email and state.
  */
