@@ -2,6 +2,7 @@ import { CtaLink } from '@/components/ui/cta-link';
 import { ImageSlot } from '@/components/ui/image-slot';
 import { formatPrice } from '@/lib/careportals/types';
 import { merchandisedName, type MerchandisedProduct } from '@/lib/shop-catalog.server';
+import { catalogImage } from '@/lib/shop-catalog';
 
 /**
  * The production shelf row: the catalogue row's shape carrying live CarePortals
@@ -18,7 +19,7 @@ export function CommerceProductRow({ product }: { product: MerchandisedProduct }
         <div className="flex flex-col gap-4">
           <h3 className="mono-label text-ink">{merchandisedName(product)}</h3>
           <ImageSlot
-            src={`products/${entry.slug}.jpg`}
+            src={catalogImage(entry)}
             alt=""
             sizes="(min-width: 640px) 160px, 112px"
             hue={entry.hue ?? 128}

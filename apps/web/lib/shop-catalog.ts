@@ -50,6 +50,12 @@ export interface CatalogEntry {
     science?: string;
     dosing?: string;
   };
+  /**
+   * Product photograph, a path under public/. Absent, the slug convention
+   * (products/<slug>.jpg) applies, and ImageSlot renders the designed field
+   * when the file is missing either way.
+   */
+  image?: string;
   /** ImageSlot hue so neighbouring organic fields differ. */
   hue?: number;
   /** Shelf order within a category, lower first. */
@@ -140,6 +146,7 @@ export const SHOP_CATALOG: readonly CatalogEntry[] = [
   {
     slug: 'glutathione',
     name: 'Glutathione',
+    image: 'shop/product/peptide_product.png',
     careportalsId: '6a7a18a99d94da87b1d1d956',
     areas: ['beauty-skin', 'energy'],
     tagline: 'The body’s master antioxidant, made simple.',
@@ -164,6 +171,11 @@ export const SHOP_CATALOG: readonly CatalogEntry[] = [
     rank: 1,
   },
 ];
+
+/** The photo path an entry renders: its own, else the slug convention. */
+export function catalogImage(entry: CatalogEntry): string {
+  return entry.image ?? `products/${entry.slug}.jpg`;
+}
 
 /** The entry a /shop/[slug] URL names, or undefined. */
 export function catalogEntryBySlug(slug: string): CatalogEntry | undefined {

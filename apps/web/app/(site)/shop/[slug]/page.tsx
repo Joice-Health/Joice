@@ -9,7 +9,7 @@ import {
   merchandisedName,
   type MerchandisedProduct,
 } from '@/lib/shop-catalog.server';
-import { catalogEntryBySlug } from '@/lib/shop-catalog';
+import { catalogEntryBySlug, catalogImage } from '@/lib/shop-catalog';
 import { getCareArea } from '@/lib/site-content';
 import { formatPrice, type CareportalsProduct } from '@/lib/careportals/types';
 import { PageIntro } from '@/components/ui/page-intro';
@@ -138,7 +138,7 @@ function ProductPage({ product }: { product: MerchandisedProduct }) {
           </div>
         </div>
         <ImageSlot
-          src={`products/${entry.slug}.jpg`}
+          src={catalogImage(entry)}
           alt=""
           sizes="(min-width: 1024px) 40vw, 100vw"
           hue={entry.hue ?? 128}
