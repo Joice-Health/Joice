@@ -1,10 +1,11 @@
 import { Eyebrow } from '@/components/ui/eyebrow';
 import { CtaLink } from '@/components/ui/cta-link';
+import { CERT_SHOP } from '@/lib/cert-routes';
 
 /**
  * The storefront's closing statement: GetStartedCta's shape with the one
- * difference that matters here, the action leads to /shop, not the gated
- * intake.
+ * difference that matters here, the action leads to the cert shelf, not the
+ * gated intake.
  */
 export function ShopCta() {
   return (
@@ -13,7 +14,7 @@ export function ShopCta() {
       <p className="display mx-auto mt-6 max-w-4xl text-balance text-6xl text-ink sm:text-8xl">
         The new standard of you.
       </p>
-      <CtaLink href="/shop" size="lg" className="mt-10">
+      <CtaLink href={CERT_SHOP} size="lg" className="mt-10">
         Get started +
       </CtaLink>
     </section>

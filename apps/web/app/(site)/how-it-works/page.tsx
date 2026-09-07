@@ -24,7 +24,7 @@ export default function HowItWorksPage() {
   return (
     <>
       <PageIntro eyebrow="How it works" title="Clinical care, end to end.">
-        From first conversation to ongoing oversight: one membership, no cart, no guesswork.
+        From first conversation to ongoing oversight: one membership, clinician oversight, no guesswork.
       </PageIntro>
 
       {/* End-to-end model, reusing the 3-step snapshot */}

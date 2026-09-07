@@ -15,6 +15,16 @@ export const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
  */
 export const brainUrl = process.env.NEXT_PUBLIC_BRAIN_URL || apiUrl;
 
+/**
+ * The Stripe publishable key for the custom checkout's card fields
+ * (docs/shop/01-commerce.md section 7). Publishable, not secret, but build-time
+ * inlined like every NEXT_PUBLIC_* value: changing the repo Variable needs a
+ * scope=all deploy, not a task-env change. Empty when unset; lib/stripe.ts then
+ * resolves null and the payment step renders its unavailable notice instead of
+ * crashing (the no-Clerk-build precedent).
+ */
+export const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
+
 /** Build the public referral share link for a given code. */
 export function buildShareUrl(referralCode: string): string {
   return `${appUrl}/waitlist?ref=${encodeURIComponent(referralCode)}`;

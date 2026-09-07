@@ -35,7 +35,20 @@ export type AnalyticsEvent =
   | { event: 'onboarding_completed' }
   | { event: 'onboarding_restarted' }
   | { event: 'onboarding_registration_started' }
-  | { event: 'onboarding_registration_completed' };
+  | { event: 'onboarding_registration_completed' }
+  // The shop and checkout (docs/shop/01-commerce.md). Steps and outcomes only;
+  // never an email, a name, an address, a birth date, a coupon code, an
+  // amount, or any Stripe identifier.
+  | { event: 'cart_item_added' }
+  | { event: 'cart_item_removed' }
+  | { event: 'checkout_started' }
+  | { event: 'checkout_step_viewed'; step: 'contact' | 'shipping' | 'payment' }
+  | { event: 'checkout_account_created'; mode: 'new' | 'returning' }
+  | {
+      event: 'checkout_payment_result';
+      outcome: 'succeeded' | 'card_error' | 'declined' | 'auth_expired' | 'processing' | 'ambiguous';
+    }
+  | { event: 'checkout_completed' };
 
 export function track(event: AnalyticsEvent): void {
   if (typeof window === 'undefined') return;

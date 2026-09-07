@@ -3,6 +3,7 @@ import { CtaLink } from '@/components/ui/cta-link';
 import { Eyebrow } from '@/components/ui/eyebrow';
 import { ImageSlot } from '@/components/ui/image-slot';
 import { formatPrice, type CareportalsProduct } from '@/lib/careportals/types';
+import { certProductHref } from '@/lib/cert-routes';
 import { productImage } from '@/lib/shop-products';
 
 /**
@@ -14,7 +15,7 @@ import { productImage } from '@/lib/shop-products';
  */
 export function FeaturedProtocol({
   product,
-  href = `/shop/${product._id}`,
+  href = certProductHref(product._id),
 }: {
   product: CareportalsProduct;
   /** Bespoke page override, same as the row (lib/shop-products.ts). */

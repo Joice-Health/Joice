@@ -29,23 +29,25 @@ const isMemberRoute = createRouteMatcher(['/welcome(.*)']);
 
 // /health is the ALB liveness check (app/health/route.ts): it must answer 200
 // with no cookie, so it sits outside the gate.
-// / through /checkout are the public storefront (docs/shop/00-plan.md): the
-// root is the storefront landing (sc-251; /home 308s to it in next.config.ts)
-// and the pages themselves check the `shop` flag, which outranks every other
-// flag, redirecting to /waitlist when it is off. '/' matches only exactly
-// (nothing starts with '//'), so every other path stays gated. /terms,
-// /privacy, /faq and /states are permanent flag-free pages; /states is the
-// LegitScript jurisdiction disclosure and must load cold with no credentials
-// (sc-275). Note /shop covers /shop/[id] via the prefix match; /products and
-// /preview stay gated.
+// / and /store/* are the public certification storefront (docs/shop/00-plan.md,
+// moved off /shop by docs/shop/01-commerce.md section 2; no redirects from the
+// old paths, nobody held links yet): the root is the storefront landing
+// (sc-251; /home 308s to it in next.config.ts) and the pages themselves check
+// the `shop` flag, which outranks every other flag, redirecting to /waitlist
+// when it is off. '/' matches only exactly (nothing starts with '//'), so
+// every other path stays gated. /terms, /privacy, /faq and /states are
+// permanent flag-free pages; /states is the LegitScript jurisdiction
+// disclosure and must load cold with no credentials (sc-275). /store covers
+// /store/[id] and /store/checkout via the prefix match; /shop and everything
+// under it (the real shop: catalogue, categories, product pages, /shop/cart,
+// /shop/checkout) stays gated until launch.
 const PUBLIC_PATHS = [
   '/',
   '/waitlist',
   '/coming-soon',
   '/team',
   '/health',
-  '/shop',
-  '/checkout',
+  '/store',
   '/terms',
   '/privacy',
   '/faq',

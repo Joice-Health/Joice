@@ -5,7 +5,8 @@ import { PageIntro } from '@/components/ui/page-intro';
 import { Eyebrow } from '@/components/ui/eyebrow';
 import { ProductRow } from '@/components/ui/product-row';
 import { GetStartedCta } from '@/components/ui/get-started-cta';
-import { CARE_AREAS, PRODUCTS } from '@/lib/site-content';
+import { CARE_AREAS } from '@/lib/site-content';
+import { SHOP_CATALOG } from '@/lib/shop-catalog';
 
 export const metadata: Metadata = {
   title: 'Explore · Joice',
@@ -17,8 +18,9 @@ export default function ExplorePage() {
   return (
     <>
       <PageIntro eyebrow="Explore" title="Start with what you want to change.">
-        Five care areas, each with protocols set and reviewed by our clinical team. No cart,
-        no checkout: a clinician decides with you.
+        Five care areas, each with protocols set and reviewed by our clinical team. When
+        something looks right, add it to your cart; a licensed physician reviews every order
+        before it ships.
       </PageIntro>
 
       {/* Care-area list, primary */}
@@ -52,18 +54,18 @@ export default function ExplorePage() {
           Shop
         </Eyebrow>
         <ul className="mt-8 border-t border-line">
-          {PRODUCTS.slice(0, 4).map((product, i) => (
-            <ProductRow key={product.slug} product={product} hue={[128, 96, 60, 150][i % 4]} />
+          {SHOP_CATALOG.slice(0, 4).map((entry) => (
+            <ProductRow key={entry.slug} entry={entry} />
           ))}
         </ul>
       </section>
 
-      {/* Expectation-setter: "no cart" */}
+      {/* Expectation-setter: buying has a clinician in the loop */}
       <section className="border-t border-line py-16 text-center sm:py-20">
         <Eyebrow as="h2">How buying works here</Eyebrow>
         <p className="mx-auto mt-5 max-w-2xl text-balance text-xl leading-snug text-ink sm:text-2xl">
-          There&apos;s no cart on this site. When something looks right, you talk to a clinician,
-          and they prescribe it only if it&apos;s right for you.
+          Add to your cart and check out here. Then a short medical intake, and a licensed
+          physician prescribes only if it&apos;s right for you; the pharmacy ships from there.
         </p>
       </section>
 

@@ -1,9 +1,9 @@
 /**
- * Placeholder site content driving the Explore → Care-area → PDP drill-down and
- * the Learn hub, until real catalog/content lands (content pass / CMS decision).
- * Names are deliberately generic protocol labels — no clinical claims — and all
- * pricing renders as "$—" (display-only per the IA; real pricing is gated on
- * counsel/business review).
+ * Editorial site content: the care-area blurbs the explore and shop pages
+ * share, and the Learn hub's articles. The product layer that used to live
+ * here (static PRODUCTS with "$—" prices) is gone: the shop catalogue map
+ * (lib/shop-catalog.ts) is the one source of what Joice sells, and every
+ * surface that lists products reads it.
  */
 
 import { CARE_AREAS as CANONICAL_CARE_AREAS } from '@joice/utils';
@@ -12,14 +12,6 @@ export interface CareArea {
   slug: string;
   name: string;
   blurb: string;
-}
-
-export interface Product {
-  slug: string;
-  name: string;
-  area: string; // CareArea slug
-  tagline: string;
-  hasSupportSupplement: boolean;
 }
 
 export interface Article {
@@ -45,58 +37,6 @@ export const CARE_AREAS: CareArea[] = CANONICAL_CARE_AREAS.map((a) => ({
   name: a.label,
   blurb: CARE_AREA_BLURBS[a.slug] ?? '',
 }));
-
-export const PRODUCTS: Product[] = [
-  {
-    slug: 'metabolic-protocol',
-    name: 'Metabolic Protocol',
-    area: 'weight-metabolic',
-    tagline: 'Clinician-guided metabolic support.',
-    hasSupportSupplement: true,
-  },
-  {
-    slug: 'appetite-protocol',
-    name: 'Appetite Regulation Protocol',
-    area: 'weight-metabolic',
-    tagline: 'Steady appetite signals, without the whiplash.',
-    hasSupportSupplement: false,
-  },
-  {
-    slug: 'recovery-protocol',
-    name: 'Recovery Protocol',
-    area: 'body-comp-recovery',
-    tagline: 'Repair and rebuild between sessions.',
-    hasSupportSupplement: true,
-  },
-  {
-    slug: 'lean-mass-protocol',
-    name: 'Lean Mass Protocol',
-    area: 'body-comp-recovery',
-    tagline: 'Support for composition goals, held to clinical guardrails.',
-    hasSupportSupplement: false,
-  },
-  {
-    slug: 'skin-protocol',
-    name: 'Skin Quality Protocol',
-    area: 'beauty-skin',
-    tagline: 'Skin health from the inside.',
-    hasSupportSupplement: false,
-  },
-  {
-    slug: 'energy-protocol',
-    name: 'Cellular Energy Protocol',
-    area: 'energy',
-    tagline: 'Energy that shows up in the afternoon too.',
-    hasSupportSupplement: true,
-  },
-  {
-    slug: 'sleep-protocol',
-    name: 'Sleep Protocol',
-    area: 'stress-sleep',
-    tagline: 'Deeper nights, calmer days.',
-    hasSupportSupplement: false,
-  },
-];
 
 export const ARTICLES: Article[] = [
   {
@@ -127,14 +67,6 @@ export const ARTICLES: Article[] = [
 
 export function getCareArea(slug: string): CareArea | undefined {
   return CARE_AREAS.find((a) => a.slug === slug);
-}
-
-export function getProduct(slug: string): Product | undefined {
-  return PRODUCTS.find((p) => p.slug === slug);
-}
-
-export function getProductsByArea(areaSlug: string): Product[] {
-  return PRODUCTS.filter((p) => p.area === areaSlug);
 }
 
 export function getArticle(slug: string): Article | undefined {

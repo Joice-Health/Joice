@@ -49,17 +49,22 @@ on. Work lands on the `onboarding/intake` branch; the design brief is the place 
 
 Page 10 (protocol readiness) arrives with Phase 5; see section 7 of the brief. **New here? Read 01, then 02, then 08 to run it.**
 
-## Shop (CarePortals certification storefront)
+## Shop (CarePortals commerce)
 
-The bare-bones public shopping flow built for the certification audit, now live at the
-site root: `/` → `/shop` → `/shop/[id]` → `/checkout`, handing off to CarePortals' hosted
-checkout (`/home`, the landing's original URL, 308s to `/`). Behind the `shop` flag, which
-outranks every other flag at the root; the permanent `/terms` `/privacy` `/faq` pages ship
-alongside it.
+Two storefronts on one commerce backend. The certification storefront (public, for the
+audit, handing off to CarePortals' hosted checkout) lives at `/` and `/store/*` behind the
+`shop` flag. The production shopping experience (catalogue by care area, live product
+pages, persistent cart, on-site Stripe checkout) lives entirely under `/shop` (catalogue,
+`/shop/[slug]` pages, `/shop/cart`, `/shop/checkout`) behind the team gate and the
+`commerce` flag. The permanent
+`/terms` `/privacy` `/faq` pages ship alongside.
 
 | Doc | What it covers |
 |---|---|
-| [00 Design brief (approved plan)](shop/00-plan.md) | Why a separate public route group, the flow, every CarePortals endpoint used and why there is no proxy, the two gates (allowlist + `shop` flag), slices, decisions log |
+| [00 Design brief (certification storefront)](shop/00-plan.md) | Why a separate public route group, the flow, every CarePortals endpoint used and why there is no proxy, the two gates (allowlist + `shop` flag), slices, decisions log |
+| [01 Design brief (production shop)](shop/01-commerce.md) | Tracked as Shortcut epic 261. The two coexisting surfaces and the /store move, gating, the local catalogue map, cart state, the custom checkout (Patient API + Stripe Elements, 3DS, the pure payment machine), compliance guardrails, slices, decisions log, the verified-live spike log |
+
+**New here? Read 01; 00 explains the audit surface it moves aside.**
 
 ## Admin
 

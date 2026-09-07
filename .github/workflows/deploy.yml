@@ -125,6 +125,7 @@ jobs:
             NEXT_PUBLIC_BRAIN_URL=
             NEXT_PUBLIC_APP_URL=${{ vars.CLOUDFRONT_URL }}
             NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ vars.CLERK_PUBLISHABLE_KEY }}
+            NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ vars.STRIPE_PUBLISHABLE_KEY }}
           tags: |
             ${{ vars.ECR_WEB }}:latest
             ${{ vars.ECR_WEB }}:${{ github.sha }}

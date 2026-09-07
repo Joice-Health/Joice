@@ -6,7 +6,9 @@ import { Eyebrow } from '@/components/ui/eyebrow';
 import { ProductRow } from '@/components/ui/product-row';
 import { ArticleRow } from '@/components/ui/article-row';
 import { GetStartedCta } from '@/components/ui/get-started-cta';
-import { ARTICLES, CARE_AREAS, getCareArea, getProductsByArea } from '@/lib/site-content';
+import { ARTICLES, CARE_AREAS, getCareArea } from '@/lib/site-content';
+import { catalogEntriesByArea, type CatalogEntry } from '@/lib/shop-catalog';
+import type { CareAreaSlug } from '@joice/utils';
 
 export function generateStaticParams() {
   return CARE_AREAS.map((area) => ({ area: area.slug }));
@@ -28,7 +30,7 @@ export default async function CareAreaPage({ params }: { params: Promise<{ area:
   const area = getCareArea((await params).area);
   if (!area) notFound();
 
-  const products = getProductsByArea(area.slug);
+  const products: CatalogEntry[] = catalogEntriesByArea(area.slug as CareAreaSlug);
 
   return (
     <>
@@ -44,11 +46,17 @@ export default async function CareAreaPage({ params }: { params: Promise<{ area:
             ← All care areas
           </Link>
         </div>
-        <ul className="mt-8 border-t border-line">
-          {products.map((product, i) => (
-            <ProductRow key={product.slug} product={product} hue={[128, 96, 60][i % 3]} />
-          ))}
-        </ul>
+        {products.length === 0 ? (
+          <p className="mt-8 max-w-md text-lg leading-relaxed text-muted">
+            Protocols in this area are coming.
+          </p>
+        ) : (
+          <ul className="mt-8 border-t border-line">
+            {products.map((entry) => (
+              <ProductRow key={entry.slug} entry={entry} />
+            ))}
+          </ul>
+        )}
       </section>
 
       {/* Related education */}
