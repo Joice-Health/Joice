@@ -69,6 +69,14 @@ export const waitlistEntries = pgTable(
      */
     marketingSyncedAt: timestamp('marketing_synced_at', { withTimezone: true }),
 
+    /**
+     * When the marketing platform last reported this email unsubscribed
+     * (the Attentive consent webhook stamps it on `*.unsubscribed` and clears
+     * it on `*.subscribed`). Null means no unsubscribe on record. Bookkeeping
+     * only: it never touches updatedAt and nothing re-syncs on it.
+     */
+    marketingUnsubscribedAt: timestamp('marketing_unsubscribed_at', { withTimezone: true }),
+
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

@@ -70,6 +70,7 @@ export const adminRoutes = new Hono<AdminEnv>()
       'referralCount',
       'sequence',
       'createdAt',
+      'marketingUnsubscribedAt',
     ] as const;
 
     c.header('Content-Type', 'text/csv; charset=utf-8');

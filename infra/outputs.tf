@@ -78,6 +78,16 @@ output "eval_full_tools_run_task_command" {
   value       = "aws ecs run-task --cluster ${aws_ecs_cluster.main.name} --task-definition ${aws_ecs_task_definition.brain.family} --launch-type FARGATE --network-configuration 'awsvpcConfiguration={subnets=[${join(",", aws_subnet.app[*].id)}],securityGroups=[${aws_security_group.brain.id}],assignPublicIp=DISABLED}' --overrides '{\"containerOverrides\":[{\"name\":\"brain\",\"command\":[\"bun\",\"apps/brain/scripts/eval.ts\",\"--full\",\"--tools\"]}]}'"
 }
 
+# The Attentive resync reuses the API task definition (it holds the Attentive
+# key, the sign-up source id and the database) with a command override. Replace
+# SINCE with the ISO time the Attentive code went live; rows created after it
+# whose sync never succeeded are pushed. docs/marketing/00-plan.md, section 6.
+# Progress lands in the /ecs/joice-api log group: aws logs tail /ecs/joice-api --since 15m --filter-pattern resync
+output "attentive_resync_run_task_command" {
+  description = "Paste-ready command to re-push never-synced waitlist rows to Attentive (replace SINCE)."
+  value       = "aws ecs run-task --cluster ${aws_ecs_cluster.main.name} --task-definition ${aws_ecs_task_definition.api.family} --launch-type FARGATE --network-configuration 'awsvpcConfiguration={subnets=[${join(",", aws_subnet.app[*].id)}],securityGroups=[${aws_security_group.api.id}],assignPublicIp=DISABLED}' --overrides '{\"containerOverrides\":[{\"name\":\"api\",\"command\":[\"bun\",\"apps/api/scripts/attentive-resync.ts\",\"--since\",\"SINCE\"]}]}'"
+}
+
 output "github_repo_variables" {
   description = "Paste-ready list of GitHub repo Variables for the deploy workflow."
   value       = <<-EOT

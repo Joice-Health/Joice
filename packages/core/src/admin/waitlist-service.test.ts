@@ -27,6 +27,7 @@ function makeRow(overrides: Partial<WaitlistEntry> = {}): WaitlistEntry {
     metadata: null,
     ipHash: null,
     marketingSyncedAt: null,
+    marketingUnsubscribedAt: null,
     createdAt: new Date('2026-08-01T00:00:00Z'),
     updatedAt: new Date('2026-08-01T00:00:00Z'),
     ...overrides,

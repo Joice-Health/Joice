@@ -3,9 +3,12 @@ import {
   type Database,
   type WaitlistEntry,
   waitlistEntries,
-  eq,
-  lte,
+  and,
   count,
+  eq,
+  isNull,
+  lte,
+  or,
 } from '@joice/db';
 import type { JoinWaitlistInput, WaitlistEntryView, WaitlistStats } from './schemas';
 import { toWaitlistMarketingProfile, type WaitlistMarketingPort } from './marketing';
@@ -22,6 +25,15 @@ export interface JoinWaitlistArgs extends JoinWaitlistInput {
 export interface WaitlistServiceOptions {
   /** Absent = no marketing platform configured; signups simply don't sync. */
   marketing?: WaitlistMarketingPort;
+}
+
+/** What the marketing platform's consent webhook reports about one address. */
+export interface MarketingConsentChange {
+  email: string;
+  /** true = (re)subscribed, false = unsubscribed. */
+  subscribed: boolean;
+  /** When the platform says it happened. */
+  at: Date;
 }
 
 export function createWaitlistService(
@@ -181,6 +193,43 @@ export function createWaitlistService(
 
     async getStats(): Promise<WaitlistStats> {
       return { totalCount: await totalCount() };
+    },
+
+    /**
+     * The marketing platform reported a consent change (the Attentive consent
+     * webhook). Bookkeeping only: never touches updatedAt, never re-syncs,
+     * never calls the port. An unsubscribe stamps `marketingUnsubscribedAt`; a
+     * subscribe clears it unless a newer unsubscribe is already on record, so
+     * an out-of-order delivery can never resurrect consent. The email is
+     * normalised the way signups store it. `matched` is false when no entry
+     * carries the address (members and companion leads are not this table).
+     */
+    async applyMarketingConsent({
+      email,
+      subscribed,
+      at,
+    }: MarketingConsentChange): Promise<{ matched: boolean }> {
+      const normalized = email.trim().toLowerCase();
+      const rows = subscribed
+        ? await db
+            .update(waitlistEntries)
+            .set({ marketingUnsubscribedAt: null })
+            .where(
+              and(
+                eq(waitlistEntries.email, normalized),
+                or(
+                  isNull(waitlistEntries.marketingUnsubscribedAt),
+                  lte(waitlistEntries.marketingUnsubscribedAt, at),
+                ),
+              ),
+            )
+            .returning({ id: waitlistEntries.id })
+        : await db
+            .update(waitlistEntries)
+            .set({ marketingUnsubscribedAt: at })
+            .where(eq(waitlistEntries.email, normalized))
+            .returning({ id: waitlistEntries.id });
+      return { matched: rows.length > 0 };
     },
   };
 }
