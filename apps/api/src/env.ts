@@ -79,6 +79,16 @@ const envSchema = z.object({
    */
   LABS_BUCKET: z.string().default(''),
   /**
+   * True once the brain reaches the api over Service Connect (story 4.7,
+   * flipped by the same terraform apply that switches API_URL_INTERNAL):
+   * /api/internal/* then refuses any request that came through the public
+   * edge, token or no token. False in dev compose and pre-cutover.
+   */
+  INTERNAL_EDGE_BLOCKED: z
+    .string()
+    .default('false')
+    .transform((v) => v === 'true'),
+  /**
    * Git SHA of the image, baked in at build time and reported by /health.
    * "dev" locally, where the running code is whatever is bind-mounted.
    */

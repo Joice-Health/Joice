@@ -152,7 +152,7 @@ resource "aws_ecs_task_definition" "brain" {
         { name = "CLERK_PUBLISHABLE_KEY", value = var.clerk_publishable_key },
         { name = "CLERK_JWT_KEY", value = var.clerk_jwt_key },
         # The api, reached over the canonical URL until Service Connect (story 4.7).
-        { name = "API_URL_INTERNAL", value = local.canonical_url },
+        { name = "API_URL_INTERNAL", value = "http://api:4000" },
       ]
       secrets = [
         { name = "DATABASE_URL", valueFrom = aws_secretsmanager_secret.database_url.arn },
@@ -191,6 +191,12 @@ resource "aws_ecs_service" "brain" {
     target_group_arn = aws_lb_target_group.brain.arn
     container_name   = "brain"
     container_port   = 4100
+  }
+
+  # Client side of the Service Connect namespace: resolves http://api:4000.
+  service_connect_configuration {
+    enabled   = true
+    namespace = aws_service_discovery_http_namespace.main.arn
   }
 
   deployment_circuit_breaker {
