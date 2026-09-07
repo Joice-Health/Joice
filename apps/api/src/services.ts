@@ -44,6 +44,11 @@ const marketing = attentive
   ? createAttentiveMarketingAdapter(attentive, { signUpSourceId: env.ATTENTIVE_SIGN_UP_SOURCE_ID })
   : undefined;
 console.log(`[api] Attentive marketing sync: ${marketing ? 'enabled' : 'disabled (no keys set)'}`);
+console.log(
+  `[api] Attentive consent webhook: ${
+    env.ATTENTIVE_WEBHOOK_SECRET ? 'enabled' : 'disabled (no secret set; /api/webhooks/attentive answers 503)'
+  }`,
+);
 
 export const waitlist = createWaitlistService(db, { marketing });
 export const audit = createAuditService(db);
