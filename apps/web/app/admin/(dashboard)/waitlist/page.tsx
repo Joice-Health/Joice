@@ -148,6 +148,7 @@ export default function AdminWaitlistPage() {
                   <Th>Email</Th>
                   <Th>Name</Th>
                   <Th>Status</Th>
+                  <Th>Marketing</Th>
                   <Th>Referrals</Th>
                   <Th>Code</Th>
                   <Th>Joined</Th>
@@ -155,7 +156,7 @@ export default function AdminWaitlistPage() {
               </thead>
               <tbody>
                 {query.isPending ? (
-                  <TableSkeleton cols={7} />
+                  <TableSkeleton cols={8} />
                 ) : (
                   query.data?.items.map((entry) => (
                     <tr key={entry.id}>
@@ -178,6 +179,13 @@ export default function AdminWaitlistPage() {
                             </option>
                           ))}
                         </AdminSelect>
+                      </Td>
+                      <Td>
+                        {entry.marketingUnsubscribedAt ? (
+                          <Badge tone="off">unsubscribed</Badge>
+                        ) : (
+                          <span className="text-muted">·</span>
+                        )}
                       </Td>
                       <Td>{entry.referralCount}</Td>
                       <Td className="text-xs">{entry.referralCode}</Td>

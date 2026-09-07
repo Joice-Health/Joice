@@ -37,6 +37,7 @@ schemas from `@joice/core`, call the service, return JSON.
 | `/api/me/*`, `/api/onboarding/session/claim` | (Phase 2) | Clerk + `requireMember`, which also creates the member's `users` row on its first call after sign-up (no webhook) | yes |
 | `/api/me/labs*` | `src/member/routes.ts` | Clerk + `requireMember`; 404 unless both PHI keys are on and `LABS_BUCKET` is set; presigned browser-to-S3 PUTs, bytes never transit the api | yes |
 | `/api/internal/*` | (Phase 4) | internal bearer token | **no**: registered on the app outside the chain, not a browser API |
+| `/api/webhooks/attentive` | `src/webhooks/attentive.ts` | Attentive's HMAC over the raw body (`x-attentive-hmac-sha256`, `src/middleware/attentive-signature.ts`), rate-limited, 503 while `ATTENTIVE_WEBHOOK_SECRET` is unset | **no**: outside the chain, not a browser API; it books consent changes on `waitlist_entries` only |
 
 The intake routes (`src/onboarding/routes.ts`): `GET`/`POST /session`,
 `/session/answer`, `/skip`, `/back`, `/restart`, `/notify`. The engine runs on this side;

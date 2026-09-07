@@ -29,6 +29,7 @@ function makeRow(overrides: Partial<WaitlistEntry> = {}): WaitlistEntry {
     metadata: null,
     ipHash: 'hashed',
     marketingSyncedAt: null,
+    marketingUnsubscribedAt: null,
     createdAt: new Date('2026-08-01T00:00:00Z'),
     updatedAt: new Date('2026-08-01T00:00:00Z'),
     ...overrides,
@@ -44,7 +45,7 @@ function stubDb(rowSelects: WaitlistEntry[][]) {
   // `.where().limit()` work, like the real drizzle builder.
   const chain = (result: () => unknown[]) => {
     const c: Record<string, unknown> = {};
-    for (const method of ['from', 'where', 'limit', 'orderBy']) c[method] = () => c;
+    for (const method of ['from', 'where', 'limit', 'orderBy', 'returning']) c[method] = () => c;
     c.then = (resolve: (v: unknown) => void, reject: (e: unknown) => void) =>
       Promise.resolve()
         .then(result)
@@ -205,5 +206,81 @@ describe('waitlist marketing sync', () => {
     expect(view.referralCode).toBeString();
     // Unconfigured must not stamp marketingSyncedAt — NULL means "never synced".
     expect(updates.some((u) => 'marketingSyncedAt' in u)).toBe(false);
+  });
+});
+
+/**
+ * The consent webhook's bookkeeping. A dedicated stub records the update
+ * patch and the where clause; the where is walked for the parameter values,
+ * which is how the normalised email is asserted without a database.
+ */
+function stubConsentDb(matchedIds: string[]) {
+  const updates: Array<{ patch: Record<string, unknown>; where: unknown }> = [];
+  const db = {
+    update: () => ({
+      set: (patch: Record<string, unknown>) => ({
+        where: (where: unknown) => ({
+          returning: () => {
+            updates.push({ patch, where });
+            return Promise.resolve(matchedIds.map((id) => ({ id })));
+          },
+        }),
+      }),
+    }),
+  };
+  return { db: db as unknown as Database, updates };
+}
+
+function containsValue(node: unknown, value: unknown, seen = new Set<unknown>()): boolean {
+  if (node === value) return true;
+  if (typeof node !== 'object' || node === null || seen.has(node)) return false;
+  seen.add(node);
+  return Object.values(node as Record<string, unknown>).some((child) =>
+    containsValue(child, value, seen),
+  );
+}
+
+describe('applyMarketingConsent', () => {
+  const at = new Date('2026-09-10T12:00:00Z');
+
+  test('an unsubscribe stamps the column and leaves updatedAt alone', async () => {
+    const { db, updates } = stubConsentDb(['entry-1']);
+    const svc = createWaitlistService(db);
+
+    const result = await svc.applyMarketingConsent({ email: 'a@example.com', subscribed: false, at });
+
+    expect(result).toEqual({ matched: true });
+    expect(updates).toHaveLength(1);
+    expect(updates[0]!.patch).toEqual({ marketingUnsubscribedAt: at });
+    expect('updatedAt' in updates[0]!.patch).toBe(false);
+  });
+
+  test('a subscribe clears the column', async () => {
+    const { db, updates } = stubConsentDb(['entry-1']);
+    const svc = createWaitlistService(db);
+
+    await svc.applyMarketingConsent({ email: 'a@example.com', subscribed: true, at });
+
+    expect(updates[0]!.patch).toEqual({ marketingUnsubscribedAt: null });
+    expect(containsValue(updates[0]!.where, at)).toBe(true);
+  });
+
+  test('the email is normalised before the lookup', async () => {
+    const { db, updates } = stubConsentDb(['entry-1']);
+    const svc = createWaitlistService(db);
+
+    await svc.applyMarketingConsent({ email: '  Someone@Example.COM ', subscribed: false, at });
+
+    expect(containsValue(updates[0]!.where, 'someone@example.com')).toBe(true);
+    expect(containsValue(updates[0]!.where, '  Someone@Example.COM ')).toBe(false);
+  });
+
+  test('an address that is not on the waitlist reports no match', async () => {
+    const { db } = stubConsentDb([]);
+    const svc = createWaitlistService(db);
+
+    expect(await svc.applyMarketingConsent({ email: 'x@example.com', subscribed: false, at })).toEqual({
+      matched: false,
+    });
   });
 });

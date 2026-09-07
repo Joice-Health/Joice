@@ -21,6 +21,7 @@ flowchart LR
         AD["/api/admin updateStatus"] --> AS[admin waitlist service]
         NM["/api/onboarding/notify"] --> SR[service area requests]
         CL["/api/onboarding/session/claim"] --> OS[onboarding service]
+        HK["POST /api/webhooks/attentive"] --> S
         W[services.ts] -- injects adapters --> S
         W -- injects adapters --> AS
     end
@@ -44,6 +45,7 @@ flowchart LR
     C -->|subscribe| K
     C -->|events| K
     C -->|unsubscribe, delete request| K
+    K -->|signed consent webhook| HK
 ```
 
 Three layers, each replaceable on its own:
@@ -240,13 +242,51 @@ place the funnels meet.
 `lead_source` (`"companion"`), `lead_status` (capturing, exploring, ready, converted),
 `lead_goal` when given. No name, no `clientUserId`, no subscription.
 
+## The inbound webhook
+
+Attentive posts consent changes to `POST /api/webhooks/attentive`
+([webhooks/attentive.ts](../../apps/api/src/webhooks/attentive.ts)), mounted outside the
+typed RPC chain like `/api/internal` ([app.ts](../../apps/api/src/app.ts)): not a browser
+API. Every delivery carries `x-attentive-hmac-sha256`, the hex HMAC-SHA256 of the raw body
+under the webhook's signing key, and
+[attentive-signature.ts](../../apps/api/src/middleware/attentive-signature.ts) verifies it
+over the raw text before anything parses it (503 with the secret unset, 401 on a mismatch,
+the header never logged), behind a rate limit so a flood never buys hashing work.
+
+What it does: `email.unsubscribed` and `sms.unsubscribed` on a marketing subscription
+stamp `waitlist_entries.marketing_unsubscribed_at` for the matching email (normalised the
+way signups store it); `email.subscribed` and `sms.subscribed` clear it, unless a newer
+unsubscribe is already on record. That is `applyMarketingConsent` in
+[waitlist-service.ts](../../packages/core/src/waitlist-service.ts): bookkeeping only, it
+never touches `updated_at`, never re-syncs and never calls the port. Every other event, a
+delivery without an email, and transactional subscriptions answer 200 with
+`applied: false`; Attentive's retry policy on non-2xx is undocumented, so nothing signed
+and parseable is refused. Payloads carry no event id; the timestamp makes re-deliveries
+idempotent. `/admin/waitlist` shows `unsubscribed` on the row and the CSV export carries
+the column. Two states only: `marketing_synced_at` is also set on pre-switch rows that
+went to Klaviyo, so a "subscribed" badge would lie.
+
+What it deliberately does not touch: onboarding members and companion leads. For them
+Attentive stays the consent source of truth (their opt-in lives on the intake's
+`consent_marketing` observation, and the brain never subscribes anyone), and nothing in the
+app reads their subscription status.
+
+To try it locally with `ATTENTIVE_WEBHOOK_SECRET=devsecret` on the api:
+
+```
+BODY='{"type":"email.unsubscribed","timestamp":1788800000000,"subscriber":{"email":"Someone@Example.com"},"subscription":{"type":"MARKETING"}}'
+SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac devsecret | awk '{print $2}')
+curl -i -X POST http://localhost:4000/api/webhooks/attentive \
+  -H 'content-type: application/json' -H "x-attentive-hmac-sha256: $SIG" --data-binary "$BODY"
+```
+
 ## Configuration
 
 | Var | Where | What |
 |---|---|---|
 | `ATTENTIVE_API_KEY` | secret: Secrets Manager (`joice/attentive-api-key`) on the api **and** brain tasks, `.env` locally | the private app's API key |
 | `ATTENTIVE_SIGN_UP_SOURCE_ID` | plain env: `var.attentive_sign_up_source_id` on the api task, `.env` locally | the API sign-up unit's id (Sign-up Units tab, ID column) |
-| `ATTENTIVE_WEBHOOK_SECRET` | secret: Secrets Manager (`joice/attentive-webhook-secret`) on the api task, `.env` locally | the signing key Attentive issued for the consent webhook (phase 2 of the brief) |
+| `ATTENTIVE_WEBHOOK_SECRET` | secret: Secrets Manager (`joice/attentive-webhook-secret`) on the api task, `.env` locally | the signing key Attentive issued for the consent webhook |
 
 Key and source id both empty (the default everywhere) disables the sync entirely: signups
 work, nothing syncs, nothing is stamped. Setting only one of the two **fails the api at
@@ -271,8 +311,8 @@ rebuild).
    point of collection; keep the form copy and the unit in step.
 3. **Create the webhook** (Marketplace, the custom app's Webhooks tab) at
    `https://joicehealth.com/api/webhooks/attentive` with `email.subscribed`,
-   `email.unsubscribed`, `sms.subscribed`, `sms.unsubscribed`, and copy the signing key.
-   Phase 2 of the brief ships the receiver.
+   `email.unsubscribed`, `sms.subscribed`, `sms.unsubscribed`, and copy the signing key
+   into `terraform.tfvars`. "Send test event" should show a 200 once the apply has run.
 
 ### Scripts
 
@@ -315,6 +355,9 @@ to Attentive move (2026-09) was exactly that list.
 | Symptom | Cause | Fix |
 |---|---|---|
 | API won't boot, env validation error naming ATTENTIVE | Only one of key and source id set | Set both or neither |
+| Attentive's webhook log shows 503 | `ATTENTIVE_WEBHOOK_SECRET` unset on the api task | Put the signing key in `terraform.tfvars`, `terraform apply` |
+| Attentive's webhook log shows 401 | Signing key mismatch, or the body was altered in transit | Re-copy the key from the webhook's settings; the signature is hex over the raw body |
+| Unsubscribed in Attentive but `/admin/waitlist` shows nothing | The email is not a waitlist entry (a member or a companion lead), or the webhook was not created with the consent events | Expected for non-waitlist addresses; check the events on the webhook |
 | Signups work but nobody appears in Attentive | Vars empty, sync disabled (check the boot log line) | Set both, restart the api task (`terraform apply` in prod) |
 | Sync failures logged with 403 | The private app lacks a permission (subscribers, attributes, events, privacy) | Fix the app's permissions in the dashboard and re-push |
 | Subscriber exists with attributes but no subscription | The subscribe call failed after the upsert, or the sign-up unit does not cover the channel sent | `marketing_synced_at` is NULL: fix the cause, then `attentive-resync.ts` |

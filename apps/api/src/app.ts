@@ -5,7 +5,7 @@ import { secureHeaders } from 'hono/secure-headers';
 import { HTTPException } from 'hono/http-exception';
 import { zValidator } from '@hono/zod-validator';
 import { FLAG_KEYS, joinWaitlistSchema, referralCodeParamSchema } from '@joice/core';
-import { allowedOrigins } from './env';
+import { allowedOrigins, env } from './env';
 import { rateLimit, clientIp } from './middleware/rate-limit';
 import { requireFlag } from './middleware/feature-gate';
 import { hashIp } from './hash';
@@ -16,6 +16,7 @@ import { adminRoutes } from './admin/routes';
 import { onboardingRoutes } from './onboarding/routes';
 import { memberRoutes } from './member/routes';
 import { internalRoutes } from './internal/routes';
+import { createAttentiveWebhookRoutes } from './webhooks/attentive';
 
 const app = new Hono<{ Variables: RequestIdVariables }>();
 
@@ -65,6 +66,17 @@ const waitlistOpen = requireFlag(
  * and they must not leak into the RPC types. Bearer-token gated.
  */
 app.route('/api/internal', internalRoutes);
+
+/**
+ * Attentive's consent webhook, also outside the chain. Rate limited before the
+ * HMAC check so a flood never buys hashing work; with the secret unset it
+ * answers 503 (docs/marketing/01-attentive.md, "The inbound webhook").
+ */
+app.use('/api/webhooks/*', rateLimit({ windowMs: 60_000, max: 600 }));
+app.route(
+  '/api/webhooks/attentive',
+  createAttentiveWebhookRoutes({ secret: env.ATTENTIVE_WEBHOOK_SECRET, consent: waitlist }),
+);
 
 /**
  * Routes are defined in a single chain so `typeof routes` carries the full
