@@ -123,6 +123,13 @@ zones + the multi-SAN ACM cert + validation and alias records are all in `dns.tf
 
 Old `*.cloudfront.net` links keep working: they 301 to the canonical domain.
 
+Vendor records on the canonical zone live in `dns.tf` too, one commented block each:
+Clerk (auth + email), Google Workspace mail, the vendor-hosted patient portal and
+consults hosts, SendGrid domain authentication, and the Attentive branded link domain
+(a CNAME plus its Cloudflare custom-hostname TXT). A record a vendor hands over is a
+Terraform change and a local apply, never a console edit, so the file stays the whole
+truth about the zone.
+
 ## Member accounts (Clerk) and onboarding retention
 
 Before production sign-ups: enable public sign-ups + email verification in the
