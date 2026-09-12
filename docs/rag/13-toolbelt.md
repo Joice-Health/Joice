@@ -32,14 +32,15 @@ flowchart LR
     model["Bedrock Converse<br/>(model decides to call a tool)"] -->|toolUse| loop["runToolLoop<br/>agent-loop.ts"]
     loop -->|"Map.get(name)"| exec["ToolExecutor.execute<br/>tools/*"]
     exec -->|search_notes| reg["provenance registry<br/>(request-scoped chunk list)"]
-    exec -->|search_catalogue| port["CatalogPort<br/>(ports, HTTP later)"]
+    exec -->|search_catalogue| port["CatalogPort<br/>(CarePortals public API)"]
     exec -->|toolResult| loop
     loop -->|final text| fin["finalize()<br/>citations resolve ONLY<br/>against the registry"]
     loop -.->|"tool events (SSE)"| ui["chat UI status line<br/>+ tools-used chips"]
 ```
 
 The four tools: `search_notes` (retrieval into the provenance registry),
-`search_catalogue` (via `CatalogPort`, stub until commerce), 
+`search_catalogue` (live over `CatalogPort`: the curated shelf with
+CarePortals prices, feeding the product-card registry),
 `request_clinician_handoff` (emits a handoff action), `flag_intent`
 (emits a buying-signal action, deliberately invisible to the visitor).
 
@@ -111,9 +112,9 @@ run simulated (default `subscriber`, the full belt).
 ## The product tool (search_catalogue goes live)
 
 The catalogue tool sells from the SAME curated shelf as `/shop`: the curation
-map (`SHOP_CATALOG`) moves to `packages/utils/src/shop-catalog.ts` as shared
+map (`SHOP_CATALOG`) lives in `packages/utils/src/shop-catalog.ts` as shared
 reference data (web re-exports it; slugs stay the canonical identifiers), and
-a new adapter, `apps/brain/src/ports/careportals-catalog.ts`, implements the
+the adapter `apps/brain/src/ports/careportals-catalog.ts` implements the
 upgraded `CatalogPort` over the CarePortals PUBLIC API (organization header,
 no secret): the full active list fetched and cached ~5 minutes, merged onto
 the curation by `careportalsId`, matched locally against entry names, dose
@@ -178,4 +179,8 @@ persisting shelves if conversation persistence turns on.
 | 2026-08-27 | The eval harness pins showToolActivity on, like showCitations | expectTool scoring reads the tool events this toggle gates at the source; a visitor-facing presentation switch must never blind the quality gate (caught in review before it shipped) |
 | 2026-08-27 | Trace chips record successful completions only, and are not persisted | A 'started' event fires before the loop decides to execute, so a chip could otherwise claim a check that never ran. Stored history restores citations but not the trace; revisit if conversation persistence turns on |
 | 2026-08-31 | Trial subscriptions count as subscriber | CarePortals statuses active/trialing/trial all clear the tier: someone mid-trial has committed payment details and should get the full experience they are trialling. Revisit if trials become free |
+| 2026-09-12 | Product cards ride the recommendation payload, not the action channel | Actions are enum-only by contract and never reach the non-streaming path; the shelf attaches at complete like citations, so both paths carry it and the model can never invent card content |
+| 2026-09-12 | Cards are not gated by showToolActivity, and the shelf is never persisted | Product surface, not introspection (the handoff precedent); the kill switch is the toolSearchCatalogue access setting. Stored prices would lie on restore, so shelves join toolsUsed in staying unpersisted |
+| 2026-09-12 | The slug is the chat-to-shop join key, and cart analytics carry no product ids | Cards join client-side against the shared catalog for image, hue and the CarePortals id, so drift degrades to CTA-less cards, never dead links; the cart_item_added funnel gains only a source enum, keeping the commerce namespace free of identifiers |
+| 2026-09-12 | Add to cart in chat stays in the conversation | Navigation mid-conversation destroys the thread that sold the product; the quiet Added plus a cart link keeps the person where the selling happened (Shaun) |
 | 2026-08-31 | Subscription lookups never sit on the request path | The adapter answers from cache and revalidates in the background: the internal profile read lives inside the brain's 1500ms budget, and a cold third-party chain there would make subscriber unreachable while degrading the whole member context. Cost: the first turn in a cache window reads user, not subscriber |
