@@ -1060,7 +1060,11 @@ export function PeptideChat() {
               const toolsUsed = text.kind === 'text' ? text.toolsUsed : undefined;
               const products = text.kind === 'text' ? text.products : undefined;
               return (
-                <div key={i} className={align}>
+                // max-w-full matters: a self-start flex item sizes to its
+                // content, and a product carousel's content width is every
+                // card side by side. Uncapped, the whole transcript pans
+                // sideways instead of the carousel scrolling internally.
+                <div key={i} className={cn(align, 'max-w-full')}>
                   {text.role === 'user' ? (
                     <div className="max-w-md rounded-card rounded-br-lg bg-ink px-4 py-3 text-canvas">
                       {text.content}
