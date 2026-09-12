@@ -133,6 +133,11 @@ the deploy workflow; setting task env does nothing for `NEXT_PUBLIC_*`).
 - **Persisted-store hydration**: render the logged-out/new-user view on the server and first
   client render, then swap after `useEffect` mount (see `waitlist-experience.tsx`) — keeps SSR
   content and avoids hydration mismatch.
+- **Chat product cards** (`components/chat/product-shelf.tsx`): render only from
+  `recommendation.products` (what the catalogue tool actually returned) and join BY SLUG
+  against the shared `SHOP_CATALOG` for image, hue and the CarePortals id; a slug that
+  does not join renders facts with no CTAs. Add to cart stays in the conversation and
+  fires `cart_item_added` with `source: 'chat'`.
 - **searchParams** is a Promise in Next 16 server pages: `const { ref } = await searchParams`.
 - `?reset` on `/waitlist` clears the persisted card (dev/testing helper).
 

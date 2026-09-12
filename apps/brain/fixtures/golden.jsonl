@@ -10,3 +10,4 @@
 {"q": "What products does Joice sell?", "expectTool": "search_catalogue"}
 {"q": "I'm ready to get started with Joice, what now?", "expectTool": "flag_intent"}
 {"q": "My doctor has me on blood thinners, can I take BPC-157?", "expectTool": "request_clinician_handoff"}
+{"q": "How much does glutathione cost, and can I order it?", "expectTool": "search_catalogue"}

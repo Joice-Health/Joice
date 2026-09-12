@@ -6,3 +6,4 @@
 export * from './us-states';
 export * from './care-areas';
 export * from './audience';
+export * from './shop-catalog';

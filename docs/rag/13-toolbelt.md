@@ -1,6 +1,9 @@
 <!--
   Approved 2026-08-27. Epic: "Brain: toolbelt and boundaries"
   https://app.shortcut.com/joice-health/epic/237 (stories sc-238 to sc-240, shipped).
+  Extended 2026-09-12 by "Brain: the product tool"
+  https://app.shortcut.com/joice-health/epic/285 (stories sc-286 to sc-289):
+  the product tool section below is that epic's design brief until it lands.
   Extended 2026-08-31 by "Brain: audience tiers"
   https://app.shortcut.com/joice-health/epic/244 (stories sc-245 to sc-249):
   the access model section below is that epic's design brief until it lands.
@@ -29,14 +32,15 @@ flowchart LR
     model["Bedrock Converse<br/>(model decides to call a tool)"] -->|toolUse| loop["runToolLoop<br/>agent-loop.ts"]
     loop -->|"Map.get(name)"| exec["ToolExecutor.execute<br/>tools/*"]
     exec -->|search_notes| reg["provenance registry<br/>(request-scoped chunk list)"]
-    exec -->|search_catalogue| port["CatalogPort<br/>(ports, HTTP later)"]
+    exec -->|search_catalogue| port["CatalogPort<br/>(CarePortals public API)"]
     exec -->|toolResult| loop
     loop -->|final text| fin["finalize()<br/>citations resolve ONLY<br/>against the registry"]
     loop -.->|"tool events (SSE)"| ui["chat UI status line<br/>+ tools-used chips"]
 ```
 
 The four tools: `search_notes` (retrieval into the provenance registry),
-`search_catalogue` (via `CatalogPort`, stub until commerce), 
+`search_catalogue` (live over `CatalogPort`: the curated shelf with
+CarePortals prices, feeding the product-card registry),
 `request_clinician_handoff` (emits a handoff action), `flag_intent`
 (emits a buying-signal action, deliberately invisible to the visitor).
 
@@ -105,6 +109,45 @@ availability, code controls behavior): the first is `search_catalogue`, which
 mentions ordering only from `user` up. The eval console records which tier a
 run simulated (default `subscriber`, the full belt).
 
+## The product tool (search_catalogue goes live)
+
+The catalogue tool sells from the SAME curated shelf as `/shop`: the curation
+map (`SHOP_CATALOG`) lives in `packages/utils/src/shop-catalog.ts` as shared
+reference data (web re-exports it; slugs stay the canonical identifiers), and
+the adapter `apps/brain/src/ports/careportals-catalog.ts` implements the
+upgraded `CatalogPort` over the CarePortals PUBLIC API (organization header,
+no secret): the full active list fetched and cached ~5 minutes, merged onto
+the curation by `careportalsId`, matched locally against entry names, dose
+lines and care areas, with the literal query `all` returning the whole shelf
+for browse asks. A miss returns empty, honestly: "do you sell ozempic" must
+never answer with the full range.
+
+The card rides PROVENANCE, not the action channel: the executor pushes
+slug-deduped structured hits into a request-scoped `ToolDeps.products`
+registry (the citations pattern), and the answer service attaches
+`recommendation.products = { items (max 4, retrieval order), canOrder }` at
+complete, so both the streaming and non-streaming paths carry it and the
+model can never invent card content. `canOrder` is one bit
+(`tierAtLeast(audience, 'user')`), never the tier itself. The action channel
+stays enum-only per its contract.
+
+On `/ask`, one product renders as a card (the handoff-card panel idiom),
+several as a plain-CSS snap carousel (max 4, fixed-width tiles, edge peek as
+the scroll affordance). The browser joins by slug against the shared catalog
+for image, hue and the CarePortals id: a slug outside the catalog renders
+facts with no CTAs, never a dead link. View goes to `/shop/[slug]`; Add to
+cart shows only when `canOrder`, the `commerce` flag is on (the first
+`usePublicFlags` consumer), the product is available and the slug joins; the
+add uses the shop's own cart hooks and STAYS in the conversation ("Added." +
+View cart link). Card engagement counts as a buying signal for the existing
+conversion machinery. Cards are product surface, not introspection: they are
+NOT gated by `showToolActivity` (the handoff precedent); the kill switch is
+the `toolSearchCatalogue` access setting.
+
+Deliberately later, not now: cart-aware cards ("already in your cart"),
+order-history awareness once `MemberOrder` is real, per-area browse chips,
+persisting shelves if conversation persistence turns on.
+
 ## Adding a tool (the checklist)
 
 1. New file in `packages/brain/src/tools/` exporting a `BrainTool`:
@@ -137,3 +180,8 @@ run simulated (default `subscriber`, the full belt).
 | 2026-08-27 | Trace chips record successful completions only, and are not persisted | A 'started' event fires before the loop decides to execute, so a chip could otherwise claim a check that never ran. Stored history restores citations but not the trace; revisit if conversation persistence turns on |
 | 2026-08-31 | Trial subscriptions count as subscriber | CarePortals statuses active/trialing/trial all clear the tier: someone mid-trial has committed payment details and should get the full experience they are trialling. Revisit if trials become free |
 | 2026-08-31 | Subscription lookups never sit on the request path | The adapter answers from cache and revalidates in the background: the internal profile read lives inside the brain's 1500ms budget, and a cold third-party chain there would make subscriber unreachable while degrading the whole member context. Cost: the first turn in a cache window reads user, not subscriber |
+| 2026-09-12 | Product cards ride the recommendation payload, not the action channel | Actions are enum-only by contract and never reach the non-streaming path; the shelf attaches at complete like citations, so both paths carry it and the model can never invent card content |
+| 2026-09-12 | Cards are not gated by showToolActivity, and the shelf is never persisted | Product surface, not introspection (the handoff precedent); the kill switch is the toolSearchCatalogue access setting. Stored prices would lie on restore, so shelves join toolsUsed in staying unpersisted |
+| 2026-09-12 | The slug is the chat-to-shop join key, and cart analytics carry no product ids | Cards join client-side against the shared catalog for image, hue and the CarePortals id, so drift degrades to CTA-less cards, never dead links; the cart_item_added funnel gains only a source enum, keeping the commerce namespace free of identifiers |
+| 2026-09-12 | Add to cart in chat stays in the conversation | Navigation mid-conversation destroys the thread that sold the product; the quiet Added plus a cart link keeps the person where the selling happened (Shaun) |
+| 2026-09-12 | View and View cart open a new tab until history persistence ships | The transcript is client state and restore ships dark, so an in-tab navigation would destroy the conversation the card came from; a new tab keeps both. Revisit when conversation persistence turns on |

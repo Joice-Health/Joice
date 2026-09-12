@@ -64,6 +64,22 @@ const envSchema = z.object({
   CLERK_PUBLISHABLE_KEY: z.string().default('pk_test_placeholder'),
   CLERK_SECRET_KEY: z.string().default(''),
   /**
+   * The CarePortals PUBLIC API for the catalogue tool: anonymous,
+   * organization-scoped, the same surface the storefront reads. Real
+   * defaults on purpose; there is no secret and no credential gate.
+   */
+  // preprocess guards the api-side convention leaking in: over there an
+  // EMPTY CAREPORTALS_ORG means "subscriber detection disabled", and a copied
+  // task-env entry must not silently break the catalogue here.
+  CAREPORTALS_PUBLIC_BASE: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.string().default('https://public-api.portals.care'),
+  ),
+  CAREPORTALS_ORG: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.string().default('joicehealth_com'),
+  ),
+  /**
    * The api service, for /api/internal/* (member profiles into chat). The
    * canonical URL in prod until Service Connect; the compose service name in
    * dev. With no INTERNAL_API_TOKEN the ports stay stubs and members chat

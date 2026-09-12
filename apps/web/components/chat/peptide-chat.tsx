@@ -13,8 +13,10 @@ import {
   useLatestConversation,
   useSubmitProfileField,
   type Citation,
+  type ProductShelf,
   type ToolUseTrace,
 } from '@joice/api-client';
+import { ProductShelfBlock } from '@/components/chat/product-shelf';
 import {
   buildChatHistory,
   matchCareArea,
@@ -46,6 +48,7 @@ export type DisplayMessage =
       content: string;
       citations?: Citation[];
       toolsUsed?: ToolUseTrace[];
+      products?: ProductShelf;
       error?: boolean;
     }
   | { kind: 'capture'; role: 'user' | 'assistant'; content: string }
@@ -385,10 +388,18 @@ export function PeptideChat() {
             event: 'chat_answer_completed',
             hadCitations: event.recommendation.citations.length > 0,
           });
+          if (event.recommendation.products) {
+            track({
+              event: 'chat_products_shown',
+              count: event.recommendation.products.items.length,
+              canOrder: event.recommendation.products.canOrder,
+            });
+          }
           updateAssistant({
             content: event.recommendation.answer,
             citations: event.recommendation.citations,
             toolsUsed: event.recommendation.toolsUsed,
+            products: event.recommendation.products,
           });
           if (opts.viaVoice) speaker.endStream();
         } else {
@@ -1047,8 +1058,13 @@ export function PeptideChat() {
               const isError = text.kind === 'text' && Boolean(text.error);
               const citations = text.kind === 'text' ? text.citations : undefined;
               const toolsUsed = text.kind === 'text' ? text.toolsUsed : undefined;
+              const products = text.kind === 'text' ? text.products : undefined;
               return (
-                <div key={i} className={align}>
+                // max-w-full matters: a self-start flex item sizes to its
+                // content, and a product carousel's content width is every
+                // card side by side. Uncapped, the whole transcript pans
+                // sideways instead of the carousel scrolling internally.
+                <div key={i} className={cn(align, 'max-w-full')}>
                   {text.role === 'user' ? (
                     <div className="max-w-md rounded-card rounded-br-lg bg-ink px-4 py-3 text-canvas">
                       {text.content}
@@ -1088,6 +1104,18 @@ export function PeptideChat() {
                         />
                       ) : null}
                     </div>
+                  ) : null}
+
+                  {products && text.role === 'assistant' ? (
+                    // The product surface, actionable content above the meta
+                    // chips. Card engagement counts as a buying signal for
+                    // the existing conversion machinery.
+                    <ProductShelfBlock
+                      shelf={products}
+                      onEngage={() => {
+                        buyingSignalRef.current = true;
+                      }}
+                    />
                   ) : null}
 
                   {brainUi.showToolActivity && toolsUsed && toolsUsed.length > 0 ? (

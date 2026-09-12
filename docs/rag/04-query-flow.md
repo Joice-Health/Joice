@@ -83,7 +83,13 @@ Waits for the full generation, returns:
       "sourceType": "clinical_note"                // lets the UI render a product-sheet chip differently
     },
     { "index": 2, "sourcePath": "peptides/absorption.md", "headingPath": "Absorption", "citedText": "with food" }
-  ]
+  ],
+  // Tool mode only, both optional:
+  "toolsUsed": [{ "name": "search_notes", "label": "Checking the research library…" }],
+  "products": {                                    // only what search_catalogue returned (max 4)
+    "items": [{ "slug": "glutathione", "name": "Glutathione", "price": 68, "currency": "USD", "isSubscription": true, "available": true }],
+    "canOrder": false                              // user tier and up; one bit, never the tier
+  }
 }
 ```
 
@@ -97,7 +103,7 @@ Same request, `text/event-stream` response:
 | SSE `event:` | `data:` payload | Meaning |
 |---|---|---|
 | `delta` | `{ "text": "..." }` | A raw text fragment as the model generates — `[n]` markers stream inline |
-| `complete` | the full JSON object above | Authoritative final answer + the parsed citations list. **The UI replaces the accumulated deltas with this** |
+| `complete` | the full JSON object above | Authoritative final answer + the parsed citations list, plus (tool mode) the optional `toolsUsed` trace and the optional `products` shelf: `{ items (max 4, only what search_catalogue returned), canOrder }`, rendered as the product card or carousel. **The UI replaces the accumulated deltas with this** |
 | `error` | `{ "error": "..." }` | Generation failed mid-stream; show the message, keep the conversation usable |
 
 Client-side, `streamPeptideRecommendation(client, messages)` in

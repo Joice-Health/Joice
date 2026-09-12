@@ -27,7 +27,7 @@ export function AddToCartButton({
   async function handleAdd() {
     try {
       await add.mutateAsync({ productId });
-      track({ event: 'cart_item_added' });
+      track({ event: 'cart_item_added', source: 'pdp' });
       setNavigating(true);
       router.push('/shop/cart');
     } catch {

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { CARE_AREA_SLUGS } from '@joice/utils';
+import { CARE_AREA_SLUGS } from './care-areas';
 import { SHOP_CATALOG, catalogEntriesByArea, catalogEntryBySlug } from './shop-catalog';
 
 describe('SHOP_CATALOG', () => {

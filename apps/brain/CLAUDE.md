@@ -27,8 +27,12 @@ client, and an upgrade handler has no place in `BrainAppType`.
   platform (enforced by `db-boundary.test.ts` here and in `packages/brain`). If the brain needs identity, orders, protocols or a catalogue, that goes through a
   port (`packages/brain/src/ports`) whose implementation is injected in `src/services.ts` —
   today they are stubs returning empty.
-- **AWS**: Bedrock, Transcribe and Polly, via the `joice-brain-task` role. The api service has
-  none of these (that removal is deliberate — see `infra/iam.tf`).
+- **AWS**: Bedrock, Transcribe and Polly, via the `joice-brain-task` role. The api service
+  has none of these (that removal is deliberate — see `infra/iam.tf`).
+- **CarePortals public API** (`src/ports/careportals-catalog.ts`): the catalogue tool's
+  live prices and availability, anonymous with the org header, selling only the shared
+  curated shelf (`SHOP_CATALOG` in `@joice/utils`). Cached ~5 min, stale on failure,
+  cold-and-dark throws so the loop reports "could not check" rather than a false no.
 - **Brain settings**: read-only here. The admin console on the api service owns writes, which
   is why `src/services.ts` passes `noopAuditPort` — there is no admin actor on this side.
 - **The intake flow** (`/get-started`, api service) never reads brain tables and the brain

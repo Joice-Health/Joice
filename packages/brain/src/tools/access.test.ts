@@ -12,7 +12,6 @@ import { buildToolExecutors, toolAccessAllows, type ToolDeps } from './index';
 
 const catalogOf = (items: CatalogItem[]): CatalogPort => ({
   search: async () => items,
-  byId: async () => null,
 });
 
 function depsOf(over: Partial<ToolDeps> = {}): ToolDeps {
@@ -22,6 +21,7 @@ function depsOf(over: Partial<ToolDeps> = {}): ToolDeps {
     config: { topK: 8, similarityFloor: 0.4 },
     audience: 'subscriber',
     registry: [],
+    products: [],
     ...over,
   };
 }

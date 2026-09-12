@@ -13,6 +13,8 @@ export type AnalyticsEvent =
   | { event: 'chat_started' }
   | { event: 'chat_question_asked'; viaVoice: boolean; exchangeIndex: number }
   | { event: 'chat_answer_completed'; hadCitations: boolean }
+  | { event: 'chat_products_shown'; count: number; canOrder: boolean }
+  | { event: 'chat_product_view_clicked' }
   | { event: 'capture_started' }
   | { event: 'capture_field_submitted'; field: string }
   | { event: 'capture_skipped'; field: string }
@@ -39,7 +41,8 @@ export type AnalyticsEvent =
   // The shop and checkout (docs/shop/01-commerce.md). Steps and outcomes only;
   // never an email, a name, an address, a birth date, a coupon code, an
   // amount, or any Stripe identifier.
-  | { event: 'cart_item_added' }
+  // source is REQUIRED so the compiler finds every future add-to-cart surface.
+  | { event: 'cart_item_added'; source: 'pdp' | 'chat' }
   | { event: 'cart_item_removed' }
   | { event: 'checkout_started' }
   | { event: 'checkout_step_viewed'; step: 'contact' | 'shipping' | 'payment' }
