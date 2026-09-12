@@ -267,3 +267,25 @@ resource "aws_route53_record" "dmarc" {
   ttl     = 3600
   records = ["v=DMARC1; p=none;"]
 }
+
+# ---- Attentive branded link domain ----
+# Values come from the Attentive dashboard and must match exactly. cqvtq is the
+# hostname Attentive issued so links in its messages resolve under
+# joicehealth.com rather than a shared Attentive domain; the TXT beside it is
+# the Cloudflare custom-hostname ownership proof Attentive asked for with it.
+
+resource "aws_route53_record" "attentive_link" {
+  zone_id = aws_route53_zone.main[var.domain_name].zone_id
+  name    = "cqvtq.${var.domain_name}"
+  type    = "CNAME"
+  ttl     = 300
+  records = ["cqvtq.eat.attntags.com"]
+}
+
+resource "aws_route53_record" "attentive_link_challenge" {
+  zone_id = aws_route53_zone.main[var.domain_name].zone_id
+  name    = "_cf-custom-hostname.cqvtq.${var.domain_name}"
+  type    = "TXT"
+  ttl     = 300
+  records = ["87d83946-833e-4bad-9135-4aa09e270082"]
+}
