@@ -152,7 +152,7 @@ variable "phi_ready" {
 # ---- Attentive (marketing sync) ----
 
 variable "attentive_api_key" {
-  description = "Attentive private-app API key. Set in terraform.tfvars (gitignored); stored in Secrets Manager for the api and brain tasks. Empty disables the sync. See docs/marketing/01-attentive.md."
+  description = "Attentive private-app API key. Set in terraform.tfvars (gitignored); stored in Secrets Manager for the api and brain tasks. Empty disables the sync (no secret version, no task reference). See docs/marketing/01-attentive.md."
   type        = string
   sensitive   = true
   default     = ""
@@ -165,7 +165,7 @@ variable "attentive_sign_up_source_id" {
 }
 
 variable "attentive_webhook_secret" {
-  description = "Signing key Attentive issued for the consent webhook (POST /api/webhooks/attentive). Set in terraform.tfvars (gitignored); stored in Secrets Manager for the api task. Empty makes the route answer 503."
+  description = "Signing key Attentive issued for the consent webhook (POST /api/webhooks/attentive). Set in terraform.tfvars (gitignored); stored in Secrets Manager for the api task. Empty makes the route answer 503 (no secret version, no task reference)."
   type        = string
   sensitive   = true
   default     = ""
@@ -186,7 +186,7 @@ variable "careportals_crm_username" {
 }
 
 variable "careportals_crm_password" {
-  description = "CarePortals CRM service-user password. Set in terraform.tfvars (gitignored); stored in Secrets Manager for the api task."
+  description = "CarePortals CRM service-user password. Set in terraform.tfvars (gitignored); stored in Secrets Manager for the api task. Empty disables subscriber detection (no secret version, no task reference)."
   type        = string
   sensitive   = true
   default     = ""

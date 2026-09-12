@@ -185,7 +185,8 @@ Shaun runs every infrastructure step; the PRs carry the exact commands.
 4. `infra/terraform.tfvars`: remove `klaviyo_*`; add `attentive_api_key`,
    `attentive_sign_up_source_id`, `attentive_webhook_secret`. `terraform plan`, then
    `terraform apply`. The Klaviyo secret is destroyed in the same apply (no recovery window):
-   copy the key out first if it should survive.
+   copy the key out first if it should survive. A secret left empty is fine: it gets no
+   version and the tasks do not reference it (decisions log).
 5. `bun apps/api/scripts/attentive-resync.ts --since <merge time>` against production (the
    same pattern as the retention script) to push the signups from the gap.
 6. Attentive dashboard: "Send test event" on the webhook and expect a 200 in its delivery log.
@@ -216,3 +217,5 @@ Shaun runs every infrastructure step; the PRs carry the exact commands.
 | 2026-09-07 | No consent-source attribute | The sign-up unit is the provenance Attentive records; the checkpoint events carry per-surface attribution without last-writer-wins. |
 | 2026-09-07 | Erasure = unsubscribe (all channels, no confirmation) then privacy delete request, 404 tolerated | Sends stop immediately, deletion completes within 30 days, and a lead Attentive never received cannot wedge its own erasure. |
 | 2026-09-07 | 10 s per-request timeout on the client | A stalled socket held a fire-and-forget chain open indefinitely and, on the brain's erasure path, a row lock. |
+| 2026-09-07 | An empty secret variable creates no Secrets Manager version and no task reference | Secrets Manager refuses an empty string and ECS cannot start a task whose secret has no value: the first switch-over apply failed on the two unset secrets after pointing both services at task definitions they could not launch (PR 83). "Empty disables it" now holds in Terraform too. |
+| 2026-09-07 | No resync at the switch-over | Shaun's call: no signups landed between the deploy and the apply (no users yet). The script and its Terraform output stay for outages. |

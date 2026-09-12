@@ -178,16 +178,20 @@ resource "aws_ecs_task_definition" "api" {
         { name = "ONBOARDING_SESSION_IDLE_DAYS", value = tostring(var.onboarding_session_idle_days) },
         { name = "ONBOARDING_SESSION_TTL_DAYS", value = tostring(var.onboarding_session_ttl_days) },
       ]
-      secrets = [
-        { name = "DATABASE_URL", valueFrom = aws_secretsmanager_secret.database_url.arn },
-        { name = "CLERK_SECRET_KEY", valueFrom = aws_secretsmanager_secret.clerk_secret_key.arn },
-        # The brain presents this on /api/internal/*; the api verifies it.
-        { name = "INTERNAL_API_TOKEN", valueFrom = aws_secretsmanager_secret.internal_api_token.arn },
-        { name = "ATTENTIVE_API_KEY", valueFrom = aws_secretsmanager_secret.attentive_api_key.arn },
+      secrets = concat(
+        [
+          { name = "DATABASE_URL", valueFrom = aws_secretsmanager_secret.database_url.arn },
+          { name = "CLERK_SECRET_KEY", valueFrom = aws_secretsmanager_secret.clerk_secret_key.arn },
+          # The brain presents this on /api/internal/*; the api verifies it.
+          { name = "INTERNAL_API_TOKEN", valueFrom = aws_secretsmanager_secret.internal_api_token.arn },
+        ],
+        # Optional secrets are referenced only when set: ECS cannot start a
+        # task whose secret has no value (see the locals in secrets.tf).
+        local.attentive_api_key_set ? [{ name = "ATTENTIVE_API_KEY", valueFrom = aws_secretsmanager_secret.attentive_api_key.arn }] : [],
         # Verifies the consent webhook's HMAC (POST /api/webhooks/attentive).
-        { name = "ATTENTIVE_WEBHOOK_SECRET", valueFrom = aws_secretsmanager_secret.attentive_webhook_secret.arn },
-        { name = "CAREPORTALS_CRM_PASSWORD", valueFrom = aws_secretsmanager_secret.careportals_crm_password.arn },
-      ]
+        local.attentive_webhook_secret_set ? [{ name = "ATTENTIVE_WEBHOOK_SECRET", valueFrom = aws_secretsmanager_secret.attentive_webhook_secret.arn }] : [],
+        local.careportals_crm_password_set ? [{ name = "CAREPORTALS_CRM_PASSWORD", valueFrom = aws_secretsmanager_secret.careportals_crm_password.arn }] : [],
+      )
       logConfiguration = {
         logDriver = "awslogs"
         options = {
