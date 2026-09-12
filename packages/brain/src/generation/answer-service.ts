@@ -396,10 +396,12 @@ export function createRecommendationService(
         if (config.showToolActivity && toolsUsed.length > 0) {
           recommendation.toolsUsed = toolsUsed;
         }
-        if (products.length > 0) {
+        if (products.length > 0 && event.text.trim().length > 0) {
           // Deliberately NOT gated by showToolActivity: the shelf is product
           // surface (the handoff-card precedent), not introspection chips.
           // canOrder is one bit; the resolved tier never crosses the wire.
+          // The text-length guard keeps a card off the not-covered fallback:
+          // "we don't cover that" plus a product shelf reads as a shrug sale.
           recommendation.products = {
             items: products.slice(0, MAX_CHAT_PRODUCTS),
             canOrder: tierAtLeast(audience, 'user'),

@@ -157,13 +157,41 @@ describe('search_catalogue', () => {
     expect(outcome.resultText).toContain('Glutathione ($59/mo, available)');
     expect(outcome.resultText).toContain('30-day supply; The master antioxidant, made simple.');
     expect(outcome.resultText).toContain('Sermorelin (price unavailable, not currently available)');
-    expect(outcome.resultText).toContain('card with these appears under your answer');
+    expect(outcome.resultText).toContain('A product card for these is shown under the answer');
     // Only the priced item is card-worthy; the dark one is text only.
     expect(deps.products.map((p) => p.slug)).toEqual(['glutathione']);
     expect(deps.products[0]).toMatchObject({ price: 59, isSubscription: true, available: true });
     // A second call with the same product does not duplicate the card.
     await search.execute({ query: 'glutathione' });
     expect(deps.products).toHaveLength(1);
+  });
+
+  test('an all-dark result set never promises a card', async () => {
+    const deps = depsOf({
+      catalog: catalogOf([{ id: '2', name: 'Sermorelin', slug: 'sermorelin', available: false }]),
+    });
+    const search = buildToolExecutors(deps).get('search_catalogue')!;
+    const outcome = await search.execute({ query: 'sermorelin' });
+    expect(outcome.resultText).not.toContain('product card');
+    expect(deps.products).toHaveLength(0);
+  });
+
+  test('a focused search after a browse goes to the front of the card registry', async () => {
+    const deps = depsOf({
+      catalog: {
+        search: async (q: string) =>
+          q === 'all'
+            ? [
+                { id: 'a', name: 'A', slug: 'a', price: 1, available: true },
+                { id: 'b', name: 'B', slug: 'b', price: 2, available: true },
+              ]
+            : [{ id: 'c', name: 'C', slug: 'c', price: 3, available: true }],
+      },
+    });
+    const search = buildToolExecutors(deps).get('search_catalogue')!;
+    await search.execute({ query: 'all' });
+    await search.execute({ query: 'ghk' });
+    expect(deps.products.map((p) => p.slug)).toEqual(['c', 'a', 'b']);
   });
 });
 

@@ -775,6 +775,25 @@ describe('the product shelf', () => {
     expect(asVisitor.products?.canOrder).toBe(false);
   });
 
+  test('the shelf caps at four, keeping registry order', async () => {
+    const five = ['a', 'b', 'c', 'd', 'e'].map((slug, i) => ({
+      id: slug,
+      name: slug.toUpperCase(),
+      slug,
+      price: i + 1,
+      currency: 'USD',
+      isSubscription: false,
+      available: true,
+    }));
+    const capped = await createRecommendationService(stubDb([chunk()]), {
+      embeddings: stubEmbeddings,
+      generation: catalogueGeneration('all', 'A wide range.'),
+      getConfig: configOf({ toolsEnabled: true }),
+      ports: { ...stubPorts, catalog: { search: async () => five } },
+    }).recommend([{ role: 'user', content: 'what do you sell?' }], { audience: 'user' });
+    expect(capped.products?.items.map((p) => p.slug)).toEqual(['a', 'b', 'c', 'd']);
+  });
+
   test('a user can order, and the shelf is absent when the tool never matched', async () => {
     const asUser = await createRecommendationService(stubDb([chunk()]), {
       embeddings: stubEmbeddings,

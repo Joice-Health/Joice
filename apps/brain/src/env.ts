@@ -68,8 +68,17 @@ const envSchema = z.object({
    * organization-scoped, the same surface the storefront reads. Real
    * defaults on purpose; there is no secret and no credential gate.
    */
-  CAREPORTALS_PUBLIC_BASE: z.string().default('https://public-api.portals.care'),
-  CAREPORTALS_ORG: z.string().default('joicehealth_com'),
+  // preprocess guards the api-side convention leaking in: over there an
+  // EMPTY CAREPORTALS_ORG means "subscriber detection disabled", and a copied
+  // task-env entry must not silently break the catalogue here.
+  CAREPORTALS_PUBLIC_BASE: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.string().default('https://public-api.portals.care'),
+  ),
+  CAREPORTALS_ORG: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.string().default('joicehealth_com'),
+  ),
   /**
    * The api service, for /api/internal/* (member profiles into chat). The
    * canonical URL in prod until Service Connect; the compose service name in

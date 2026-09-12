@@ -12,7 +12,7 @@ const CATALOGUE_LIMIT = 5;
 function productLine(item: CatalogItem): string {
   const price =
     item.price !== undefined
-      ? `${item.currency === 'USD' || !item.currency ? '$' : `${item.currency} `}${item.price}${item.isSubscription ? '/mo' : ''}`
+      ? `${item.currency === 'USD' || !item.currency ? '$' : `${item.currency} `}${item.price.toFixed(2).replace(/\.00$/, '')}${item.isSubscription ? '/mo' : ''}`
       : 'price unavailable';
   const facts = `${price}, ${item.available ? 'available' : 'not currently available'}`;
   const copy = [item.subLabel, item.description].filter(Boolean).join('; ');
@@ -56,11 +56,15 @@ export const searchCatalogueTool: BrainTool = {
 
       // The card registry: slug-deduped, priced items only (a curated entry
       // whose live commerce row is dark has no trustworthy price and is
-      // mentioned in text but never carded).
+      // mentioned in text but never carded). A focused search's hits go to
+      // the FRONT: when the model browses 'all' and then narrows, the answer
+      // is about the narrow call, and the shelf cap must not slice it away.
+      const browse = input.data.query.trim().toLowerCase() === 'all';
+      const pushed: typeof deps.products = [];
       for (const item of items) {
         if (item.price === undefined) continue;
         if (deps.products.some((p) => p.slug === item.slug)) continue;
-        deps.products.push({
+        pushed.push({
           slug: item.slug,
           name: item.name,
           ...(item.subLabel ? { subLabel: item.subLabel } : {}),
@@ -71,6 +75,8 @@ export const searchCatalogueTool: BrainTool = {
           available: item.available,
         });
       }
+      if (browse) deps.products.push(...pushed);
+      else deps.products.unshift(...pushed);
 
       // The tier variant: ordering is only mentioned to signed-in users and
       // up. Leads and visitors get facts and availability; the interface, not
@@ -81,12 +87,14 @@ export const searchCatalogueTool: BrainTool = {
       const footer = canOrder
         ? '\n\nThese can be ordered from the shop; offer to point them there if they want to start.'
         : '\n\nOrdering opens once they have an account; share product facts and availability only.';
+      // The card note is a FACT and only a true one: promised cards must
+      // exist (only priced items card), and facts survive a leak into the
+      // answer where an instruction would read as the companion talking to
+      // itself.
+      const carded = items.some((item) => item.price !== undefined);
+      const cardNote = carded ? ' A product card for these is shown under the answer.' : '';
       return {
-        resultText:
-          `Products (a product card with these appears under your answer automatically; ` +
-          `speak naturally rather than repeating raw price lists):\n${items
-            .map(productLine)
-            .join('\n')}${footer}`,
+        resultText: `Products:${cardNote}\n${items.map(productLine).join('\n')}${footer}`,
       };
     };
   },
