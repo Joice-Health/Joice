@@ -5,10 +5,11 @@
  * This is the discipline that keeps the brain a service rather than a
  * distributed monolith. It must never import another domain's tables: it
  * declares the shape of what it needs, and an adapter is injected at the edge.
- * Today every implementation is a stub, because orders, protocols and a
- * catalogue don't exist yet. When they do, these become HTTP clients to the api
- * service and nothing in the domain changes — that's the point of writing them
- * now, while the cost is one file.
+ * Member context and observations are HTTP adapters to the api, the catalogue
+ * is an HTTP adapter over the CarePortals public API, and the cart is still a
+ * stub until on-site ordering is a product decision. Adapters live in
+ * apps/brain/src/ports and are injected in services.ts; nothing in the domain
+ * changes when one goes live — that is the point of the seam.
  *
  * Deliberately narrow. A port should describe the *question the brain asks*
  * ("what has this member been prescribed?"), not hand back a table row, or the
@@ -85,18 +86,33 @@ export interface ObservationSinkPort {
   }): Promise<void>;
 }
 
-/** A product the brain can talk about and, eventually, suggest. */
+/**
+ * A product the brain can talk about and card: the curated identity (slug,
+ * name, approved copy) merged with live commerce facts. Price is optional on
+ * purpose: a curated entry whose live row is dark has no trustworthy price
+ * and is never carded, only mentioned as unavailable. Prices are DOLLARS.
+ */
 export interface CatalogItem {
+  /** The CarePortals `_id` of the sellable variant. */
   id: string;
   name: string;
-  /** Matches the `source_path` vocabulary in the notes, so an answer can link out. */
+  /** The /shop/[slug] key; also how chat cards join back to the curation. */
   slug: string;
+  /** The curated dose line or the live subLabel. */
+  subLabel?: string;
+  /** One approved line on what it is; the model may speak it verbatim. */
+  description?: string;
+  /** Primary care area slug (the @joice/utils vocabulary). */
+  careArea?: string;
+  price?: number;
+  currency?: string;
+  isSubscription?: boolean;
   available: boolean;
 }
 
 export interface CatalogPort {
+  /** Local match over the curated shelf; the literal query 'all' browses it. */
   search(query: string, limit: number): Promise<CatalogItem[]>;
-  byId(id: string): Promise<CatalogItem | null>;
 }
 
 /**
@@ -145,13 +161,10 @@ export const noopObservationSinkPort: ObservationSinkPort = {
   async record() {},
 };
 
-/** No catalogue yet. Returning nothing is honest; the brain answers without it. */
+/** No catalogue wired (tests, eval). Returning nothing is honest. */
 export const emptyCatalogPort: CatalogPort = {
   async search() {
     return [];
-  },
-  async byId() {
-    return null;
   },
 };
 

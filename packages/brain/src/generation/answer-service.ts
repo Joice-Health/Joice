@@ -13,16 +13,18 @@ import {
   stripThinking,
   stripTrailingCitationClump,
 } from './sanitize';
-import type { AudienceTier } from '@joice/utils';
+import { tierAtLeast, type AudienceTier } from '@joice/utils';
 import { buildToolExecutors, toolAccessAllows, toolLabels, type NotesPrefetch } from '../tools';
 import { citedIndexes, stripCitationMarkers } from '../conversation/citations';
 import { stubPorts, type BrainPorts } from '../ports';
-import type {
-  ChatAction,
-  ChatMessage,
-  Citation,
-  PeptideRecommendation,
-  ToolUseTrace,
+import {
+  MAX_CHAT_PRODUCTS,
+  type ChatAction,
+  type ChatMessage,
+  type ChatProduct,
+  type Citation,
+  type PeptideRecommendation,
+  type ToolUseTrace,
 } from '../conversation/schemas';
 
 /**
@@ -300,6 +302,9 @@ export function createRecommendationService(
   ): AsyncGenerator<RecommendationStreamEvent> {
     const question = messages[messages.length - 1]!.content;
     const registry: RetrievedChunk[] = [];
+    // The product registry, cards' provenance: only what search_catalogue
+    // actually returned can ever be carded.
+    const products: ChatProduct[] = [];
 
     // Speculative prefetch: condense + retrieve, in parallel with the first
     // model call. If the model's first search matches (the common case), the
@@ -316,6 +321,7 @@ export function createRecommendationService(
       catalog: ports.catalog,
       config,
       registry,
+      products,
       prefetch,
       audience,
     });
@@ -389,6 +395,15 @@ export function createRecommendationService(
             : { answer: config.notCoveredMessage, citations: [] };
         if (config.showToolActivity && toolsUsed.length > 0) {
           recommendation.toolsUsed = toolsUsed;
+        }
+        if (products.length > 0) {
+          // Deliberately NOT gated by showToolActivity: the shelf is product
+          // surface (the handoff-card precedent), not introspection chips.
+          // canOrder is one bit; the resolved tier never crosses the wire.
+          recommendation.products = {
+            items: products.slice(0, MAX_CHAT_PRODUCTS),
+            canOrder: tierAtLeast(audience, 'user'),
+          };
         }
         yield { type: 'complete', recommendation, usage: event.usage };
       }

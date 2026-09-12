@@ -705,3 +705,91 @@ describe('audience tiers', () => {
     expect(toolNames(capture[0]!)).toContain('request_clinician_handoff');
   });
 });
+
+describe('the product shelf', () => {
+  const catalogueRound = (query: string, answer: string): ConverseStreamEvent[][] => [
+    [
+      { type: 'toolUseStart', toolUseId: 'tu_1', name: 'search_catalogue' },
+      {
+        type: 'done',
+        result: {
+          stopReason: 'tool_use',
+          blocks: [
+            { type: 'toolUse', toolUseId: 'tu_1', name: 'search_catalogue', input: { query } },
+          ],
+          text: '',
+          usage: { inputTokens: 100, outputTokens: 20 },
+        },
+      },
+    ],
+    [
+      { type: 'text', text: answer },
+      {
+        type: 'done',
+        result: {
+          stopReason: 'end_turn',
+          blocks: [{ type: 'text', text: answer }],
+          text: answer,
+          usage: { inputTokens: 200, outputTokens: 40 },
+        },
+      },
+    ],
+  ];
+
+  function catalogueGeneration(query: string, answer: string) {
+    const calls = catalogueRound(query, answer);
+    let call = 0;
+    return {
+      ...stubGeneration('legacy path should not run'),
+      converse: () => Promise.reject(new Error('not used')),
+      converseStream: async function* () {
+        yield* calls[call++]!;
+      },
+    };
+  }
+
+  const shelfPorts = {
+    ...stubPorts,
+    catalog: {
+      search: async () => [
+        { id: '1', name: 'Glutathione', slug: 'glutathione', price: 59, currency: 'USD', isSubscription: true, available: true },
+        { id: '2', name: 'NAD+', slug: 'nad-plus', price: 98, currency: 'USD', isSubscription: true, available: true },
+        { id: '3', name: 'Sermorelin', slug: 'sermorelin', available: false },
+      ],
+    },
+  };
+
+  test('the shelf carries only priced hits, and canOrder follows the tier', async () => {
+    const service = createRecommendationService(stubDb([chunk()]), {
+      embeddings: stubEmbeddings,
+      generation: catalogueGeneration('all', 'We carry a small curated range.'),
+      getConfig: configOf({ toolsEnabled: true }),
+      ports: shelfPorts,
+    });
+    // Anonymous, no peek: visitor. Cards render, ordering stays off.
+    const asVisitor = await service.recommend(
+      [{ role: 'user', content: 'what do you sell?' }],
+      { requester: { memberId: null, sessionId: 's1' } },
+    );
+    expect(asVisitor.products?.items.map((p) => p.slug)).toEqual(['glutathione', 'nad-plus']);
+    expect(asVisitor.products?.canOrder).toBe(false);
+  });
+
+  test('a user can order, and the shelf is absent when the tool never matched', async () => {
+    const asUser = await createRecommendationService(stubDb([chunk()]), {
+      embeddings: stubEmbeddings,
+      generation: catalogueGeneration('all', 'We carry a small curated range.'),
+      getConfig: configOf({ toolsEnabled: true }),
+      ports: shelfPorts,
+    }).recommend([{ role: 'user', content: 'what do you sell?' }], { audience: 'user' });
+    expect(asUser.products?.canOrder).toBe(true);
+
+    const noHits = await createRecommendationService(stubDb([chunk()]), {
+      embeddings: stubEmbeddings,
+      generation: catalogueGeneration('ozempic', 'Not something we sell.'),
+      getConfig: configOf({ toolsEnabled: true }),
+      ports: { ...stubPorts, catalog: { search: async () => [] } },
+    }).recommend([{ role: 'user', content: 'do you sell ozempic?' }], { audience: 'user' });
+    expect(noHits.products).toBeUndefined();
+  });
+});

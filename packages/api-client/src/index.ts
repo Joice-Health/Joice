@@ -77,7 +77,9 @@ export type {
 } from '@joice/core';
 export type {
   ChatMessage,
+  ChatProduct,
   Citation,
   PeptideRecommendation,
+  ProductShelf,
   ToolUseTrace,
 } from '@joice/brain/schemas';

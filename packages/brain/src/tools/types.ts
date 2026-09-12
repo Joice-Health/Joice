@@ -1,5 +1,6 @@
 import type { AudienceTier } from '@joice/utils';
 import type { ToolAccess, ToolAccessKey } from '../config/schemas';
+import type { ChatProduct } from '../conversation/schemas';
 import type { ToolExecutor, ToolOutcome } from '../generation/agent-loop';
 import type { RetrievedChunk } from '../generation/answer-service';
 import type { CatalogPort } from '../ports';
@@ -65,6 +66,13 @@ export interface ToolDeps {
    * retrieved this request.
    */
   registry: RetrievedChunk[];
+  /**
+   * The product registry, same discipline for cards: search_catalogue pushes
+   * slug-deduped structured hits here, and the answer service attaches the
+   * capped shelf to the recommendation at complete. The model can only ever
+   * cause a card for a product the tool actually returned.
+   */
+  products: ChatProduct[];
   prefetch?: NotesPrefetch;
 }
 

@@ -16,6 +16,7 @@ import {
 } from '@joice/brain';
 import { createAttentiveClient } from '@joice/marketing';
 import { env } from './env';
+import { createCareportalsCatalog } from './ports/careportals-catalog';
 import { createPlatformPorts } from './ports/platform-client';
 import { createAttentiveLeadSync } from './ports/attentive-lead-sync';
 
@@ -33,23 +34,26 @@ export const brainConfig = createBrainConfigService(db, noopAuditPort, {
 });
 
 /**
- * Member context, catalogue and cart. Stubs today — no commerce or member
- * accounts exist yet. When they do, these become HTTP clients to the api
- * service and only this line changes. The catalogue stub makes search_catalogue
- * honestly answer "nothing is listed yet" rather than inventing products.
- */
-/**
  * The platform ports: HTTP to the api's /api/internal/* when the shared token
  * is set (member context into chat, observations back), stubs otherwise, in
- * which case members chat exactly like anonymous visitors.
+ * which case members chat exactly like anonymous visitors. The catalogue is
+ * always live: it reads the CarePortals PUBLIC API (no secret exists, so no
+ * credential gate) and sells only the shared curated shelf. Eval keeps
+ * stubPorts and never touches it.
  */
+const catalog = createCareportalsCatalog({
+  organization: env.CAREPORTALS_ORG,
+  baseUrl: env.CAREPORTALS_PUBLIC_BASE,
+});
+
 export const ports = env.INTERNAL_API_TOKEN
   ? {
       ...stubPorts,
+      catalog,
       ...createPlatformPorts({ baseUrl: env.API_URL_INTERNAL, token: env.INTERNAL_API_TOKEN }),
     }
-  : stubPorts;
-console.log(`[brain] platform ports: ${env.INTERNAL_API_TOKEN ? 'HTTP via ' + env.API_URL_INTERNAL : 'stubs (no INTERNAL_API_TOKEN)'}`);
+  : { ...stubPorts, catalog };
+console.log(`[brain] platform ports: ${env.INTERNAL_API_TOKEN ? 'HTTP via ' + env.API_URL_INTERNAL : 'stubs (no INTERNAL_API_TOKEN)'}; catalogue: CarePortals public API`);
 
 // Hoisted so the eval runner reuses the same client instances (and their
 // retry/connection behavior) rather than constructing a second pair.

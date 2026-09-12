@@ -61,10 +61,52 @@ export const toolUseTraceSchema = z.object({
 
 export type ToolUseTrace = z.infer<typeof toolUseTraceSchema>;
 
+/**
+ * One product on a chat card. Slugs are the join key: the browser resolves
+ * image, hue and the CarePortals id against the shared SHOP_CATALOG, and a
+ * slug outside that map renders facts with no CTAs, never a dead link.
+ * Prices are DOLLARS (the CarePortals/formatPrice convention), never cents.
+ */
+export const chatProductSchema = z.object({
+  slug: z.string(),
+  name: z.string(),
+  subLabel: z.string().optional(),
+  careArea: z.string().optional(),
+  price: z.number().nonnegative(),
+  currency: z.string(),
+  isSubscription: z.boolean(),
+  available: z.boolean(),
+});
+
+export type ChatProduct = z.infer<typeof chatProductSchema>;
+
+/** The card/carousel never becomes a shop page; four is the ceiling. */
+export const MAX_CHAT_PRODUCTS = 4;
+
+export const productShelfSchema = z.object({
+  items: z.array(chatProductSchema).min(1).max(MAX_CHAT_PRODUCTS),
+  /**
+   * Whether this requester may order (user tier and up), computed
+   * server-side. One bit by design: the resolved tier itself never crosses
+   * to the browser.
+   */
+  canOrder: z.boolean(),
+});
+
+export type ProductShelf = z.infer<typeof productShelfSchema>;
+
 export const peptideRecommendationSchema = z.object({
   /** Answer text with inline `[n]` footnote markers. */
   answer: z.string(),
   citations: z.array(citationSchema),
+  /**
+   * Products search_catalogue actually returned this turn, deduped and
+   * capped: card content is provenance, the model cannot invent it. Present
+   * only when the tool ran and matched. NOT gated by showToolActivity (a
+   * product surface, not introspection chips) and never persisted: a stored
+   * price would be a lie by the time history restores it.
+   */
+  products: productShelfSchema.optional(),
   /**
    * Which tools ran for this answer, deduped, silent tools excluded. Present
    * only in tool mode with showToolActivity on; absent otherwise, so classic

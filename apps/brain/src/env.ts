@@ -64,6 +64,13 @@ const envSchema = z.object({
   CLERK_PUBLISHABLE_KEY: z.string().default('pk_test_placeholder'),
   CLERK_SECRET_KEY: z.string().default(''),
   /**
+   * The CarePortals PUBLIC API for the catalogue tool: anonymous,
+   * organization-scoped, the same surface the storefront reads. Real
+   * defaults on purpose; there is no secret and no credential gate.
+   */
+  CAREPORTALS_PUBLIC_BASE: z.string().default('https://public-api.portals.care'),
+  CAREPORTALS_ORG: z.string().default('joicehealth_com'),
+  /**
    * The api service, for /api/internal/* (member profiles into chat). The
    * canonical URL in prod until Service Connect; the compose service name in
    * dev. With no INTERNAL_API_TOKEN the ports stay stubs and members chat
