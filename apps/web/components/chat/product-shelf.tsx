@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@joice/ui';
 import { usePublicFlags, type ChatProduct, type ProductShelf } from '@joice/api-client';
-import { careAreaLabel, catalogEntryBySlug, catalogImage, type CareAreaSlug } from '@joice/utils';
+import { careAreaLabel } from '@joice/utils';
+import { catalogEntryBySlug, catalogImage } from '@/lib/shop-catalog';
 import { formatPrice } from '@/lib/careportals/types';
 import { useAddToCart } from '@/lib/careportals/use-cart';
 import { CtaLink } from '@/components/ui/cta-link';
@@ -50,6 +51,9 @@ export function ProductShelfBlock({
   }
   return (
     <ul
+      // tabIndex: with CTAs hidden (commerce off) the cards hold nothing
+      // focusable, and a scroll region must stay keyboard-reachable.
+      tabIndex={0}
       className="-mx-4 mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       aria-label="Products mentioned in this answer"
     >
@@ -63,6 +67,8 @@ export function ProductShelfBlock({
           />
         </li>
       ))}
+      {/* Some browsers drop a flex scroller's trailing padding; keep an edge. */}
+      <li aria-hidden className="w-px shrink-0" />
     </ul>
   );
 }
@@ -92,7 +98,7 @@ function ProductCard({
       />
       {product.careArea ? (
         <span className="mono-label text-muted">
-          {careAreaLabel(product.careArea as CareAreaSlug) ?? product.careArea}
+          {careAreaLabel(product.careArea)}
         </span>
       ) : null}
       <span className="mono-label text-ink">{product.name}</span>
@@ -110,6 +116,11 @@ function ProductCard({
           <CtaLink
             href={`/shop/${product.slug}`}
             size="sm"
+            // New tab until history persistence ships: the transcript is
+            // client state, and an in-tab navigation would destroy the
+            // conversation this card came from (doc 13 decision).
+            target="_blank"
+            rel="noopener"
             onClick={() => {
               track({ event: 'chat_product_view_clicked' });
               onEngage?.();
@@ -135,12 +146,19 @@ function ChatAddToCart({ productId, onEngage }: { productId: string; onEngage?: 
   const add = useAddToCart();
   const [added, setAdded] = useState(false);
   const [failed, setFailed] = useState(false);
+  const cartLinkRef = useRef<HTMLAnchorElement>(null);
+
+  // The Add button unmounts on success; hand focus to the link that replaced
+  // it so keyboard users are not dropped to the body.
+  useEffect(() => {
+    if (added) cartLinkRef.current?.focus();
+  }, [added]);
 
   if (added) {
     return (
-      <span className="flex items-center gap-2">
+      <span className="flex items-center gap-2" role="status">
         <span className="mono-label text-muted">Added.</span>
-        <CtaLink href="/shop/cart" size="sm">
+        <CtaLink ref={cartLinkRef} href="/shop/cart" size="sm" target="_blank" rel="noopener">
           View cart +
         </CtaLink>
       </span>
@@ -185,19 +203,23 @@ function ChatAddToCart({ productId, onEngage }: { productId: string; onEngage?: 
  */
 function ChatImageSlot({ src, hue }: { src?: string; hue: number }) {
   const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false);
   return (
     <div
       className="organic-field relative aspect-[3/1] w-full overflow-hidden rounded-sm"
       style={{ '--h': hue } as React.CSSProperties}
     >
-      {src ? (
+      {src && !failed ? (
         // Plain img on purpose: no next/image ceremony at this size, and the
-        // gradient beneath makes progressive loading invisible.
+        // gradient beneath makes progressive loading invisible. onError keeps
+        // the designed field and stops re-requesting a photo that is not
+        // there yet (most products await photography).
         <img
           src={src}
           alt=""
           className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
           onLoad={() => setLoaded(true)}
+          onError={() => setFailed(true)}
         />
       ) : null}
     </div>

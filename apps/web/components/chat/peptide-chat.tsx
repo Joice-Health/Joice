@@ -1102,7 +1102,7 @@ export function PeptideChat() {
                     </div>
                   ) : null}
 
-                  {products ? (
+                  {products && text.role === 'assistant' ? (
                     // The product surface, actionable content above the meta
                     // chips. Card engagement counts as a buying signal for
                     // the existing conversion machinery.
