@@ -1,6 +1,9 @@
 <!--
   Approved 2026-08-27. Epic: "Brain: toolbelt and boundaries"
   https://app.shortcut.com/joice-health/epic/237 (stories sc-238 to sc-240, shipped).
+  Extended 2026-09-12 by "Brain: the product tool"
+  https://app.shortcut.com/joice-health/epic/285 (stories sc-286 to sc-289):
+  the product tool section below is that epic's design brief until it lands.
   Extended 2026-08-31 by "Brain: audience tiers"
   https://app.shortcut.com/joice-health/epic/244 (stories sc-245 to sc-249):
   the access model section below is that epic's design brief until it lands.
@@ -104,6 +107,45 @@ Variants live in each tool's code keyed on `deps.audience` (admin controls
 availability, code controls behavior): the first is `search_catalogue`, which
 mentions ordering only from `user` up. The eval console records which tier a
 run simulated (default `subscriber`, the full belt).
+
+## The product tool (search_catalogue goes live)
+
+The catalogue tool sells from the SAME curated shelf as `/shop`: the curation
+map (`SHOP_CATALOG`) moves to `packages/utils/src/shop-catalog.ts` as shared
+reference data (web re-exports it; slugs stay the canonical identifiers), and
+a new adapter, `apps/brain/src/ports/careportals-catalog.ts`, implements the
+upgraded `CatalogPort` over the CarePortals PUBLIC API (organization header,
+no secret): the full active list fetched and cached ~5 minutes, merged onto
+the curation by `careportalsId`, matched locally against entry names, dose
+lines and care areas, with the literal query `all` returning the whole shelf
+for browse asks. A miss returns empty, honestly: "do you sell ozempic" must
+never answer with the full range.
+
+The card rides PROVENANCE, not the action channel: the executor pushes
+slug-deduped structured hits into a request-scoped `ToolDeps.products`
+registry (the citations pattern), and the answer service attaches
+`recommendation.products = { items (max 4, retrieval order), canOrder }` at
+complete, so both the streaming and non-streaming paths carry it and the
+model can never invent card content. `canOrder` is one bit
+(`tierAtLeast(audience, 'user')`), never the tier itself. The action channel
+stays enum-only per its contract.
+
+On `/ask`, one product renders as a card (the handoff-card panel idiom),
+several as a plain-CSS snap carousel (max 4, fixed-width tiles, edge peek as
+the scroll affordance). The browser joins by slug against the shared catalog
+for image, hue and the CarePortals id: a slug outside the catalog renders
+facts with no CTAs, never a dead link. View goes to `/shop/[slug]`; Add to
+cart shows only when `canOrder`, the `commerce` flag is on (the first
+`usePublicFlags` consumer), the product is available and the slug joins; the
+add uses the shop's own cart hooks and STAYS in the conversation ("Added." +
+View cart link). Card engagement counts as a buying signal for the existing
+conversion machinery. Cards are product surface, not introspection: they are
+NOT gated by `showToolActivity` (the handoff precedent); the kill switch is
+the `toolSearchCatalogue` access setting.
+
+Deliberately later, not now: cart-aware cards ("already in your cart"),
+order-history awareness once `MemberOrder` is real, per-area browse chips,
+persisting shelves if conversation persistence turns on.
 
 ## Adding a tool (the checklist)
 

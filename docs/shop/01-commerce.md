@@ -90,6 +90,14 @@ WHICH products we sell, under which slug, in which of the five `CARE_AREAS`
 CarePortals data supplies name, price and availability per render; nothing local duplicates
 a price.
 
+**The chat surface reads this same map** (epic 285): the curation data itself lives in
+`packages/utils/src/shop-catalog.ts` (this file re-exports it), because the companion's
+catalogue tool sells from it too and product cards in chat join back to it BY SLUG for the
+image, the hue and the CarePortals id. Curation checkpoint addendum: renaming a slug now
+also retires the join key chat cards use, so slug changes should be treated as breaking;
+a card whose slug no longer matches renders facts with no buttons. Details:
+`docs/rag/13-toolbelt.md` (the product tool section).
+
 ```ts
 interface CatalogEntry {
   slug: string;                                  // /shop/[slug], never a Mongo id
