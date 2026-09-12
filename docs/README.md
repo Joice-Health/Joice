@@ -23,7 +23,7 @@ want the shape of the system before the detail.
 | [10 — The Brain as Its Own Service](rag/10-architecture.md) | Why it's a separate deployable, the URL namespace, ports, schema ownership, migrations, how to deploy it |
 | [11 — The Brain Audit](rag/11-brain-audit.md) | What the audit found and what the `brain-v2` branch changed: tool mode, source types, the corpus inventory, retention/erasure — and what is deliberately still open |
 | [12 — The Eval Console](rag/12-eval-console.md) | `/admin/eval`: run the golden set from the admin, run history and comparison, one-click promote of winning settings, golden-set CRUD, the one-active-run guard |
-| [13 — The Toolbelt](rag/13-toolbelt.md) | How the companion's abilities are built and grown: the tool registry, provenance and ports rules, the db-boundary tests, the tool-visibility setting, and the adding-a-tool checklist |
+| [13 — The Toolbelt](rag/13-toolbelt.md) | How the companion's abilities are built and grown: the tool registry, provenance and ports rules, the db-boundary tests, the tool-visibility setting, the product tool (live catalogue over CarePortals, product cards in chat), and the adding-a-tool checklist |
 
 **New here? Read 01 and 10, then 05 to get it running.**
 
@@ -62,7 +62,7 @@ pages, persistent cart, on-site Stripe checkout) lives entirely under `/shop` (c
 | Doc | What it covers |
 |---|---|
 | [00 Design brief (certification storefront)](shop/00-plan.md) | Why a separate public route group, the flow, every CarePortals endpoint used and why there is no proxy, the two gates (allowlist + `shop` flag), slices, decisions log |
-| [01 Design brief (production shop)](shop/01-commerce.md) | Tracked as Shortcut epic 261. The two coexisting surfaces and the /store move, gating, the local catalogue map, cart state, the custom checkout (Patient API + Stripe Elements, 3DS, the pure payment machine), compliance guardrails, slices, decisions log, the verified-live spike log |
+| [01 Design brief (production shop)](shop/01-commerce.md) | Tracked as Shortcut epic 261. The two coexisting surfaces and the /store move, gating, the shared catalogue map, the chat sales surface, cart state, the custom checkout (Patient API + Stripe Elements, 3DS, the pure payment machine), compliance guardrails, slices, decisions log, the verified-live spike log |
 
 **New here? Read 01; 00 explains the audit surface it moves aside.**
 
