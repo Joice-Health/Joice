@@ -242,6 +242,22 @@ place the funnels meet.
 `lead_source` (`"companion"`), `lead_status` (capturing, exploring, ready, converted),
 `lead_goal` when given. No name, no `clientUserId`, no subscription.
 
+### The on-site tag
+
+Attentive's enhanced tag (its sign-up units, pop-ups and returning-subscriber
+recognition) loads on every page from the root layout
+([layout.tsx](../../apps/web/app/layout.tsx)), beside GTM and in the same shape: an
+inline `next/script` loader (`afterInteractive`) that appends the vendor script
+asynchronously. It is requested from the branded first-party host first
+(`cqvtq.joicehealth.com/joice/load`, the link domain from the dashboard setup below) and
+falls back to Attentive's CDN (`cdn.attn.tv/joice/dtag.js`) when that request errors,
+exactly as Attentive ships it. Our code pushes nothing into the tag: no identifiers, no
+answers, no events. What it collects on the page is configured and governed in the
+Attentive dashboard, and the consent language on any unit it shows must match the API
+sign-up unit's. It runs on every route, the intake and admin included; scope it to a
+route group if that ever needs to change. Turning it off is removing the loader, not a
+flag.
+
 ## The inbound webhook
 
 Attentive posts consent changes to `POST /api/webhooks/attentive`
