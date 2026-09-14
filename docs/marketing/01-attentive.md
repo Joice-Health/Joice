@@ -289,7 +289,10 @@ curl -i -X POST http://localhost:4000/api/webhooks/attentive \
 | `ATTENTIVE_WEBHOOK_SECRET` | secret: Secrets Manager (`joice/attentive-webhook-secret`) on the api task, `.env` locally | the signing key Attentive issued for the consent webhook |
 
 Key and source id both empty (the default everywhere) disables the sync entirely: signups
-work, nothing syncs, nothing is stamped. Setting only one of the two **fails the api at
+work, nothing syncs, nothing is stamped. In Terraform an empty secret variable creates no
+secret version and no task reference (Secrets Manager refuses an empty string, and ECS
+cannot start a task whose secret has no value), so an unset webhook key or CarePortals
+password never blocks an apply or a task launch. Setting only one of the two **fails the api at
 boot** ([env.ts](../../apps/api/src/env.ts)); half-configured would otherwise silently
 sync nothing. The brain takes the key alone ([env.ts](../../apps/brain/src/env.ts)): it
 never subscribes anyone. Both services log one line at boot stating whether the sync is

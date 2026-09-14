@@ -29,6 +29,17 @@ resource "aws_secretsmanager_secret_version" "internal_api_token" {
   secret_string = random_password.internal_api_token.result
 }
 
+# Optional secrets: an empty variable means "not configured". Secrets Manager
+# refuses an empty string, and ECS cannot start a task whose secret has no
+# value, so an unset variable must produce neither a version nor a task
+# reference (the api and brain treat the missing env var as "disabled").
+# The flags are booleans, not the secrets, hence nonsensitive().
+locals {
+  attentive_api_key_set        = nonsensitive(var.attentive_api_key != "")
+  attentive_webhook_secret_set = nonsensitive(var.attentive_webhook_secret != "")
+  careportals_crm_password_set = nonsensitive(var.careportals_crm_password != "")
+}
+
 # Attentive private-app API key: the api's marketing sync and the brain's lead sync.
 resource "aws_secretsmanager_secret" "attentive_api_key" {
   name                    = "${var.project}/attentive-api-key"
@@ -36,6 +47,7 @@ resource "aws_secretsmanager_secret" "attentive_api_key" {
 }
 
 resource "aws_secretsmanager_secret_version" "attentive_api_key" {
+  count         = local.attentive_api_key_set ? 1 : 0
   secret_id     = aws_secretsmanager_secret.attentive_api_key.id
   secret_string = var.attentive_api_key
 }
@@ -47,6 +59,7 @@ resource "aws_secretsmanager_secret" "attentive_webhook_secret" {
 }
 
 resource "aws_secretsmanager_secret_version" "attentive_webhook_secret" {
+  count         = local.attentive_webhook_secret_set ? 1 : 0
   secret_id     = aws_secretsmanager_secret.attentive_webhook_secret.id
   secret_string = var.attentive_webhook_secret
 }
@@ -58,6 +71,7 @@ resource "aws_secretsmanager_secret" "careportals_crm_password" {
 }
 
 resource "aws_secretsmanager_secret_version" "careportals_crm_password" {
+  count         = local.careportals_crm_password_set ? 1 : 0
   secret_id     = aws_secretsmanager_secret.careportals_crm_password.id
   secret_string = var.careportals_crm_password
 }
