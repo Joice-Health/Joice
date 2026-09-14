@@ -157,6 +157,10 @@ root CLAUDE.md and `docs/design/01-design-system.md`. In practice:
   (`ProductRow`, `ArticleRow`), not cards. Photos go through `ImageSlot` so a missing file
   shows the designed slot. Full-bleed bands (`components/home/values.tsx`) use the `w-screen`
   trick; `body` has `overflow-x: clip` for that.
+- Third-party scripts live in `app/layout.tsx` only, as `next/script` inline loaders
+  (`afterInteractive`): GTM and Attentive's enhanced tag (branded host first, CDN
+  fallback; `docs/marketing/01-attentive.md`, "The on-site tag"). The Attentive tag is fed
+  nothing from code; GTM's dataLayer carries keys and outcomes only.
 - Fonts are `next/font/local` in `app/layout.tsx`; only Light cuts exist, and `html` has
   `font-synthesis: none`, so weight classes are inert on purpose.
 - The nav (`components/layout/site-nav.tsx`) is full-width, sticky and frosted with no rule

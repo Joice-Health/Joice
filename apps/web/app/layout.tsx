@@ -77,6 +77,18 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 })(window,document,'script','dataLayer','${GTM_ID}');`,
           }}
         />
+        {/* Attentive's enhanced tag (sign-up units, returning-subscriber
+            recognition), loaded the way Attentive ships it: async from the branded
+            first-party host, with the CDN copy as the fallback when that request
+            errors. Nothing from our code is pushed into it; what it collects is
+            configured in the Attentive dashboard (docs/marketing/01-attentive.md). */}
+        <Script
+          id="attentive-tag"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `(function(d){var s=d.createElement('script');s.async=true;s.src='https://cqvtq.joicehealth.com/joice/load';s.onerror=function(){var f=d.createElement('script');f.src='https://cdn.attn.tv/joice/dtag.js';d.head.appendChild(f);};d.head.appendChild(s);})(document);`,
+          }}
+        />
         <Providers>{children}</Providers>
       </body>
     </html>
