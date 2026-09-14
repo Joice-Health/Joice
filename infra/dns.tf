@@ -268,11 +268,14 @@ resource "aws_route53_record" "dmarc" {
   records = ["v=DMARC1; p=none;"]
 }
 
-# ---- Attentive branded link domain ----
+# ---- Attentive: branded link domain + email sending domain ----
 # Values come from the Attentive dashboard and must match exactly. cqvtq is the
 # hostname Attentive issued so links in its messages resolve under
 # joicehealth.com rather than a shared Attentive domain; the TXT beside it is
 # the Cloudflare custom-hostname ownership proof Attentive asked for with it.
+# The email records belong to Attentive's own SendGrid subuser (u114286141),
+# not Joice's SendGrid account above: at9/at92 are DKIM keys and em1870 the
+# return path, so mail Attentive sends authenticates as joicehealth.com.
 
 resource "aws_route53_record" "attentive_link" {
   zone_id = aws_route53_zone.main[var.domain_name].zone_id
@@ -288,4 +291,22 @@ resource "aws_route53_record" "attentive_link_challenge" {
   type    = "TXT"
   ttl     = 300
   records = ["87d83946-833e-4bad-9135-4aa09e270082"]
+}
+
+locals {
+  attentive_email_cnames = {
+    "at9._domainkey"  = "at9.domainkey.u114286141.wl142.sendgrid.net"
+    "at92._domainkey" = "at92.domainkey.u114286141.wl142.sendgrid.net"
+    "em1870"          = "u114286141.wl142.sendgrid.net"
+  }
+}
+
+resource "aws_route53_record" "attentive_email" {
+  for_each = local.attentive_email_cnames
+
+  zone_id = aws_route53_zone.main[var.domain_name].zone_id
+  name    = "${each.key}.${var.domain_name}"
+  type    = "CNAME"
+  ttl     = 300
+  records = [each.value]
 }

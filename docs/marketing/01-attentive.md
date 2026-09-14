@@ -316,12 +316,15 @@ rebuild).
    `https://joicehealth.com/api/webhooks/attentive` with `email.subscribed`,
    `email.unsubscribed`, `sms.subscribed`, `sms.unsubscribed`, and copy the signing key
    into `terraform.tfvars`. "Send test event" should show a 200 once the apply has run.
-4. **Branded link domain**: Attentive issues a hostname under joicehealth.com (`cqvtq`)
-   so links in its messages resolve on our domain, plus a Cloudflare custom-hostname TXT
-   that proves we own it. Both are Route53 records in [dns.tf](../../infra/dns.tf)
-   (`attentive_link`, `attentive_link_challenge`); a new or changed value is a
-   `terraform apply`, never a console edit, and the dashboard shows the domain verified
-   once the records propagate.
+4. **DNS for the link domain and the sending domain**: Attentive issues a hostname under
+   joicehealth.com (`cqvtq`) so links in its messages resolve on our domain, plus a
+   Cloudflare custom-hostname TXT that proves we own it. For email it issues three
+   CNAMEs on its SendGrid subuser (the DKIM keys `at9._domainkey` and `at92._domainkey`,
+   and the `em1870` return path) so its mail authenticates as joicehealth.com. All of
+   them are Route53 records in [dns.tf](../../infra/dns.tf) (`attentive_link`,
+   `attentive_link_challenge`, `attentive_email`); a new or changed value is a
+   `terraform apply`, never a console edit, and the dashboard shows each domain
+   verified once the records propagate.
 
 ### Scripts
 
