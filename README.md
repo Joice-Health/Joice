@@ -18,7 +18,9 @@ server-driven intake flow on `/get-started`.
 
 This page is orientation only. The working rules live in [CLAUDE.md](CLAUDE.md); the deep
 dives are indexed in [docs/README.md](docs/README.md); AWS layout and the pre-PHI
-checklist are in [infra/README.md](infra/README.md).
+checklist are in [infra/README.md](infra/README.md). Work is tracked in Linear (Engineering
+team) and the product-facing feature guides live in Notion; the loop that keeps all three
+current is [docs/workflow/01-team-visibility.md](docs/workflow/01-team-visibility.md).
 
 ## Stack
 

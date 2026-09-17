@@ -96,7 +96,7 @@ admin page is built from.
 
 ## Workflow
 
-How work stays visible to the whole team: this docs directory for engineers, Shortcut for
+How work stays visible to the whole team: this docs directory for engineers, Linear for
 product, Notion for everyone. Run by the `kickoff` and `wrap-up` skills in `.claude/skills/`.
 
 | Doc | What it covers |

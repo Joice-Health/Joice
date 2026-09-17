@@ -108,25 +108,28 @@ The intake flow on `/get-started` (design brief: `docs/onboarding/00-plan.md`; m
 
 ## Team visibility workflow
 
-Every piece of work is visible on three surfaces: `docs/` speaks to engineers, Shortcut to
+Every piece of work is visible on three surfaces: `docs/` speaks to engineers, Linear to
 product, Notion to the whole team. Same facts, three voices. Full doc:
-`docs/workflow/01-team-visibility.md`.
+`docs/workflow/01-team-visibility.md`. (Linear replaced Shortcut on 2026-09-16; everything
+was imported, epics became projects, stories became issues.)
 
 - **Feature-sized work**: after the plan is approved, run the `kickoff` skill **before writing
-  code** (engineering docs under `docs/<area>/`, the `docs/README.md` index, a Shortcut epic
-  with product-voiced stories under the Engineering team, all cross-linked). When it ships,
-  run the `wrap-up` skill (as-built docs, story sweep + a plain-language epic status comment,
+  code** (engineering docs under `docs/<area>/`, the `docs/README.md` index, a Linear project
+  with product-voiced issues under the Engineering team, all cross-linked). When it ships,
+  run the `wrap-up` skill (as-built docs, issue sweep + a plain-language project update,
   the feature's Notion page under the Documentation page in the Joice Health workspace, and
   a Slack-ready announcement handed to Shaun to paste).
-- **Fixes and small updates**: no new epic. One story on the relevant epic (or the standing
-  "Maintenance" epic), and the affected `docs/*` and CLAUDE.md updated **in the same PR** as
-  the change; this generalizes the onboarding rule above to the whole repo. If member-visible
-  or admin-visible behavior changed, the feature's Notion page gets a changelog row at the
-  next wrap-up.
-- **Shortcut moves in lockstep with the code**, via the Shortcut MCP: story started (branch or
-  first commit) means In Progress and assigned; PR opened means the PR URL attached to the
-  story and In Review; PR merged means Done (with a story comment if scope changed).
-  `wrap-up` is the catch-all sweep, not the mechanism.
+- **Fixes and small updates**: no new project. One issue on the relevant project (or the
+  standing "Maintenance" project), and the affected `docs/*` and CLAUDE.md updated **in the
+  same PR** as the change; this generalizes the onboarding rule above to the whole repo. If
+  member-visible or admin-visible behavior changed, the feature's Notion page gets a
+  changelog row at the next wrap-up.
+- **Linear moves in lockstep with the code** through its GitHub integration: the branch name
+  and PR title carry the issue id, which moves the issue to In Progress on commits, In Review
+  with the PR linked on open, Done on merge. Starting work still means assigning the issue,
+  and a scope change still gets an issue comment. The Linear MCP (server `linear` in
+  `.mcp.json`) is the fallback for anything the integration misses; `wrap-up` is the
+  catch-all sweep, not the mechanism.
 - **The root `README.md` is the repo's front door and rots fastest.** A PR that adds, removes
   or renames an app, package, service, route namespace, root script, or docs area (or changes
   how the stack is run) updates the root README in the same PR. It stays a short orientation
@@ -136,9 +139,11 @@ product, Notion to the whole team. Same facts, three voices. Full doc:
   with more than two boxes, file:line references where a doc points at code, one "why"
   paragraph per decision, no em dashes anywhere (docs, stories, commits, copy), and
   `docs/README.md` indexes every new doc.
-- **Conventions**: branch `<area>/<phase>-<story>-<slug>` (like `onboarding/2-1-member-clerk`);
-  PR title `[P<phase>] <story#> <Title> (sc-NNN)`; commit bodies are prose ending with a story
-  reference line, `Story sc-NNN (epic NNN).`
+- **Conventions**: branch `<area>/<issue-id>-<slug>` with the id lowercased (like
+  `onboarding/eng-301-member-clerk`; the id in the branch is what powers the Linear GitHub
+  integration); PR title `[P<phase>] <phase.issue> <Title> (ENG-NNN)`; commit bodies are
+  prose ending with an issue reference line, `Issue ENG-NNN (project <name>).` Ids of the
+  form sc-NNN in older docs and commits are the Shortcut era, imported into Linear.
 
 ## Access model (four tiers)
 
