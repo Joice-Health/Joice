@@ -18,10 +18,11 @@ import { NodeHttpHandler } from '@smithy/node-http-handler';
  * (SigV4 default credential chain); there are no API keys anywhere.
  *
  * Generation uses the model-agnostic Converse API, so RAG_MODEL can be any
- * Bedrock chat model — Claude via a dated cross-region inference profile
- * (e.g. `us.anthropic.claude-sonnet-4-5-20250929-v1:0`; confirm the exact id
- * with `aws bedrock list-inference-profiles`) or Amazon Nova
- * (`us.amazon.nova-pro-v1:0`, available with no use-case form).
+ * Bedrock chat model: Claude via a cross-region inference profile
+ * (`us.anthropic.claude-sonnet-5`; newer Claude profiles are undated, older
+ * ones like `us.anthropic.claude-sonnet-4-5-20250929-v1:0` carry a date, so
+ * confirm the exact id with `aws bedrock list-inference-profiles`) or Amazon
+ * Nova (`us.amazon.nova-pro-v1:0`, available with no use-case form).
  *
  * These interfaces are also the swap seam: tests stub them, and moving to a
  * different provider later only touches this file. The tool-calling surface
@@ -249,10 +250,20 @@ export function toConverseInput(
     messages: { role: 'user' | 'assistant'; content: SdkContentBlock[] }[];
     inferenceConfig: { maxTokens: number };
     toolConfig?: { tools: Tool[] };
-    // Literal shape (not Record<string, unknown>) so it satisfies the SDK's
+    // Literal shapes (not Record<string, unknown>) so they satisfy the SDK's
     // JSON DocumentType via TypeScript's implicit index signature on literals.
-    additionalModelRequestFields?: { inferenceConfig: { topK: number } };
+    additionalModelRequestFields?:
+      | { inferenceConfig: { topK: number } }
+      | { thinking: { type: 'disabled' } };
   };
+
+  // Sonnet 5 runs adaptive thinking when the field is omitted. Thinking spends
+  // the same maxTokens as the answer, and the agent loop echoes assistant turns
+  // as text + toolUse only, so reasoning blocks would be dropped mid-loop. Off
+  // keeps latency and the answer cap meaning what they meant on earlier models.
+  if (/anthropic\.claude-sonnet-5/i.test(request.model)) {
+    input.additionalModelRequestFields = { thinking: { type: 'disabled' } };
+  }
 
   if (request.tools && request.tools.length > 0) {
     input.toolConfig = {

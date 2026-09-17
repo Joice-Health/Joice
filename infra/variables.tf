@@ -195,9 +195,9 @@ variable "careportals_crm_password" {
 # ---- RAG ----
 
 variable "rag_model" {
-  description = "Bedrock model ID for the peptide chatbot (cross-region inference profile)."
+  description = "Bedrock model ID for the peptide chatbot: a cross-region inference profile id (the US geo profile keeps traffic in US and Canada regions). Confirm with `aws bedrock list-inference-profiles`."
   type        = string
-  default     = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+  default     = "us.anthropic.claude-sonnet-5"
 }
 
 variable "polly_voice_id" {

@@ -68,7 +68,7 @@ The rest of this page is the same flow with every knob explained.
 
 | Var | Where it's read | Local default | Notes |
 |---|---|---|---|
-| `RAG_MODEL` | `apps/brain/src/env.ts` | `us.anthropic.claude-sonnet-4-5-20250929-v1:0` | Bedrock **cross-region inference profile** id (`us.` prefix). These ids are **dated** — verify the exact one with `aws bedrock list-inference-profiles`. Any Bedrock chat model works (Converse API). **Until the account's Anthropic use-case form is approved, use `us.amazon.nova-pro-v1:0` locally** — Amazon models need no form |
+| `RAG_MODEL` | `apps/brain/src/env.ts` | `us.anthropic.claude-sonnet-5` | Bedrock **cross-region inference profile** id (`us.` prefix). Copy ids from the AWS model card or `aws bedrock list-inference-profiles`; older profiles are dated, newer ones are not. Any Bedrock chat model works (Converse API). **Until the account's Anthropic use-case form is approved, use `us.amazon.nova-pro-v1:0` locally**; Amazon models need no form |
 | `BEDROCK_REGION` | api + ingest script | `us-east-1` | Where Titan/Claude are invoked |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` | api container (compose passes them through) | empty | Local stand-in for the ECS task role. In prod these don't exist — the task role provides SigV4 |
 | `NOTES_BUCKET` | `apps/brain/scripts/ingest.ts` only | empty | S3 source for ingestion (prod). The API never reads it |

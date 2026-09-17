@@ -44,6 +44,28 @@ aws bedrock-runtime invoke-model \
   /tmp/titan-out.json && jq '.embedding | length' /tmp/titan-out.json   # → 1024
 ```
 
+**Claude preflight** (run from an admin identity before pointing any environment
+at a Claude model; the brain task role cannot do the first-use subscription):
+
+```bash
+aws bedrock list-inference-profiles --region us-east-1 \
+  --query "inferenceProfileSummaries[?contains(inferenceProfileId,'claude-sonnet-5')].[inferenceProfileId,status]" \
+  --output table
+
+aws bedrock-runtime converse --region us-east-1 \
+  --model-id us.anthropic.claude-sonnet-5 \
+  --messages '[{"role":"user","content":[{"text":"Say ok"}]}]' \
+  --inference-config '{"maxTokens":64}' \
+  --additional-model-request-fields '{"thinking":{"type":"disabled"}}'
+```
+
+The second call proves three things at once: the Anthropic use-case form is
+approved, the AWS Marketplace subscription for the model is active (Claude is
+billed through Marketplace, and the first invoke needs a principal with
+subscribe rights), and Converse accepts the `thinking` field the brain sends.
+"Use case details have not been submitted", or a 404 "model does not exist",
+means the form: submit it above and retry in about 15 minutes.
+
 ## 3. Terraform
 
 What this apply creates/changes (all in `infra/`):
@@ -55,7 +77,7 @@ What this apply creates/changes (all in `infra/`):
 | `aws_iam_role.ingestion_task` + policy | `iam.tf` | **new** — S3 read + Titan only (no Claude) |
 | `aws_ecs_task_definition.ingest` + `/ecs/joice-ingest` log group | `ingest.tf` | **new** — one-off task, reuses the **brain** image with a command override |
 | api task definition env: `RAG_MODEL`, `BEDROCK_REGION` | `ecs.tf` | **in-place update** (new task def revision) |
-| `rag_model` variable | `variables.tf` | default `us.anthropic.claude-sonnet-4-5-20250929-v1:0` (inference-profile ids are dated — verify with `aws bedrock list-inference-profiles`) |
+| `rag_model` variable | `variables.tf` | default `us.anthropic.claude-sonnet-5` (the US geo profile; verify ids with `aws bedrock list-inference-profiles`). Prod overrides it in `terraform.tfvars` |
 | Outputs: `notes_bucket`, `ingest_run_task_command` | `outputs.tf` | convenience |
 
 ```bash
@@ -154,7 +176,7 @@ renders, and answers refuse questions the notes don't cover.
 | Change | How | Rebuild needed? |
 |---|---|---|
 | Notes content | Re-run prep → `s3 sync` → step 6 again (hash-skip makes it cheap; orphan sweep removes deleted files) | No |
-| Model (e.g. new Claude version) | The **Model** field on `/admin/brain` (live in ~30s); or change the env default: edit `rag_model` in tfvars or `variables.tf` → `terraform apply` → force new deployment | No |
+| Model (e.g. new Claude version) | First the Claude preflight in step 2, then an eval run with the new model as a per-run override against the current one ([12](12-eval-console.md)). Switch with the **Model** field on `/admin/brain` (live in ~30s, and picking the old model again is the rollback). Afterwards make the env default match: edit `rag_model` in tfvars → `terraform apply` → force new deployment, then reset the admin override so there is one source of truth. A saved admin Model always outranks `RAG_MODEL`, so check `GET /api/admin/brain` when a Terraform change seems to do nothing | No |
 | Retrieval tuning (topK, match threshold) | **Admin form fields** on `/admin/brain` (Notes per answer, Match threshold) — live in ~30s | No |
 | System prompt (persona/tone/instructions) / disclaimer copy | **Admin form fields** on `/admin/brain` — live in ~30s (**counsel review gate applies to the disclaimer** — see 07). The safety floor stays a code constant | No |
 | Embedding model or dimensions | Schema migration + full re-embed (delete rows, update `vector(N)` + `EMBEDDING_DIMENSIONS`, re-run ingest) — see [02](02-data-model.md) | Code deploy + re-ingest |

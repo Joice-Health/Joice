@@ -48,7 +48,7 @@ const envSchema = z.object({
    * api task role has NO Bedrock permissions (deliberately removed when the
    * brain became its own service — see infra/iam.tf).
    */
-  RAG_MODEL: z.string().default('us.anthropic.claude-sonnet-4-5-20250929-v1:0'),
+  RAG_MODEL: z.string().default('us.anthropic.claude-sonnet-5'),
   BEDROCK_REGION: z.string().default('us-east-1'),
   /** Polly voice for spoken answers — must be generative-capable. */
   POLLY_VOICE_ID: z.string().default('Ruth'),

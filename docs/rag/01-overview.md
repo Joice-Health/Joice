@@ -39,7 +39,7 @@ flowchart TB
             api["joice-brain service<br/>Hono on Bun :4100"]
         end
 
-        bedrock["Amazon Bedrock<br/>Titan Embed v2 (1024d)<br/>Claude Sonnet 4.5"]
+        bedrock["Amazon Bedrock<br/>Titan Embed v2 (1024d)<br/>Claude Sonnet 5 / Nova Pro"]
         rds[("RDS Postgres 17<br/>joice-db<br/>pgvector: note_chunks")]
 
         s3 -->|"GetObject *.md / *.pdf"| ingest
@@ -118,10 +118,11 @@ Full detail with sequence diagrams: [04 — Query Flow](04-query-flow.md).
 
 | Decision | Choice | Why |
 |---|---|---|
-| LLM access | **Bedrock Converse API** (`@aws-sdk/client-bedrock-runtime`, model-agnostic). Prod default `us.anthropic.claude-sonnet-4-5-20250929-v1:0` (Bedrock inference-profile ids are **dated** — verify the exact id with `aws bedrock list-inference-profiles`); dev runs `us.amazon.nova-pro-v1:0` until the account's Anthropic use-case form is approved | HIPAA-eligible under the free self-service AWS BAA; traffic never reaches Anthropic; IAM auth means zero API-key secrets. Converse works with **any** Bedrock chat model, so the Anthropic-access blocker doesn't block development. (The Anthropic SDK's Bedrock clients were tried first — the Mantle endpoint 404s on this account and InvokeModel is gated on the same use-case form.) |
+| LLM access | **Bedrock Converse API** (`@aws-sdk/client-bedrock-runtime`, model-agnostic). Code default `us.anthropic.claude-sonnet-5` (copy inference-profile ids from the AWS model card or `aws bedrock list-inference-profiles`, never guess: older profiles are dated, newer ones are not); prod and dev run `us.amazon.nova-pro-v1:0` until the account's Anthropic use-case form is approved and an eval run clears the switch | HIPAA-eligible under the free self-service AWS BAA; traffic never reaches Anthropic; IAM auth means zero API-key secrets. Converse works with **any** Bedrock chat model, so the Anthropic-access blocker doesn't block development. (The Anthropic SDK's Bedrock clients were tried first: the Mantle endpoint 404s on this account and InvokeModel is gated on the same use-case form.) |
 | Citations | **Prompt-based `[n]` markers**: documents are numbered in the prompt, the model cites inline, `parseCitations()` maps markers back to source file + heading | Works identically across models (Nova today, Claude later). Anthropic-native citation spans are a possible upgrade once Claude access lands, but the seam is one function |
 | Embeddings | **Titan Text Embeddings V2**, 1024 dims, normalized | Serverless on Bedrock under the same BAA, ~$0.02 per 1M input tokens. Voyage is higher quality but only runs inside AWS as an always-on SageMaker endpoint (cost + ops). Upgrade path exists without schema changes at 1024 dims. |
-| Model | Claude Sonnet 4.5, via `RAG_MODEL` env | Near-Opus quality on grounded Q&A at $3/$15 per MTok. Swappable with a `terraform apply` (runtime env, no rebuild). |
+| Model | Claude Sonnet 5 (`us.anthropic.claude-sonnet-5`, the US geo profile: traffic stays in US and Canada regions), via `RAG_MODEL` env or the Model field on `/admin/brain` | Near-Opus quality on grounded Q&A at an Anthropic list price of $2/$10 per MTok; Bedrock bills it through AWS Marketplace and geo profiles carry a 10% premium over global, so check the [Bedrock pricing page](https://aws.amazon.com/bedrock/pricing/) for the real rate. The global profile routes worldwide, which is wrong for the PHI posture. Swappable live from admin, or with a `terraform apply` (runtime env, no rebuild). |
+| Thinking | **Disabled** for Sonnet 5 (`toConverseInput` in `packages/brain/src/providers/bedrock.ts` sends `thinking: {type: "disabled"}`) | Sonnet 5 runs adaptive thinking when the field is omitted. Thinking spends the same `maxTokens` as the answer (the cap defaults to 1024), adds latency to voice, and the agent loop echoes assistant turns as text + toolUse only (`packages/brain/src/generation/agent-loop.ts:185`), so reasoning blocks would be dropped mid-loop. Revisit only if an eval run shows a quality gap. |
 | Grounding | Similarity floor (0.4) **before** the LLM call + a restrictive system prompt | Off-corpus questions cost zero generation tokens and can't hallucinate; the prompt handles partial coverage. |
 | Vector store | pgvector on the existing RDS instance | No new database, no new vendor; corpus is small (one vault); HNSW index built up front while the table is empty. |
 | Ingestion | One-off ECS `RunTask` reusing the **brain image** | The image already contains the whole monorepo — only the command differs. No third image, no CI changes, no scheduler (the vault is a one-time upload; re-run manually if it ever changes). |
@@ -133,8 +134,10 @@ Full detail with sequence diagrams: [04 — Query Flow](04-query-flow.md).
 ## Cost envelope (rough)
 
 Per answered question: ~8 chunks × ~400 tokens + system prompt ≈ 4–5K input
-tokens (≈ $0.015) + ≤ 1K output tokens (≈ $0.015) → **≈ 2–3¢ per answer** on
-Sonnet 4.5 (Nova Pro, the dev model, is roughly 4× cheaper). Embedding a
+tokens (≈ $0.015) + ≤ 1K output tokens (≈ $0.015) → **≈ 2–3¢ per answer** at
+Sonnet 4.5 prices. Sonnet 5 lists about a third cheaper per token but its
+tokenizer spends roughly 30% more tokens on the same text, so expect a similar
+figure (Nova Pro, the model prod runs today, is roughly 4× cheaper). Embedding a
 question is ~50 tokens on Titan — effectively free. Ingesting an entire vault
 of a few hundred notes costs cents. The rate limit (5/min/IP) bounds
 worst-case abuse at trivial spend.
