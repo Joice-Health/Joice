@@ -171,8 +171,9 @@ byte-for-byte. See [11 — Brain Audit](11-brain-audit.md).
 
 Built in `buildRequest()` (`answer-service.ts`) and sent through the
 **model-agnostic Bedrock Converse API** (`createGenerationClient` in
-`providers/bedrock.ts`) — so `RAG_MODEL` can be any Bedrock chat model (Claude in prod,
-Nova in dev; see [05](05-local-development.md)). The retrieved chunks are
+`providers/bedrock.ts`), so the model can be any Bedrock chat model (Claude
+Sonnet 5 is the code default, Nova Pro is what prod runs until it is switched;
+see [05](05-local-development.md)). The retrieved chunks are
 numbered and inlined into the final user turn:
 
 ```

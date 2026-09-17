@@ -52,7 +52,7 @@ flowchart LR
 | **Prompt caching (promptCache)** | Bedrock prompt caching of the static prefix (system prompt + tool definitions). **Off by default** — it only pays once the prefix crosses the model's minimum cacheable size, and support varies by model (unsupported models degrade to uncached). Verify it's actually working via `cacheReadInputTokens` in the usage counts |
 | **Follow-up understanding** | Rewrites context-dependent follow-ups ("is there a protocol for *that*?") into standalone search queries using the conversation, via a small fast model. Off = follow-ups embed as-typed |
 | **Rewrite model** | The Bedrock model doing that rewrite (default Nova Lite — it only writes search queries, small and fast is right) |
-| **Model** | Bedrock model at runtime — Nova Pro today; Claude Sonnet 4.6/5 once the account's Anthropic use-case form is approved; or any custom Bedrock id |
+| **Model** | Bedrock model at runtime. Presets: Amazon Nova Pro (what prod runs today) and Claude Sonnet 5 (`us.anthropic.claude-sonnet-5`, usable once the account's Anthropic use-case form is approved; run the preflight in [06](06-deployment-runbook.md) first), or any custom Bedrock id. Sonnet 5 runs with thinking disabled, see [01](01-overview.md). A saved value here outranks the `RAG_MODEL` env default until it is reset |
 | **Voice** | The Polly voice for spoken answers — generative-engine voices only (Ruth, Danielle, Joanna, Salli, Tiffany, Matthew, Stephen for en-US) |
 
 ## Tuning tips

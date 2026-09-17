@@ -136,6 +136,31 @@ describe('toConverseInput', () => {
     expect(input.additionalModelRequestFields).toBeUndefined();
   });
 
+  test('Sonnet 5 gets thinking disabled, with or without tools, on either profile', () => {
+    const THINKING_OFF = { thinking: { type: 'disabled' } } as const;
+    const classic = toConverseInput({
+      ...baseRequest,
+      model: 'us.anthropic.claude-sonnet-5',
+    });
+    expect(classic.toolConfig).toBeUndefined();
+    expect(classic.additionalModelRequestFields).toEqual(THINKING_OFF);
+
+    // Tool mode must not pick up the Nova topK override alongside it.
+    const tooled = toConverseInput({
+      ...baseRequest,
+      model: 'us.anthropic.claude-sonnet-5',
+      tools: [TOOL],
+    });
+    expect(tooled.toolConfig).toBeDefined();
+    expect(tooled.additionalModelRequestFields).toEqual(THINKING_OFF);
+
+    const global = toConverseInput({
+      ...baseRequest,
+      model: 'global.anthropic.claude-sonnet-5',
+    });
+    expect(global.additionalModelRequestFields).toEqual(THINKING_OFF);
+  });
+
   test('empty text blocks never round-trip (Claude emits them ahead of tool use)', () => {
     const input = toConverseInput({
       ...baseRequest,

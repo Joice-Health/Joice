@@ -32,6 +32,12 @@ scan). Side benefits that fell out of the choice: zero new vendors, zero
 API-key secrets (SigV4 via task roles), and IAM/CloudTrail as the audit
 surface.
 
+Where inference runs: Claude is invoked through a US geo inference profile
+(`us.anthropic.claude-sonnet-5`). Requests enter through the `bedrock-runtime`
+VPC endpoint (`infra/endpoints.tf`) and Bedrock may serve them from any US or
+Canada region in that profile, on the AWS backbone and inside the same BAA.
+The `global.` profile routes worldwide and is not to be used here.
+
 ```mermaid
 flowchart LR
     subgraph BAA["Inside the AWS BAA boundary"]
