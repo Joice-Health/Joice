@@ -183,7 +183,7 @@ was imported, epics became projects, stories became issues.)
 ## Environment variables — the recurring gotcha
 
 `NEXT_PUBLIC_*` values are **inlined at image build time** (GitHub Actions build-args from repo
-Variables: `CLOUDFRONT_URL`, `CLERK_PUBLISHABLE_KEY`). Changing them requires a **rebuild**, not
+Variables: `CLOUDFRONT_URL`, `CLERK_PUBLISHABLE_KEY`, `STRIPE_PUBLISHABLE_KEY`). Changing them requires a **rebuild**, not
 a redeploy or task-env change: run the Deploy workflow manually with `scope=all`, because no
 file in git changed and change detection would otherwise skip the web image. Everything else
 (`TEAM_PASSWORD`, `SITE_LAUNCHED`, `CLERK_SECRET_KEY`, `DATABASE_URL`, the onboarding knobs
